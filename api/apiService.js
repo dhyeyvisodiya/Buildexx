@@ -1,4 +1,5 @@
 import sql from './db.js';
+import { getApiUrl } from '../src/config';
 
 // Helper to normalize image data
 const normalizeImages = (images) => {
@@ -63,7 +64,7 @@ export async function uploadLegalDocument(file) {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('http://localhost:8081/api/properties/upload-legal-doc', {
+        const response = await fetch(getApiUrl('/api/properties/upload-legal-doc'), {
             method: 'POST',
             body: formData,
         });
@@ -94,7 +95,7 @@ export async function uploadPanoramaImages(files) {
             return { success: true, data: [] };
         }
 
-        const response = await fetch('http://localhost:8081/api/properties/upload-panorama', {
+        const response = await fetch(getApiUrl('/api/properties/upload-panorama'), {
             method: 'POST',
             body: formData,
         });
@@ -115,7 +116,7 @@ export async function uploadPanoramaImages(files) {
 // Verify Property (Admin)
 export async function verifyProperty(propertyId, isVerified, userId) {
     try {
-        const response = await fetch(`http://localhost:8081/api/properties/${propertyId}/verify?isVerified=${isVerified}&userId=${userId}`, {
+        const response = await fetch(getApiUrl(`/api/properties/${propertyId}/verify?isVerified=${isVerified}&userId=${userId}`), {
             method: 'PATCH'
         });
 
