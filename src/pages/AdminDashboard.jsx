@@ -11,6 +11,7 @@ import {
   updateComplaintStatus,
   verifyProperty
 } from '../../api/apiService';
+import { getApiUrl } from '../config';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
@@ -506,7 +507,7 @@ const AdminDashboard = () => {
                         <td style={{ color: '#64748B' }}>
                           {property.legal_document_path ? (
                             <a
-                              href={`http://localhost:8081/api/properties/${property.id}/legal-doc?userId=${currentUser.id}`}
+                              href={getApiUrl(`/api/properties/${property.id}/legal-doc?userId=${currentUser.id}`)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary text-decoration-none"

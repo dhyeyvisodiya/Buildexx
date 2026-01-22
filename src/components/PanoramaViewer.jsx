@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import 'pannellum';
 import 'pannellum/build/pannellum.css';
 
+import { getApiUrl } from '../config';
+
 /**
  * PanoramaViewer component for 360° property views
  * Uses Pannellum library for panoramic image display
@@ -52,7 +54,7 @@ const PanoramaViewer = ({
             // External URL - Proxy it
             try {
                 // console.log("Proxying 360 image:", currentImage);
-                const response = await fetch('/api/images/proxy-360', {
+                const response = await fetch(getApiUrl('/api/images/proxy-360'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: currentImage })
