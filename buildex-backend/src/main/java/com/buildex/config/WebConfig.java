@@ -11,9 +11,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "buildexrealty.vercel.app")
+                .allowedOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "https://buildexrealty.vercel.app")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
+                .allowedHeaders("*", "Access-Control-Allow-Private-Network")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
