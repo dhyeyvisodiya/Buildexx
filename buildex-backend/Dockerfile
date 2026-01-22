@@ -1,22 +1,20 @@
-FROM eclipse-temurin:17-jdk-jammy
-
+# Use Maven image to build the application
+FROM maven:3.8-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy maven wrapper and pom.xml
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-
-# Give execution rights to the wrapper
-RUN chmod +x mvnw
-
-# Resolve dependencies (layer caching)
-RUN ./mvnw dependency:resolve
-
-# Copy source code
+# Copy project files
+COPY pom.xml .
 COPY src ./src
 
 # Build the application
-RUN ./mvnw package -DskipTests
+RUN mvn clean package -DskipTests
+
+# Run stage
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+COPY --from=build /app/target/buildex-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8081
+CMD ["java", "-jar", "app.jar"]
 
 # Expose port
 EXPOSE 8081
