@@ -5,6 +5,7 @@ import PropertyMap from '../components/PropertyMap';
 import PanoramaViewer from '../components/PanoramaViewer';
 import PaymentButton from '../components/PaymentButton';
 import { createEnquiry, createRentRequest, getPropertyById } from '../../api/apiService';
+import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 

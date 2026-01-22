@@ -15,6 +15,7 @@ import {
   uploadLegalDocument,
   uploadPanoramaImages
 } from '../../api/apiService';
+import { getApiUrl } from '../config';
 
 const BuilderDashboard = () => {
   const { currentUser } = useAuth();

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 // DB import removed - using API exclusively for Auth
 // import sql from '../../api/db.js'; 
+import { API_BASE_URL } from '../config';
 
 const AuthContext = createContext();
 
@@ -16,7 +17,9 @@ export const AuthProvider = ({ children }) => {
   // Initialize database removed from here - usage should be in main app or specific feature contexts if needed
   // implementation detail: api/db.js might still be used by other components, but Auth should be API-first.
 
-  const BACKEND_URL = 'http://localhost:8081/api';
+  // implementation detail: api/db.js might still be used by other components, but Auth should be API-first.
+  // Using API_BASE_URL which auto-switches between localhost and VITE_BACKEND_URL
+  const BACKEND_URL = `${API_BASE_URL}/api`;
 
   const login = async (email, password) => {
     setLoading(true);
