@@ -13,18 +13,29 @@ import java.util.UUID;
 @Service
 public class FileStorageService {
 
-    private final String UPLOAD_DIR = "uploads/";
-    private final String SECURE_UPLOAD_DIR = "secure_uploads/";
+    private final String UPLOAD_DIR;
+    private final String SECURE_UPLOAD_DIR;
 
     public FileStorageService() {
+        // Use user.dir to ensure we write to the application's working directory
+        String baseDir = System.getProperty("user.dir");
+        this.UPLOAD_DIR = baseDir + File.separator + "uploads" + File.separator;
+        this.SECURE_UPLOAD_DIR = baseDir + File.separator + "secure_uploads" + File.separator;
+
+        System.out.println("FileStorageService initialized.");
+        System.out.println("Upload Directory: " + UPLOAD_DIR);
+        System.out.println("Secure Upload Directory: " + SECURE_UPLOAD_DIR);
+
         // Create upload directory if it doesn't exist
         File uploadDir = new File(UPLOAD_DIR);
         if (!uploadDir.exists()) {
-            uploadDir.mkdirs();
+            boolean created = uploadDir.mkdirs();
+            System.out.println("Created upload directory: " + created);
         }
         File secureUploadDir = new File(SECURE_UPLOAD_DIR);
         if (!secureUploadDir.exists()) {
-            secureUploadDir.mkdirs();
+            boolean created = secureUploadDir.mkdirs();
+            System.out.println("Created secure upload directory: " + created);
         }
     }
 
