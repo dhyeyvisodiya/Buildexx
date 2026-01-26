@@ -13,27 +13,56 @@ import java.util.List;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Long> {
-    List<Property> findByBuilderId(Long builderId);
-    
-    List<Property> findByPurpose(Purpose purpose);
-    
-    List<Property> findByPropertyType(PropertyType propertyType);
-    
-    List<Property> findByCity(String city);
-    
-    List<Property> findByCityAndArea(String city, String area);
-    
-    List<Property> findByAvailabilityStatus(AvailabilityStatus availabilityStatus);
-    
-    @Query("SELECT p FROM Property p WHERE " +
-           "(:purpose IS NULL OR p.purpose = :purpose) AND " +
-           "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
-           "(:city IS NULL OR p.city = :city) AND " +
-           "(:area IS NULL OR p.area = :area) AND " +
-           "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus)")
-    List<Property> findByFilters(@Param("purpose") Purpose purpose,
-                                 @Param("propertyType") PropertyType propertyType,
-                                 @Param("city") String city,
-                                 @Param("area") String area,
-                                 @Param("availabilityStatus") AvailabilityStatus availabilityStatus);
+       List<Property> findByBuilder_Id(Long builderId);
+
+       List<Property> findByPurpose(Purpose purpose);
+
+       List<Property> findByPropertyType(PropertyType propertyType);
+
+       List<Property> findByCity(String city);
+
+       List<Property> findByCityAndArea(String city, String area);
+
+       List<Property> findByAvailabilityStatus(AvailabilityStatus availabilityStatus);
+
+       @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder", "amenities", "imageUrls",
+                     "panoramaImages" })
+       org.springframework.data.domain.Page<Property> findAll(org.springframework.data.domain.Pageable pageable);
+
+       @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder", "amenities", "imageUrls",
+                     "panoramaImages" })
+       java.util.Optional<Property> findById(Long id);
+
+       @Query("SELECT p.id as id, p.title as title, p.city as city, p.area as area, " +
+                     "p.price as price, p.rentAmount as rentAmount, " +
+                     "p.propertyType as propertyType, p.purpose as purpose, " +
+                     "p.availabilityStatus as availabilityStatus, " +
+                     "p.imageUrls as imageUrls FROM Property p")
+       org.springframework.data.domain.Page<com.buildex.model.PropertySummary> findAllSummaries(
+                     org.springframework.data.domain.Pageable pageable);
+
+       @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
+                     "(:purpose IS NULL OR p.purpose = :purpose) AND " +
+                     "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
+                     "(:city IS NULL OR p.city = :city) AND " +
+                     "(:area IS NULL OR p.area = :area) AND " +
+                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus)")
+       List<Property> findByFilters(@Param("purpose") Purpose purpose,
+                     @Param("propertyType") PropertyType propertyType,
+                     @Param("city") String city,
+                     @Param("area") String area,
+                     @Param("availabilityStatus") AvailabilityStatus availabilityStatus);
+
+       @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
+                     "(:purpose IS NULL OR p.purpose = :purpose) AND " +
+                     "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
+                     "(:city IS NULL OR p.city = :city) AND " +
+                     "(:area IS NULL OR p.area = :area) AND " +
+                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus)")
+       org.springframework.data.domain.Page<Property> findByFiltersPaginated(@Param("purpose") Purpose purpose,
+                     @Param("propertyType") PropertyType propertyType,
+                     @Param("city") String city,
+                     @Param("area") String area,
+                     @Param("availabilityStatus") AvailabilityStatus availabilityStatus,
+                     org.springframework.data.domain.Pageable pageable);
 }

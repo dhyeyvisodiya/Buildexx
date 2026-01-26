@@ -1,60 +1,112 @@
 import sql from './db.js';
 import { getApiUrl } from '../src/config';
 
+// ============== LOCAL STORAGE CACHE ==============
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+const MAX_CACHE_SIZE = 500000; // ~500KB max per item to avoid quota issues
+
+const cacheGet = (key) => {
+    try {
+        const cached = localStorage.getItem(key);
+        if (!cached) return null;
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp > CACHE_TTL) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return data;
+    } catch {
+        return null;
+    }
+};
+
+const cacheSet = (key, data) => {
+    try {
+        const jsonStr = JSON.stringify({ data, timestamp: Date.now() });
+        // Skip if data is too large (likely contains base64 images)
+        if (jsonStr.length > MAX_CACHE_SIZE) {
+            console.log('Skipping cache for large data:', key, `(${(jsonStr.length / 1024).toFixed(1)}KB)`);
+            return;
+        }
+        localStorage.setItem(key, jsonStr);
+    } catch (e) {
+        // Quota exceeded - clear old property caches and try again
+        console.warn('Cache quota exceeded, clearing old caches...');
+        try {
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('property') || k.startsWith('properties')) {
+                    localStorage.removeItem(k);
+                }
+            });
+        } catch { }
+    }
+};
+
+const cacheInvalidate = (keyPrefix) => {
+    try {
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith(keyPrefix)) localStorage.removeItem(key);
+        });
+    } catch { }
+};
+
 // Helper to normalize image data
 const normalizeImages = (images) => {
-    if (!images) return [];
-    if (Array.isArray(images)) return images;
+    const rawImages = (() => {
+        if (!images) return [];
+        if (Array.isArray(images)) return images;
 
-    if (typeof images === 'string') {
-        // Check for Postgres array format {img1,img2}
-        if (images.startsWith('{') && images.endsWith('}')) {
-            // Remove braces
-            const content = images.substring(1, images.length - 1);
-            if (!content) return [];
-
-            // Complex parsing to handle quotes and possible commas in data
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < content.length; i++) {
-                const char = content[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
+        if (typeof images === 'string') {
+            // Check for Postgres array format {img1,img2}
+            if (images.startsWith('{') && images.endsWith('}')) {
+                const content = images.substring(1, images.length - 1);
+                if (!content) return [];
+                // Simple comma split for now (safe enough for filenames)
+                return content.split(',').map(s => s.replace(/"/g, '').trim());
             }
-            result.push(current);
 
-            // Clean up quotes
-            return result.map(s => {
-                s = s.trim();
-                // If it was quoted, remove quotes and unescape double-quotes
-                if (s.startsWith('"') && s.endsWith('"')) {
-                    return s.substring(1, s.length - 1).replace(/""/g, '"');
-                }
-                return s;
-            });
-        }
-
-        if (images.includes(',')) {
-            if (images.trim().startsWith('data:')) {
-                if (images.indexOf('data:', 5) > -1) {
-                    return images.split(/,(?=data:)/).map(i => i.trim());
-                }
-                return [images]; // Single data URL
+            if (images.includes(',')) {
+                return images.split(',').map(i => i.trim());
             }
-            return images.split(',').map(i => i.trim());
+            return [images];
         }
-        return [images];
-    }
-    return [];
+        return [];
+    })();
+
+    // Prepend Backend URL if needed
+    return rawImages.map(img => {
+        if (!img) return '';
+        if (img.startsWith('http') || img.startsWith('blob:') || img.startsWith('data:')) return img;
+        // If it looks like a relative path (starts with / or just filename), prepend API URL
+        // Remove leading slash to avoid double slash if getApiUrl adds one?
+        // getApiUrl usually returns base, we need to ensure correct join.
+        // Assuming getApiUrl returns "http://localhost:8080"
+        return getApiUrl(img.startsWith('/') ? img : `/${img}`);
+    });
 };
+
+// Normalize property fields from backend to frontend expected format
+const normalizeProperty = (p) => ({
+    ...p,
+    // Image normalization
+    images: normalizeImages(p.images || p.imageUrls),
+    // Panorama field normalization (backend sends camelCase, frontend uses snake_case)
+    panorama_image_path: p.panorama_image_path || p.panoramaImagePath || '',
+    panorama_images: p.panorama_images || p.panoramaImages || [],
+    // Price field normalization
+    rent: p.rent || p.rentAmount || p.rent_amount,
+    // Other field normalizations
+    name: p.name || p.title,
+    locality: p.locality || p.area,
+    availability: p.availability || p.availabilityStatus,
+    type: p.type || p.propertyType || p.property_type,
+    possession: p.possession || p.possessionYear,
+    construction_status: p.construction_status || p.constructionStatus,
+    brochure_url: p.brochure_url || p.brochureUrl,
+    google_map_link: p.google_map_link || p.googleMapLink,
+    virtual_tour_link: p.virtual_tour_link || p.virtualTourLink,
+    builder_name: p.builder_name || p.builderName
+});
 
 // ============== PROPERTY OPERATIONS ==============
 
@@ -132,92 +184,178 @@ export async function verifyProperty(propertyId, isVerified, userId) {
     }
 }
 
+// Payment API
+export async function createPaymentOrder(userId, propertyId) {
+    try {
+        const response = await fetch(getApiUrl('/api/payments/create-order'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, propertyId })
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to create order');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Create Order Error:', error);
+        return { error: error.message };
+    }
+}
+
+export async function verifyPayment(paymentData) {
+    try {
+        const response = await fetch(getApiUrl('/api/payments/verify-payment'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paymentData)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Payment verification failed');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Verify Payment Error:', error);
+        return { error: error.message };
+    }
+}
+
+export async function checkBookingStatus(userId, propertyId) {
+    try {
+        const response = await fetch(getApiUrl(`/api/payments/check-booking?userId=${userId}&propertyId=${propertyId}`));
+        if (!response.ok) return { isBooked: false };
+        return await response.json();
+    } catch (error) {
+        console.error('Check Booking Error:', error);
+        return { isBooked: false };
+    }
+}
+
+export async function getUserPayments(userId) {
+    try {
+        const response = await fetch(getApiUrl(`/api/payments/user/${userId}`));
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (error) {
+        console.error('Get User Payments Error:', error);
+        return [];
+    }
+}
+
+export async function getBuilderPayments(builderId) {
+    try {
+        const results = await sql`
+            SELECT p.*, pr.title as property_name, u.full_name as user_name, u.email as user_email
+            FROM payments p
+            LEFT JOIN properties pr ON p.property_id = pr.id
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.builder_id = ${builderId}
+            ORDER BY p.created_at DESC
+        `;
+        return results;
+    } catch (error) {
+        console.error('Error fetching builder payments:', error);
+        return [];
+    }
+}
+
 // Get all properties (with optional filters)
 export async function getProperties(filters = {}) {
+    const cacheKey = `properties_${JSON.stringify(filters)}`;
+
+    // Check cache first (only for no filters - list page)
+    if (!Object.keys(filters).length) {
+        const cached = cacheGet(cacheKey);
+        if (cached) {
+            console.log('Using cached properties');
+            return { success: true, data: cached, fromCache: true };
+        }
+    }
+
     try {
-        let query = sql`
-      SELECT p.*, p.title as name, p.property_type as type, p.rent_amount as rent, p.area_sqft as area, p.area as locality, p.possession_year as possession, p.availability_status as availability, 
-             p.legal_document_path, p.is_verified, p.panorama_image_path,
-             u.full_name as builder_name, u.email as builder_email
-      FROM properties p
-      LEFT JOIN users u ON p.builder_id = u.id
-      ORDER BY p.created_at DESC
-    `;
+        // Build query params from filters
+        const params = new URLSearchParams();
+        if (filters.purpose) params.append('purpose', filters.purpose.toUpperCase());
+        if (filters.type) params.append('propertyType', filters.type.toUpperCase());
+        if (filters.city) params.append('city', filters.city);
+        if (filters.locality) params.append('area', filters.locality);
 
-        const results = await query;
+        const queryString = params.toString();
+        const url = getApiUrl(queryString ? `/api/properties/search?${queryString}` : '/api/properties');
 
-        // Apply filters in JS (since template literals don't support dynamic WHERE)
-        let filtered = results;
+        const response = await fetch(url);
 
-        if (filters.type) {
-            filtered = filtered.filter(p => p.property_type === filters.type);
-        }
-        if (filters.purpose) {
-            filtered = filtered.filter(p => p.purpose === filters.purpose);
-        }
-        if (filters.city) {
-            filtered = filtered.filter(p => p.city === filters.city);
-        }
-        if (filters.locality) {
-            // Mapping check: Java schema uses 'area' for locality, Node used 'locality'
-            filtered = filtered.filter(p => p.locality === filters.locality);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch properties: ${response.status}`);
         }
 
-        // Normalize images
-        const processed = filtered.map(p => ({
-            ...p,
-            images: normalizeImages(p.images)
-        }));
+        const data = await response.json();
+        const processed = (Array.isArray(data) ? data : []).map(normalizeProperty);
+
+        // Cache the results
+        if (!Object.keys(filters).length) {
+            cacheSet(cacheKey, processed);
+        }
 
         return { success: true, data: processed };
     } catch (error) {
         console.error('Error fetching properties:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: 'Backend not available. Please ensure the server is running.', data: [] };
     }
 }
 
 // Get property by ID
 export async function getPropertyById(id) {
-    try {
-        const results = await sql`
-            SELECT p.*, p.title as name, p.property_type as type, p.rent_amount as rent, p.area_sqft as area, p.area as locality, p.possession_year as possession, p.availability_status as availability, 
-                   p.legal_document_path, p.is_verified, p.panorama_image_path, p.panorama_images,
-                   u.full_name as builder_name, u.email as builder_email
-            FROM properties p
-            LEFT JOIN users u ON p.builder_id = u.id
-            WHERE p.id = ${id}
-        `;
-        if (results.length === 0) return { success: false, error: 'Property not found' };
+    const cacheKey = `property_${id}`;
 
-        const property = {
-            ...results[0],
-            images: normalizeImages(results[0].images)
-        };
-        return { success: true, data: property };
-    } catch (error) {
-        console.error('Error fetching property:', error);
-        return { success: false, error: error.message };
+    // Check cache first
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+        console.log('Using cached property:', id);
+        return { success: true, data: cached, fromCache: true };
     }
-}
 
-// Get properties by builder
-export async function getPropertiesByBuilder(builderId) {
     try {
-        const results = await sql`
-      SELECT *, title as name, property_type as type, rent_amount as rent, area_sqft as area, area as locality, possession_year as possession, availability_status as availability FROM properties 
-      WHERE builder_id = ${builderId}
-      ORDER BY created_at DESC
-    `;
+        const response = await fetch(getApiUrl(`/api/properties/${id}`));
 
-        const processed = results.map(p => ({
-            ...p,
-            images: normalizeImages(p.images)
-        }));
+        if (!response.ok) {
+            if (response.status === 404) {
+                return { success: false, error: 'Property not found' };
+            }
+            throw new Error(`Failed to fetch property: ${response.status}`);
+        }
+
+        const property = await response.json();
+        const processed = normalizeProperty(property);
+
+        // Cache the result
+        cacheSet(cacheKey, processed);
 
         return { success: true, data: processed };
     } catch (error) {
+        console.error('Error fetching property:', error);
+        return { success: false, error: 'Backend not available. Please ensure the server is running.' };
+    }
+}
+
+// Get properties by builder (uses user ID, backend maps to builder via email)
+// Get properties by builder (Direct SQL for performance)
+export async function getPropertiesByBuilder(userId) {
+    try {
+        // Direct SQL query instead of fetch
+        const results = await sql`
+            SELECT * FROM properties 
+            WHERE builder_id = ${userId} 
+            ORDER BY created_at DESC
+        `;
+
+        // Normalize results to match frontend expectations
+        const processed = results.map(normalizeProperty);
+        return { success: true, data: processed };
+    } catch (error) {
         console.error('Error fetching builder properties:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, data: [] };
     }
 }
 
@@ -272,7 +410,7 @@ export async function createProperty(propertyData) {
             city, locality, latitude, longitude, mapLink, possession, constructionStatus, description,
             bedrooms, bathrooms, amenities, images, availability,
             brochureUrl, googleMapLink, virtualTourLink,
-            legalDocumentPath, panoramaImagePath
+            legalDocumentPath, panoramaImagePath, panoramaImages
         } = propertyData;
 
         // Process amenities - convert comma-separated string to array
@@ -286,53 +424,76 @@ export async function createProperty(propertyData) {
 
         // Map frontend property type to database enum values (RESIDENTIAL or COMMERCIAL)
         const mapPropertyType = (ptype) => {
-            if (!ptype) return null;
+            if (!ptype) return 'RESIDENTIAL';
             const commercialTypes = ['commercial', 'office', 'industrial', 'warehouse'];
             return commercialTypes.includes(ptype.toLowerCase()) ? 'COMMERCIAL' : 'RESIDENTIAL';
         };
         const dbPropertyType = mapPropertyType(type);
 
         // Map frontend purpose to database enum values (BUY or RENT)
-        const dbPurpose = purpose ? purpose.toUpperCase() : null;
+        const dbPurpose = purpose ? purpose.toUpperCase() : 'BUY';
 
         // Map frontend construction status to database enum values
         const mapConstructionStatus = (status) => {
-            if (!status) return null;
+            if (!status) return 'READY';
             const statusMap = {
                 'completed': 'READY',
                 'ready': 'READY',
                 'under construction': 'UNDER_CONSTRUCTION',
                 'new launch': 'UNDER_CONSTRUCTION'
             };
-            return statusMap[status.toLowerCase()] || null;
+            return statusMap[status.toLowerCase()] || 'READY';
         };
         const dbConstructionStatus = mapConstructionStatus(constructionStatus);
-
 
         // Process images - ensure it's an array
         const imagesArray = Array.isArray(images) ? images : (images ? [images] : []);
 
-        const result = await sql`
-      INSERT INTO properties (
-        builder_id, title, property_type, purpose, price, rent_amount, area_sqft,
-        city, area, latitude, longitude, possession_year, construction_status, description,
-        bedrooms, bathrooms, amenities, images,
-        availability_status,
-        brochure_url, google_map_link, virtual_tour_link,
-        legal_document_path, panorama_image_path, panorama_images, is_verified
-      )
-      VALUES (
-        ${builderId}, ${name}, ${dbPropertyType}, ${dbPurpose}, ${price || null}, ${rent || null},
-        ${area || null}, ${city || null}, ${locality || null}, ${latitude || null}, ${longitude || null}, ${possessionYear}, 
-        ${dbConstructionStatus}, ${description || null},
-        ${bedrooms || null}, ${bathrooms || null}, ${amenitiesArray}, ${imagesArray},
-            ${(availability || 'AVAILABLE').toUpperCase()},
-        ${brochureUrl || null}, ${googleMapLink || mapLink || null}, ${virtualTourLink || null},
-        ${legalDocumentPath || null}, ${panoramaImagePath || null}, ${propertyData.panoramaImages || []}, false
-      )
-      RETURNING *, title as name, property_type as type, rent_amount as rent, area_sqft as area, area as locality, possession_year as possession, availability_status as availability
-    `;
-        return { success: true, data: result[0] };
+        // Build property object for backend API
+        const propertyPayload = {
+            title: name,
+            propertyType: dbPropertyType,
+            purpose: dbPurpose,
+            price: price ? parseFloat(price) : null,
+            rentAmount: rent ? parseFloat(rent) : null,
+            areaSqft: area ? parseInt(area, 10) : null,
+            city: city || '',
+            area: locality || '',
+            latitude: latitude ? parseFloat(latitude) : null,
+            longitude: longitude ? parseFloat(longitude) : null,
+            possessionYear: possessionYear,
+            constructionStatus: dbConstructionStatus,
+            description: description || '',
+            bedrooms: bedrooms ? parseInt(bedrooms, 10) : null,
+            bathrooms: bathrooms ? parseInt(bathrooms, 10) : null,
+            amenities: amenitiesArray,
+            imageUrls: imagesArray,
+            availabilityStatus: (availability || 'AVAILABLE').toUpperCase(),
+            brochureUrl: brochureUrl || null,
+            googleMapLink: googleMapLink || mapLink || null,
+            virtualTourLink: virtualTourLink || null,
+            legalDocumentPath: legalDocumentPath || null,
+            panoramaImagePath: panoramaImagePath || null,
+            panoramaImages: panoramaImages || [],
+            isVerified: false
+        };
+
+        const response = await fetch(getApiUrl(`/api/properties/builder/${builderId}`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(propertyPayload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to create property: ${errorText}`);
+        }
+
+        const result = await response.json();
+        // Invalidate property list cache so new property shows up
+        cacheInvalidate('properties');
+
+        return { success: true, data: result };
     } catch (error) {
         console.error('Error creating property:', error);
         return { success: false, error: error.message };
@@ -345,43 +506,63 @@ export async function updateProperty(propertyId, updates) {
         // Process amenities - convert comma-separated string to array if needed
         const amenitiesArray = updates.amenities
             ? (typeof updates.amenities === 'string' ? updates.amenities.split(',').map(a => a.trim()) : updates.amenities)
-            : null;
+            : undefined;
 
         // Process images - ensure it's an array if provided
         const imagesArray = updates.images
             ? (Array.isArray(updates.images) ? updates.images : [updates.images])
-            : null;
+            : undefined;
 
-        const result = await sql`
-      UPDATE properties
-      SET 
-        title = COALESCE(${updates.name || null}, title),
-        property_type = COALESCE(${updates.type || null}, property_type),
-        purpose = COALESCE(${updates.purpose || null}, purpose),
-        price = COALESCE(${updates.price || null}, price),
-        rent_amount = COALESCE(${updates.rent || null}, rent_amount),
-        area_sqft = COALESCE(${updates.area || null}, area_sqft),
-        city = COALESCE(${updates.city || null}, city),
-        area = COALESCE(${updates.locality || null}, area),
-        possession_year = COALESCE(${updates.possession || null}, possession_year),
-        construction_status = COALESCE(${updates.constructionStatus || null}, construction_status),
-        description = COALESCE(${updates.description || null}, description),
-        bedrooms = COALESCE(${updates.bedrooms || null}, bedrooms),
-        bathrooms = COALESCE(${updates.bathrooms || null}, bathrooms),
-        amenities = COALESCE(${amenitiesArray}, amenities),
-        images = COALESCE(${imagesArray}, images),
-        availability_status = COALESCE(${updates.availability || null}, availability_status),
-        latitude = COALESCE(${updates.latitude || null}, latitude),
-        longitude = COALESCE(${updates.longitude || null}, longitude),
-        brochure_url = COALESCE(${updates.brochureUrl || null}, brochure_url),
-        google_map_link = COALESCE(${updates.googleMapLink || updates.mapLink || null}, google_map_link),
-        virtual_tour_link = COALESCE(${updates.virtualTourLink || null}, virtual_tour_link),
-        panorama_images = COALESCE(${updates.panoramaImages || null}, panorama_images),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${propertyId}
-      RETURNING *, title as name, property_type as type, rent_amount as rent, area_sqft as area, area as locality, possession_year as possession, availability_status as availability
-    `;
-        return { success: true, data: result[0] };
+        // Build update payload for backend API
+        const updatePayload = {
+            title: updates.name || undefined,
+            propertyType: updates.type ? updates.type.toUpperCase() : undefined,
+            purpose: updates.purpose ? updates.purpose.toUpperCase() : undefined,
+            price: updates.price ? parseFloat(updates.price) : undefined,
+            rentAmount: updates.rent ? parseFloat(updates.rent) : undefined,
+            areaSqft: updates.area ? parseInt(updates.area, 10) : undefined,
+            city: updates.city || undefined,
+            area: updates.locality || undefined,
+            possessionYear: updates.possession ? parseInt(updates.possession, 10) : undefined,
+            constructionStatus: updates.constructionStatus || undefined,
+            description: updates.description || undefined,
+            bedrooms: updates.bedrooms ? parseInt(updates.bedrooms, 10) : undefined,
+            bathrooms: updates.bathrooms ? parseInt(updates.bathrooms, 10) : undefined,
+            amenities: amenitiesArray,
+            imageUrls: imagesArray,
+            availabilityStatus: updates.availability || undefined,
+            latitude: updates.latitude ? parseFloat(updates.latitude) : undefined,
+            longitude: updates.longitude ? parseFloat(updates.longitude) : undefined,
+            brochureUrl: updates.brochureUrl || undefined,
+            googleMapLink: updates.googleMapLink || updates.mapLink || undefined,
+            googleMapLink: updates.googleMapLink || updates.mapLink || undefined,
+            virtualTourLink: updates.virtualTourLink || undefined,
+            panoramaImages: updates.panoramaImages || undefined
+        };
+
+        // Remove undefined values
+        Object.keys(updatePayload).forEach(key =>
+            updatePayload[key] === undefined && delete updatePayload[key]
+        );
+
+        const response = await fetch(getApiUrl(`/api/properties/${propertyId}`), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update property: ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        // Invalidate specific property cache and list cache
+        cacheInvalidate(`property_${propertyId}`);
+        cacheInvalidate('properties');
+
+        return { success: true, data: result };
     } catch (error) {
         console.error('Error updating property:', error);
         return { success: false, error: error.message };
@@ -392,6 +573,11 @@ export async function updateProperty(propertyId, updates) {
 export async function deleteProperty(propertyId) {
     try {
         await sql`DELETE FROM properties WHERE id = ${propertyId}`;
+
+        // Invalidate caches
+        cacheInvalidate(`property_${propertyId}`);
+        cacheInvalidate('properties');
+
         return { success: true };
     } catch (error) {
         console.error('Error deleting property:', error);
@@ -422,10 +608,9 @@ export async function getUserEnquiries(userId) {
 export async function getBuilderEnquiries(builderId) {
     try {
         const results = await sql`
-      SELECT e.*, p.title as property_name, u.full_name as customer_name, u.email as customer_email
+      SELECT e.*, p.title as property_name, e.name as customer_name, e.email as customer_email
       FROM enquiries e
       JOIN properties p ON e.property_id = p.id
-      LEFT JOIN users u ON e.user_id = u.id
       WHERE e.builder_id = ${builderId}
       ORDER BY e.created_at DESC
     `;
@@ -442,8 +627,8 @@ export async function createEnquiry(enquiryData) {
         const { propertyId, userId, builderId, fullName, email, phone, message, enquiryType } = enquiryData;
 
         const result = await sql`
-      INSERT INTO enquiries (property_id, user_id, builder_id, full_name, email, phone, message, enquiry_type)
-      VALUES (${propertyId}, ${userId || null}, ${builderId}, ${fullName}, ${email}, ${phone}, ${message}, ${enquiryType || 'buy'})
+      INSERT INTO enquiries (property_id, builder_id, name, email, phone, message, enquiry_type)
+      VALUES (${propertyId}, ${builderId}, ${fullName}, ${email}, ${phone}, ${message}, ${enquiryType || 'buy'})
       RETURNING *
     `;
         return { success: true, data: result[0] };
@@ -458,10 +643,10 @@ export async function updateEnquiryStatus(enquiryId, status) {
     try {
         const result = await sql`
       UPDATE enquiries
-      SET status = ${status}, updated_at = CURRENT_TIMESTAMP
+      SET status = ${status}
       WHERE id = ${enquiryId}
-      RETURNING *
-    `;
+    RETURNING *
+        `;
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error updating enquiry:', error);
@@ -474,13 +659,89 @@ export async function createRentRequest(requestData) {
     try {
         const { propertyId, userId, builderId, moveInDate, message } = requestData;
         const result = await sql`
-      INSERT INTO rent_requests (property_id, user_id, builder_id, move_in_date, status)
-      VALUES (${propertyId}, ${userId || null}, ${builderId}, ${moveInDate}, 'pending')
-      RETURNING *
-    `;
+      INSERT INTO rent_requests(property_id, builder_id, move_in_date, status, applicant_name, email, phone)
+    VALUES(${propertyId}, ${builderId}, ${moveInDate}, 'pending', 'Unknown', 'Unknown', '0000000000')
+    RETURNING *
+        `;
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error creating rent request:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+
+// Update rent request status
+export async function updateRentRequestStatus(requestId, status) {
+    try {
+        const result = await sql`
+      UPDATE rent_requests
+      SET status = ${status}
+      WHERE id = ${requestId}
+      RETURNING *
+    `;
+        const updatedRequest = result[0];
+
+        // If approved, create a rent subscription
+        if (status === 'approved' && updatedRequest) {
+            // Check if already exists?
+            // For now, just insert.
+            // Next payment due: same as move_in_date or today + 30?
+            // Let's set next due date as move_in_date initially.
+            await sql`
+                    INSERT INTO rent_subscriptions (user_id, property_id, builder_id, rent_amount, next_payment_due, is_active)
+                    VALUES (
+                        ${updatedRequest.user_id}, 
+                        ${updatedRequest.property_id}, 
+                        ${updatedRequest.builder_id}, 
+                        ${updatedRequest.rent_amount || 0}, 
+                        ${updatedRequest.move_in_date || new Date()}, 
+                        TRUE
+                    )
+                `;
+        }
+
+        return { success: true, data: updatedRequest };
+    } catch (error) {
+        console.error('Error updating rent request:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function payRent(subscriptionId, amount) {
+    try {
+        // Get subscription details
+        const sub = await sql`SELECT * FROM rent_subscriptions WHERE id = ${subscriptionId}`;
+        if (!sub || sub.length === 0) throw new Error('Subscription not found');
+
+        const subscription = sub[0];
+
+        // Record Payment
+        await sql`
+                INSERT INTO payments (user_id, property_id, builder_id, amount, status, transaction_id)
+                VALUES (
+                    ${subscription.user_id}, 
+                    ${subscription.property_id}, 
+                    ${subscription.builder_id}, 
+                    ${amount}, 
+                    'success', 
+                    ${'TXN_' + Date.now()}
+                )
+            `;
+
+        // Update Next Due Date (+30 days)
+        const currentDue = new Date(subscription.next_payment_due);
+        const nextDue = new Date(currentDue.setDate(currentDue.getDate() + 30));
+
+        await sql`
+                UPDATE rent_subscriptions
+                SET next_payment_due = ${nextDue}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${subscriptionId}
+            `;
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error paying rent:', error);
         return { success: false, error: error.message };
     }
 }
@@ -490,10 +751,9 @@ export async function createRentRequest(requestData) {
 export async function getRentRequestsByBuilder(builderId) {
     try {
         const results = await sql`
-      SELECT r.*, p.title as property_name, u.full_name as customer_name
+      SELECT r.*, p.title as property_name, r.applicant_name as customer_name
       FROM rent_requests r
       JOIN properties p ON r.property_id = p.id
-      LEFT JOIN users u ON r.user_id = u.id
       WHERE r.builder_id = ${builderId}
       ORDER BY r.created_at DESC
     `;
@@ -504,20 +764,6 @@ export async function getRentRequestsByBuilder(builderId) {
     }
 }
 
-export async function updateRentRequestStatus(requestId, status) {
-    try {
-        const result = await sql`
-      UPDATE rent_requests
-      SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${requestId}
-      RETURNING *
-    `;
-        return { success: true, data: result[0] };
-    } catch (error) {
-        console.error('Error updating rent request:', error);
-        return { success: false, error: error.message };
-    }
-}
 
 // ============== ADMIN OPERATIONS ==============
 
@@ -525,8 +771,8 @@ export async function updateRentRequestStatus(requestId, status) {
 export async function getAllBuilders() {
     try {
         const results = await sql`
-      SELECT u.*, 
-        (SELECT COUNT(*) FROM properties WHERE builder_id = u.id) as property_count
+      SELECT u.*,
+    (SELECT COUNT(*) FROM properties WHERE builder_id = u.id) as property_count
       FROM users u
       WHERE u.role = 'builder'
       ORDER BY u.created_at DESC
@@ -581,8 +827,8 @@ export async function updatePropertyStatus(propertyId, status) {
       UPDATE properties
       SET status = ${status}, updated_at = CURRENT_TIMESTAMP
       WHERE id = ${propertyId}
-      RETURNING *, title as name
-    `;
+RETURNING *, title as name
+`;
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error updating property status:', error);
@@ -614,11 +860,27 @@ export async function updateComplaintStatus(complaintId, status) {
       UPDATE complaints
       SET status = ${status}, updated_at = CURRENT_TIMESTAMP
       WHERE id = ${complaintId}
-      RETURNING *
+RETURNING *
     `;
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error updating complaint:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Create complaint
+export async function createComplaint(complaintData) {
+    try {
+        const { propertyId, userId, issue } = complaintData;
+        const result = await sql`
+      INSERT INTO complaints (property_id, user_id, issue, status)
+      VALUES (${propertyId}, ${userId}, ${issue}, 'open')
+      RETURNING *
+    `;
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error creating complaint:', error);
         return { success: false, error: error.message };
     }
 }
@@ -647,10 +909,10 @@ export async function getUserWishlist(userId) {
 export async function addToWishlist(userId, propertyId) {
     try {
         const result = await sql`
-      INSERT INTO wishlist (user_id, property_id)
-      VALUES (${userId}, ${propertyId})
-      ON CONFLICT (user_id, property_id) DO NOTHING
-      RETURNING *
+      INSERT INTO wishlist(user_id, property_id)
+VALUES(${userId}, ${propertyId})
+      ON CONFLICT(user_id, property_id) DO NOTHING
+RETURNING *
     `;
         return { success: true, data: result[0] };
     } catch (error) {
@@ -664,7 +926,7 @@ export async function removeFromWishlist(userId, propertyId) {
         const result = await sql`
       DELETE FROM wishlist
       WHERE user_id = ${userId} AND property_id = ${propertyId}
-    `;
+`;
         return { success: true };
     } catch (error) {
         console.error('Error removing from wishlist:', error);
@@ -700,15 +962,15 @@ export async function getUserRentHistory(userId) {
 export async function fetchUserPayments(userId) {
     try {
         const result = await sql`
-            SELECT p.*, 
-                   pr.title as property_name, pr.city, pr.images,
-                   u.full_name as builder_name
+            SELECT p.*,
+    pr.title as property_name, pr.city, pr.images,
+    u.full_name as builder_name
             FROM payments p
             LEFT JOIN properties pr ON p.property_id = pr.id
             LEFT JOIN users u ON p.builder_id = u.id
             WHERE p.user_id = ${userId}
             ORDER BY p.created_at DESC
-        `;
+    `;
         return { success: true, data: result };
     } catch (error) {
         console.error('Get user payments error:', error);
@@ -722,18 +984,130 @@ export async function fetchUserPayments(userId) {
 export async function fetchUserRentSubscriptions(userId) {
     try {
         const result = await sql`
-            SELECT rs.*, 
-                   p.title as property_name, p.city, p.area, p.images,
-                   u.full_name as builder_name, u.phone as builder_phone
+            SELECT rs.*,
+    p.title as property_name, p.city, p.area, p.images,
+    u.full_name as builder_name, u.phone as builder_phone
             FROM rent_subscriptions rs
             LEFT JOIN properties p ON rs.property_id = p.id
             LEFT JOIN users u ON rs.builder_id = u.id
             WHERE rs.user_id = ${userId}
             ORDER BY rs.is_active DESC, rs.next_payment_due ASC
-        `;
+    `;
         return { success: true, data: result };
     } catch (error) {
         console.error('Get user rent subscriptions error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============== WITHDRAWAL OPERATIONS ==============
+
+export async function createWithdrawalRequest(builderId, amount) {
+    try {
+        // Calculate commission (Simplified logic: taking flat 5% on withdrawal or assuming amount is pre-calc)
+        // But requirement says: "admin approves it and then automatically the commission of admin should be minus"
+        // So we record the FULL requested amount, and Admin logic handles the split?
+        // Or Builder requests "Available Balance".
+
+        // Let's assume Builder requests X. Admin takes Y% cut.
+        // Commission logic: 5% for Buy, 2.5% for Rent. 
+        // Ideally commission is per transaction. If we aggregate, we might need average or just apply a flat rate?
+        // BETTER: We track commission at PAYMENT time if possible. But we don't have that yet.
+        // WORKAROUND: We apply a standard Service Fee or assume 'amount' is what Builder expects, and Admin marks it up?
+        // User Request: "admin approves it and then automatically the commission of admin should be minus"
+        // Implies: Withdrawal Amount = (Total Collected) - (Commission).
+        // So when creating request, we might just Request Everything.
+
+        // For MVP: Let's store just the Amount. Admin dashboard will calc and update.
+
+        const result = await sql`
+                INSERT INTO withdrawals (builder_id, amount, commission_amount, payout_amount, status)
+                VALUES (${builderId}, ${amount}, 0, 0, 'pending')
+                RETURNING *
+            `;
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error creating withdrawal:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getBuilderWithdrawals(builderId) {
+    try {
+        // also get total collected payments to show balance
+        const payments = await sql`SELECT SUM(amount) as total FROM payments WHERE builder_id = ${builderId}`;
+        const withdrawals = await sql`
+                SELECT * FROM withdrawals WHERE builder_id = ${builderId} ORDER BY created_at DESC
+             `;
+        const approvedWithdrawals = withdrawals.filter(w => w.status === 'approved')
+            .reduce((sum, w) => sum + parseFloat(w.payout_amount || 0), 0);
+
+        const totalEarned = parseFloat(payments[0].total || 0);
+        const balance = totalEarned - approvedWithdrawals; // Rough estimate of what's left "in system"
+
+        // Wait, withdrawals deduct from balance.
+        // If I requested 1000, and Admin took 50 commission, gave me 950.
+        // Did I withdraw 1000 or 950 from my "Balance"?
+        // Usually Balance reduces by the Gross Amount (1000).
+        // So Approved Withdrawals should sum 'amount' (Gross) not 'payout_amount' (Net)
+        // But if specific requirement says "commission minus", maybe Balance is Gross.
+
+        const totalWithdrawnGross = withdrawals.filter(w => w.status === 'approved')
+            .reduce((sum, w) => sum + parseFloat(w.amount || 0), 0);
+
+        return { success: true, data: withdrawals, balance: totalEarned - totalWithdrawnGross, totalEarned };
+    } catch (error) {
+        console.error('Error fetching builder withdrawals:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getAdminWithdrawals() {
+    try {
+        const result = await sql`
+                SELECT w.*, u.full_name as builder_name, u.email as builder_email 
+                FROM withdrawals w
+                JOIN users u ON w.builder_id = u.id
+                ORDER BY w.created_at DESC
+            `;
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error fetching admin withdrawals:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getAdminPayments() {
+    try {
+        const result = await sql`
+                SELECT p.*, pr.title as property_name, u.full_name as builder_name, b.full_name as user_name
+                FROM payments p
+                LEFT JOIN properties pr ON p.property_id = pr.id
+                LEFT JOIN users u ON p.builder_id = u.id
+                LEFT JOIN users b ON p.user_id = b.id
+                ORDER BY p.created_at DESC
+             `;
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error fetching admin payments:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function updateWithdrawalStatus(withdrawalId, status, commissionAmount, payoutAmount) {
+    try {
+        const result = await sql`
+                UPDATE withdrawals
+                SET status = ${status}, 
+                    commission_amount = ${commissionAmount || 0}, 
+                    payout_amount = ${payoutAmount || 0},
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ${withdrawalId}
+                RETURNING *
+            `;
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error updating withdrawal:', error);
         return { success: false, error: error.message };
     }
 }

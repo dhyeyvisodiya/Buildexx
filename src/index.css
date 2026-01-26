@@ -161,7 +161,16 @@ label {
 }
 
 .badge-booked {
-  background-color: var(--warning-color);
+  background-color: var(--danger-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-rented {
+  background-color: var(--danger-color);
   color: white;
   padding: 4px 8px;
   border-radius: 20px;
@@ -170,7 +179,7 @@ label {
 }
 
 .badge-sold {
-  background-color: var(--danger-color);
+  background-color: #881337; /* Darker Red/Rose for Sold */
   color: white;
   padding: 4px 8px;
   border-radius: 20px;

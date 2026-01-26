@@ -14,6 +14,6 @@ public class WebConfig implements WebMvcConfigurer {
         // Serve uploaded files with CORS headers
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:./uploads/")
-                .setCachePeriod(3600);
+                .setCachePeriod(86400);
     }
 }

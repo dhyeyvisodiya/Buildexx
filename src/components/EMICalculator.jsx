@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
 const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
-    const [principal, setPrincipal] = useState(propertyPrice ? parseInt(propertyPrice.replace(/[₹,Crores]/g, '').trim()) * 10000000 : 5000000);
+    const [principal, setPrincipal] = useState(() => {
+        if (!propertyPrice) return 5000000;
+        let priceStr = propertyPrice.toString().replace(/,/g, '').replace(/₹/g, '').trim();
+
+        if (priceStr.toLowerCase().includes('cr')) {
+            return parseFloat(priceStr.replace(/cr/i, '')) * 10000000;
+        } else if (priceStr.toLowerCase().includes('lac') || priceStr.toLowerCase().includes('lakh')) {
+            return parseFloat(priceStr.replace(/lac|lakh/i, '')) * 100000;
+        } else {
+            return parseInt(priceStr) || 5000000;
+        }
+    });
     const [interestRate, setInterestRate] = useState(8.5);
     const [tenure, setTenure] = useState(20);
     const [emi, setEmi] = useState(0);

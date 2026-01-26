@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import sql from '../../api/db.js';
+import { createPaymentOrder, verifyPayment, checkBookingStatus } from '../../api/apiService'; // Updated imports
 
 /**
  * PaymentButton Component
- * Handles Razorpay payments for Buy and Rent properties
+ * Handles Razorpay payments for Buy and Rent properties (Booking Amount Only)
  */
 const PaymentButton = ({
     property,
     paymentType = 'BUY', // 'BUY' or 'RENT'
-    amount = null,
-    buttonText = null,
     onSuccess = () => { },
     onFailure = () => { },
+    buttonText = null,
     className = '',
-    style = {}
+    style = {},
+    amount = null // Added amount prop
 }) => {
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -25,19 +25,22 @@ const PaymentButton = ({
     const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demo';
 
     // Determine amount based on payment type
+    // FIXED: Use Booking Token (11000) for BUY, and 1 Month Rent for RENT
+    const BOOKING_TOKEN_AMOUNT = 11000;
+
     const paymentAmount = amount || (paymentType === 'RENT'
         ? (property.min_rent_amount || property.rent_amount || property.rent || 0)
-        : (property.price || 0));
+        : BOOKING_TOKEN_AMOUNT);
 
     const numericAmount = typeof paymentAmount === 'string'
         ? parseFloat(paymentAmount.replace(/[^0-9.]/g, ''))
         : Number(paymentAmount);
 
     const defaultButtonText = paymentType === 'RENT'
-        ? `Pay Rent ₹${numericAmount.toLocaleString('en-IN')}`
-        : `Buy Property ₹${numericAmount.toLocaleString('en-IN')}`;
+        ? `Pay Rent (Booking) ₹${numericAmount.toLocaleString('en-IN')}`
+        : `Pay Booking Token ₹${numericAmount.toLocaleString('en-IN')}`;
 
-    const displayText = buttonText || defaultButtonText;
+
 
     // Load Razorpay script dynamically
     const loadRazorpayScript = () => {
@@ -134,9 +137,36 @@ const PaymentButton = ({
 
     const navigate = useNavigate();
 
+    // Check booking status on mount
+    React.useEffect(() => {
+        if (currentUser && property) {
+            checkBookingStatus(currentUser.id, property.id).then(res => {
+                if (res.isBooked) {
+                    setIsBooked(true);
+                }
+            });
+        }
+    }, [currentUser, property]);
+
+    const [isBooked, setIsBooked] = useState(false);
+
+    // Dynamic Text based on booking - MOVED inside component to avoid redeclaration if multiple instances
+    const bookingAmountText = property.purpose?.toLowerCase() === 'rent'
+        ? 'Pay 1 Month Rent (Booking)'
+        : 'Pay Booking Token';
+
+    // Calculate display text once using all state
+    const currentDisplayText = isBooked
+        ? 'Already Booked'
+        : (buttonText || defaultButtonText);
+
+    // Clean up loading state if component unmounts
+    useEffect(() => {
+        return () => setLoading(false);
+    }, []);
+
     const handlePayment = async () => {
         if (!currentUser) {
-            // Check if user is logged in
             const confirmLogin = window.confirm("You need to verify your account to proceed with payment. Would you like to login/register now?");
             if (confirmLogin) {
                 navigate('/login', { state: { returnUrl: `/property/${property.id}` } });
@@ -144,16 +174,7 @@ const PaymentButton = ({
             return;
         }
 
-        if (!numericAmount || numericAmount <= 0) {
-            alert('Invalid payment amount');
-            return;
-        }
-
-        // Check if Razorpay key is configured
-        if (!RAZORPAY_KEY_ID || RAZORPAY_KEY_ID === 'rzp_test_demo') {
-            alert('Payment gateway not configured. Please contact admin.');
-            return;
-        }
+        if (isBooked) return;
 
         setLoading(true);
         setError(null);
@@ -161,27 +182,25 @@ const PaymentButton = ({
         try {
             // Load Razorpay script
             const scriptLoaded = await loadRazorpayScript();
-            if (!scriptLoaded) {
-                throw new Error('Failed to load payment gateway');
-            }
+            if (!scriptLoaded) throw new Error('Failed to load payment gateway');
 
-            // Generate a unique order ID
-            const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            // Create Order on Backend
+            const orderData = await createPaymentOrder(currentUser.id, property.id);
+            if (orderData.error) throw new Error(orderData.error);
 
-            // Create payment record
-            const paymentRecord = await createPaymentRecord(orderId);
+            const { razorpayOrderId, amount: bookingAmount } = orderData; // backend returns Payment object
 
             // Configure Razorpay options
             const options = {
                 key: RAZORPAY_KEY_ID,
-                amount: Math.round(numericAmount * 100), // Convert to paisa
+                amount: Math.round(bookingAmount * 100), // Convert to paisa (Backend amount is in currency unit)
                 currency: 'INR',
                 name: 'BuildEx',
                 description: paymentType === 'RENT'
-                    ? `Rent Payment for ${property.name || property.title}`
-                    : `Purchase of ${property.name || property.title}`,
+                    ? `Booking Request for Rent: ${property.name || property.title}`
+                    : `Booking Token for Buy: ${property.name || property.title}`,
                 image: '/logo.png',
-                order_id: null, // In test mode, we don't need a real order ID
+                order_id: razorpayOrderId.startsWith('order_') ? null : razorpayOrderId, // Use real order ID if valid, else null for test
                 prefill: {
                     name: currentUser.full_name || currentUser.username,
                     email: currentUser.email,
@@ -190,39 +209,30 @@ const PaymentButton = ({
                 notes: {
                     property_id: property.id,
                     payment_type: paymentType,
-                    user_id: currentUser.id,
-                    internal_order_id: orderId
+                    user_id: currentUser.id
                 },
-                theme: {
-                    color: '#C8A24A'
-                },
+                theme: { color: '#C8A24A' },
                 handler: async function (response) {
-                    // Payment successful
-                    await updatePaymentRecord(
-                        paymentRecord.id,
-                        'completed',
-                        response.razorpay_payment_id
-                    );
-
-                    setLoading(false);
-                    onSuccess({
-                        paymentId: paymentRecord.id,
-                        razorpayPaymentId: response.razorpay_payment_id,
-                        amount: numericAmount,
-                        propertyId: property.id
+                    // Verify on Backend
+                    const verifyRes = await verifyPayment({
+                        razorpay_order_id: razorpayOrderId,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature || 'dummy_sig'
                     });
-                },
-                modal: {
-                    ondismiss: function () {
-                        setLoading(false);
+
+                    if (verifyRes.error) {
+                        setError(verifyRes.error);
+                        onFailure({ message: verifyRes.error });
+                    } else {
+                        setIsBooked(true); // Disable button immediately
+                        onSuccess(verifyRes);
                     }
+                    setLoading(false);
                 }
             };
 
-            // Open Razorpay checkout
             const razorpay = new window.Razorpay(options);
-            razorpay.on('payment.failed', async function (response) {
-                await updatePaymentRecord(paymentRecord.id, 'failed', null);
+            razorpay.on('payment.failed', function (response) {
                 setError(response.error.description);
                 onFailure(response.error);
                 setLoading(false);
@@ -271,7 +281,7 @@ const PaymentButton = ({
                 ) : (
                     <>
                         <i className={`bi ${paymentType === 'RENT' ? 'bi-key' : 'bi-credit-card'}`}></i>
-                        {displayText}
+                        {currentDisplayText}
                     </>
                 )}
             </button>

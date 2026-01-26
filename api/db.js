@@ -81,10 +81,28 @@ export async function initializeDatabase() {
 
     // Migration for existing tables
     try {
+      // Properties migrations
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS legal_document_path TEXT`;
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`;
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS panorama_image_path TEXT`;
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS panorama_images TEXT[]`;
+
+      // Enquiries migrations
+      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE`;
+      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS enquiry_type VARCHAR(20) DEFAULT 'buy' CHECK (enquiry_type IN ('buy', 'rent'))`;
+      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS name VARCHAR(100)`; // Ensure 'name' exists to match apiService
+
+      // Rent requests migrations
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE`;
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(100)`;
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(15)`;
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS rent_amount VARCHAR(50)`;
+      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS move_in_date DATE`;
+
+      // Complaints migrations
+      await sql`ALTER TABLE complaints ADD COLUMN IF NOT EXISTS issue TEXT`;
+
     } catch (e) {
       console.log('Migration columns likely exist or error ignored:', e);
     }
@@ -96,7 +114,7 @@ export async function initializeDatabase() {
         property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        full_name VARCHAR(100),
+        name VARCHAR(100),
         email VARCHAR(100),
         phone VARCHAR(15),
         message TEXT,
@@ -117,6 +135,9 @@ export async function initializeDatabase() {
         move_in_date DATE,
         status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'active', 'completed')),
         rent_amount VARCHAR(50),
+        applicant_name VARCHAR(100),
+        email VARCHAR(100),
+        phone VARCHAR(15),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -130,6 +151,49 @@ export async function initializeDatabase() {
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         issue TEXT NOT NULL,
         status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Withdrawals table
+    await sql`
+      CREATE TABLE IF NOT EXISTS withdrawals (
+        id SERIAL PRIMARY KEY,
+        builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC NOT NULL,
+        commission_amount NUMERIC NOT NULL,
+        payout_amount NUMERIC NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Payments table
+    await sql`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL,
+        builder_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        amount NUMERIC NOT NULL,
+        status VARCHAR(20) DEFAULT 'success',
+        transaction_id VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Rent Subscriptions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS rent_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
+        builder_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        rent_amount NUMERIC NOT NULL,
+        next_payment_due DATE,
+        is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -153,6 +217,8 @@ export async function initializeDatabase() {
     throw error;
   }
 }
+
+// ... existing helpers ...
 
 // Helper function to hash passwords
 export async function hashPassword(password) {

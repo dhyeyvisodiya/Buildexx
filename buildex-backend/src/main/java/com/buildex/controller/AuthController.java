@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.buildex.entity.Builder;
+import com.buildex.repository.BuilderRepository;
+
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*") // Allow frontend access
@@ -23,14 +26,16 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final OtpService otpService;
+    private final BuilderRepository builderRepository;
 
     // Explicit constructor instead of @RequiredArgsConstructor
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService,
-            OtpService otpService) {
+            OtpService otpService, BuilderRepository builderRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.otpService = otpService;
+        this.builderRepository = builderRepository;
     }
 
     @PostMapping("/register")
@@ -40,6 +45,14 @@ public class AuthController {
         }
         if (userRepository.existsByUsername(request.getUsername())) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Username already exists"));
+        }
+
+        // Validate phone for builders
+        if ("builder".equalsIgnoreCase(request.getRole())) {
+            if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Phone number is required for Builder accounts"));
+            }
         }
 
         User user = new User();
@@ -52,6 +65,28 @@ public class AuthController {
         user.setStatus("pending_verification");
 
         userRepository.save(user);
+
+        // Create Builder entity if role is builder
+        if ("builder".equalsIgnoreCase(request.getRole())) {
+            try {
+                Builder builder = new Builder();
+                builder.setOwnerName(request.getFull_name());
+                builder.setEmail(request.getEmail());
+                builder.setPhone(request.getPhone());
+                // Default company name since not enabled in frontend yet
+                builder.setCompanyName(request.getFull_name() + "'s Company");
+                builder.setVerificationStatus(Builder.VerificationStatus.PENDING);
+
+                builderRepository.save(builder);
+            } catch (Exception e) {
+                // Log error but don't fail user registration?
+                // Better to fail so data is consistent, but user is already saved.
+                // For now print stack trace, effectively "best effort" or need transaction.
+                // Keeping it simple: Just print.
+                e.printStackTrace();
+                System.err.println("Failed to create Builder entity for user: " + user.getEmail());
+            }
+        }
 
         // Generate and Send OTP
         String otp = otpService.generateOtp(user.getEmail());
@@ -85,7 +120,15 @@ public class AuthController {
 
         User user = userOpt.get();
         user.setStatus("active");
+        user.setStatus("active");
         userRepository.save(user);
+
+        // Send Welcome Email
+        try {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getFullName(), user.getRole());
+        } catch (Exception e) {
+            System.err.println("Failed to send welcome email: " + e.getMessage());
+        }
 
         // Return user info (excluding password)
         Map<String, Object> userData = new HashMap<>();

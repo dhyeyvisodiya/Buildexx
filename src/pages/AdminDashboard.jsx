@@ -9,7 +9,10 @@ import {
   getAllComplaints,
 
   updateComplaintStatus,
-  verifyProperty
+  verifyProperty,
+  getAdminPayments,
+  getAdminWithdrawals,
+  updateWithdrawalStatus
 } from '../../api/apiService';
 import { getApiUrl } from '../config';
 
@@ -22,6 +25,8 @@ const AdminDashboard = () => {
   const [builders, setBuilders] = useState([]);
   const [properties, setProperties] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -48,6 +53,18 @@ const AdminDashboard = () => {
       if (complaintsResult.success) {
         setComplaints(complaintsResult.data);
       }
+
+      // Fetch admin payments
+      const paymentsResult = await getAdminPayments();
+      if (paymentsResult.success) {
+        setPayments(paymentsResult.data);
+      }
+
+      // Fetch withdrawals
+      const withdrawalsResult = await getAdminWithdrawals();
+      if (withdrawalsResult.success) {
+        setWithdrawals(withdrawalsResult.data);
+      }
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -55,7 +72,28 @@ const AdminDashboard = () => {
     }
   };
 
-  // CRUD Operations
+  // CRUD Operations...
+  // (existing verification handlers)
+
+  // Handle Withdrawal Approval
+  const handleApproveWithdrawal = async (id, amount) => {
+    // Simulating simple logic: 5% commission
+    const commission = amount * 0.05;
+    const payout = amount - commission;
+
+    if (window.confirm(`Approve withdrawal of ₹${amount}? \nSystem Commission (5%): ₹${commission} \nBuilder Payout: ₹${payout}`)) {
+      try {
+        const result = await updateWithdrawalStatus(id, 'approved', commission, payout);
+        if (result.success) {
+          setWithdrawals(prev => prev.map(w => w.id === id ? { ...w, status: 'approved', commission_amount: commission, payout_amount: payout } : w));
+        }
+      } catch (error) {
+        console.error('Error approving withdrawal:', error);
+      }
+    }
+  };
+
+
   const handleVerifyBuilder = async (id) => {
     try {
       const result = await updateBuilderStatus(id, 'active');
@@ -156,14 +194,17 @@ const AdminDashboard = () => {
     pendingVerifications: builders.filter(b => b.status === 'pending' || b.status === 'pending_verification').length,
     totalProperties: properties.length,
     pendingProperties: properties.filter(p => !p.is_verified).length,
-    openComplaints: complaints.filter(c => c.status === 'open' || !c.status).length
+    openComplaints: complaints.filter(c => c.status === 'open' || !c.status).length,
+    totalRevenue: withdrawals.filter(w => w.status === 'approved').reduce((sum, w) => sum + parseFloat(w.commission_amount || 0), 0)
   };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'bi-grid' },
     { id: 'builders', label: 'Builders', icon: 'bi-people' },
     { id: 'properties', label: 'Properties', icon: 'bi-building' },
-    { id: 'complaints', label: 'Complaints', icon: 'bi-exclamation-triangle' }
+    { id: 'complaints', label: 'Complaints', icon: 'bi-exclamation-triangle' },
+    { id: 'payments', label: 'All Payments', icon: 'bi-cash' },
+    { id: 'withdrawals', label: 'Withdrawals', icon: 'bi-wallet2' }
   ];
 
   const formatDate = (dateString) => {
@@ -656,6 +697,93 @@ const AdminDashboard = () => {
                 </table>
               </div>
             )}
+          </div>
+        )}
+        {/* Payments Tab */}
+        {!loading && activeTab === 'payments' && (
+          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <i className="bi bi-cash me-2" style={{ color: '#10B981' }}></i>
+              Received Payments ({payments.length})
+            </h5>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th style={{ color: '#0F172A' }}>Property</th>
+                    <th style={{ color: '#0F172A' }}>User</th>
+                    <th style={{ color: '#0F172A' }}>Builder</th>
+                    <th style={{ color: '#0F172A' }}>Amount</th>
+                    <th style={{ color: '#0F172A' }}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map(p => (
+                    <tr key={p.id}>
+                      <td style={{ color: '#0F172A' }}>{p.property_name || '-'}</td>
+                      <td style={{ color: '#64748B' }}>{p.user_name || '-'}</td>
+                      <td style={{ color: '#64748B' }}>{p.builder_name || '-'}</td>
+                      <td style={{ color: '#10B981', fontWeight: 'bold' }}>₹{p.amount}</td>
+                      <td style={{ color: '#64748B' }}>{formatDate(p.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Withdrawals Tab */}
+        {!loading && activeTab === 'withdrawals' && (
+          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <i className="bi bi-wallet2 me-2" style={{ color: '#F59E0B' }}></i>
+              Withdrawal Requests ({withdrawals.length})
+            </h5>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th style={{ color: '#0F172A' }}>Builder</th>
+                    <th style={{ color: '#0F172A' }}>Requested Amount</th>
+                    <th style={{ color: '#0F172A' }}>Commission (System)</th>
+                    <th style={{ color: '#0F172A' }}>Payout</th>
+                    <th style={{ color: '#0F172A' }}>Status</th>
+                    <th style={{ color: '#0F172A' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map(w => (
+                    <tr key={w.id}>
+                      <td style={{ color: '#0F172A' }}>{w.builder_name} <br /><small className="text-muted">{w.builder_email}</small></td>
+                      <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
+                      <td style={{ color: '#EF4444' }}>
+                        {w.status === 'approved' ? `₹${w.commission_amount}` : '-'}
+                      </td>
+                      <td style={{ color: '#10B981' }}>
+                        {w.status === 'approved' ? `₹${w.payout_amount}` : '-'}
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                          background: w.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
+                          color: w.status === 'approved' ? '#059669' : '#D97706'
+                        }}>
+                          {w.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        {w.status === 'pending' && (
+                          <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
+                            Approve Payout
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -75,7 +75,9 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
         <div className="mt-auto">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="fw-bold fs-5">
-              {property.purpose === 'Buy' ? formatCurrency(property.price) : `${formatCurrency(property.rent)}/mo`}
+              {(property.purpose || '').toUpperCase() === 'BUY'
+                ? formatCurrency(property.price)
+                : `${formatCurrency(property.rent || property.rentAmount || property.rent_amount)}/mo`}
             </span>
             <span className="badge" style={{ backgroundColor: 'var(--construction-gold)', color: 'var(--primary-text)' }}>{property.type}</span>
           </div>

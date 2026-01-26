@@ -448,8 +448,23 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                 }}
               >
                 <option value="">All Types</option>
-                <option value="Residential">Residential</option>
-                <option value="Commercial">Commercial</option>
+                <optgroup label="Residential">
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="House">House</option>
+                  <option value="Farmhouse">Farmhouse</option>
+                  <option value="Guest House">Guest House</option>
+                </optgroup>
+                <optgroup label="Commercial">
+                  <option value="Commercial">Commercial Space</option>
+                  <option value="Office">Office Space</option>
+                  <option value="Industrial">Industrial</option>
+                  <option value="Warehouse">Warehouse</option>
+                </optgroup>
+                <optgroup label="Land">
+                  <option value="Plot">Plot</option>
+                  <option value="Agricultural Land">Agricultural Land</option>
+                </optgroup>
               </select>
             </div>
 

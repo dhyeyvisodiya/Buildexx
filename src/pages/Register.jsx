@@ -18,43 +18,39 @@ const Register = () => {
   const [otp, setOtp] = useState('');
   const { register, verifyOtp } = useAuth();
   const navigate = useNavigate();
+  const [errors, setErrors] = useState({});
 
   const handleRegisterSuccess = (user) => {
     if (user.role === 'admin') navigate('/admin-dashboard');
     else if (user.role === 'builder') navigate('/builder-dashboard');
     else navigate('/user-dashboard');
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
 
-    if (!username || !fullName || !email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
-      return;
-    }
+    if (!username.trim()) newErrors.username = 'Username is required';
+    else if (username.length < 3) newErrors.username = 'Username must be at least 3 characters';
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
+    if (!fullName.trim()) newErrors.fullName = 'Full Name is required';
 
-    if (username.length < 3) {
-      setError('Username must be at least 3 characters long');
-      return;
-    }
+    if (!email) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email address';
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
+    if (!password) newErrors.password = 'Password is required';
+    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+
+    if (phone && !/^\d{10}$/.test(phone)) newErrors.phone = 'Phone number must be 10 digits';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setLoading(true);
+    setErrors({});
     setError('');
 
     try {
@@ -197,13 +193,19 @@ const Register = () => {
                       type="text"
                       className="form-control"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        if (errors.username) setErrors(prev => ({ ...prev, username: '' }));
+                      }}
                       placeholder="Choose username"
-                      style={inputStyle}
+                      style={{
+                        ...inputStyle,
+                        borderColor: errors.username ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                      }}
                       onFocus={handleFocus}
                       onBlur={handleBlur}
-                      required
                     />
+                    {errors.username && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.username}</div>}
                   </div>
 
                   {/* Full Name */}
@@ -215,13 +217,19 @@ const Register = () => {
                       type="text"
                       className="form-control"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+                      }}
                       placeholder="Your full name"
-                      style={inputStyle}
+                      style={{
+                        ...inputStyle,
+                        borderColor: errors.fullName ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                      }}
                       onFocus={handleFocus}
                       onBlur={handleBlur}
-                      required
                     />
+                    {errors.fullName && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.fullName}</div>}
                   </div>
                 </div>
 
@@ -234,13 +242,19 @@ const Register = () => {
                     type="email"
                     className="form-control"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    }}
                     placeholder="you@example.com"
-                    style={inputStyle}
+                    style={{
+                      ...inputStyle,
+                      borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                    }}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
-                    required
                   />
+                  {errors.email && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.email}</div>}
                 </div>
 
                 {/* Phone */}
@@ -252,12 +266,20 @@ const Register = () => {
                     type="tel"
                     className="form-control"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 9876543210"
-                    style={inputStyle}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setPhone(val);
+                      if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+                    }}
+                    placeholder="10 digit mobile number"
+                    style={{
+                      ...inputStyle,
+                      borderColor: errors.phone ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                    }}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                   />
+                  {errors.phone && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.phone}</div>}
                 </div>
 
                 <div className="row">
@@ -271,12 +293,18 @@ const Register = () => {
                         type={showPassword ? 'text' : 'password'}
                         className="form-control"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                        }}
                         placeholder="Min 6 characters"
-                        style={{ ...inputStyle, paddingRight: '45px' }}
+                        style={{
+                          ...inputStyle,
+                          paddingRight: '45px',
+                          borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                        }}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        required
                       />
                       <button
                         type="button"
@@ -295,6 +323,7 @@ const Register = () => {
                         <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                       </button>
                     </div>
+                    {errors.password && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.password}</div>}
                   </div>
 
                   {/* Confirm Password */}
@@ -307,12 +336,18 @@ const Register = () => {
                         type={showConfirmPassword ? 'text' : 'password'}
                         className="form-control"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+                        }}
                         placeholder="Confirm password"
-                        style={{ ...inputStyle, paddingRight: '45px' }}
+                        style={{
+                          ...inputStyle,
+                          paddingRight: '45px',
+                          borderColor: errors.confirmPassword ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                        }}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        required
                       />
                       <button
                         type="button"
@@ -331,6 +366,7 @@ const Register = () => {
                         <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                       </button>
                     </div>
+                    {errors.confirmPassword && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.confirmPassword}</div>}
                   </div>
                 </div>
 

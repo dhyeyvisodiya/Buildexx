@@ -1,7 +1,12 @@
 package com.buildex.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -9,7 +14,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "properties")
+@Table(name = "properties", indexes = {
+        @Index(name = "idx_property_city", columnList = "city"),
+        @Index(name = "idx_property_purpose", columnList = "purpose"),
+        @Index(name = "idx_property_type", columnList = "property_type"),
+        @Index(name = "idx_property_price", columnList = "price"),
+        @Index(name = "idx_property_rent", columnList = "rent_amount"),
+        @Index(name = "idx_property_status", columnList = "availability_status")
+})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@Data // Restored
+@NoArgsConstructor
+@AllArgsConstructor
+@lombok.Builder
 public class Property {
 
     @Id
@@ -95,6 +112,12 @@ public class Property {
     @Column(name = "panorama_image_path", columnDefinition = "TEXT")
     private String panoramaImagePath;
 
+    @ElementCollection
+    @CollectionTable(name = "property_panorama_images", joinColumns = @JoinColumn(name = "property_id"))
+    @Column(name = "panorama_image_url", columnDefinition = "TEXT")
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private List<String> panoramaImages;
+
     @Column(name = "latitude")
     private Double latitude;
 
@@ -103,6 +126,7 @@ public class Property {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "builder_id", nullable = false)
+    @JsonIgnore
     private Builder builder;
 
     @CreationTimestamp
@@ -125,228 +149,101 @@ public class Property {
         AVAILABLE, BOOKED, SOLD
     }
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
+    // Getters and Setters handled by @Data annotation
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    // =============================================
+    // JSON ALIAS GETTERS FOR FRONTEND COMPATIBILITY
+    // =============================================
 
-    public String getTitle() {
+    @JsonProperty("name")
+    public String getName() {
         return title;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public PropertyType getPropertyType() {
-        return propertyType;
-    }
-
-    public void setPropertyType(PropertyType propertyType) {
-        this.propertyType = propertyType;
-    }
-
-    public Purpose getPurpose() {
-        return purpose;
-    }
-
-    public void setPurpose(Purpose purpose) {
-        this.purpose = purpose;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public BigDecimal getRentAmount() {
-        return rentAmount;
-    }
-
-    public void setRentAmount(BigDecimal rentAmount) {
-        this.rentAmount = rentAmount;
-    }
-
-    public BigDecimal getDepositAmount() {
-        return depositAmount;
-    }
-
-    public void setDepositAmount(BigDecimal depositAmount) {
-        this.depositAmount = depositAmount;
-    }
-
-    public Integer getAreaSqft() {
-        return areaSqft;
-    }
-
-    public void setAreaSqft(Integer areaSqft) {
-        this.areaSqft = areaSqft;
-    }
-
-    public Integer getBedrooms() {
-        return bedrooms;
-    }
-
-    public void setBedrooms(Integer bedrooms) {
-        this.bedrooms = bedrooms;
-    }
-
-    public Integer getBathrooms() {
-        return bathrooms;
-    }
-
-    public void setBathrooms(Integer bathrooms) {
-        this.bathrooms = bathrooms;
-    }
-
-    public List<String> getAmenities() {
-        return amenities;
-    }
-
-    public void setAmenities(List<String> amenities) {
-        this.amenities = amenities;
-    }
-
-    public Integer getPossessionYear() {
-        return possessionYear;
-    }
-
-    public void setPossessionYear(Integer possessionYear) {
-        this.possessionYear = possessionYear;
-    }
-
-    public ConstructionStatus getConstructionStatus() {
-        return constructionStatus;
-    }
-
-    public void setConstructionStatus(ConstructionStatus constructionStatus) {
-        this.constructionStatus = constructionStatus;
-    }
-
-    public AvailabilityStatus getAvailabilityStatus() {
-        return availabilityStatus;
-    }
-
-    public void setAvailabilityStatus(AvailabilityStatus availabilityStatus) {
-        this.availabilityStatus = availabilityStatus;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getArea() {
-        return area;
-    }
-
-    public void setArea(String area) {
-        this.area = area;
-    }
-
-    public String getGoogleMapLink() {
-        return googleMapLink;
-    }
-
-    public void setGoogleMapLink(String googleMapLink) {
-        this.googleMapLink = googleMapLink;
-    }
-
-    public String getBrochureUrl() {
-        return brochureUrl;
-    }
-
-    public void setBrochureUrl(String brochureUrl) {
-        this.brochureUrl = brochureUrl;
-    }
-
-    public String getVirtualTourLink() {
-        return virtualTourLink;
-    }
-
-    public void setVirtualTourLink(String virtualTourLink) {
-        this.virtualTourLink = virtualTourLink;
-    }
-
-    public List<String> getImageUrls() {
+    @JsonProperty("images")
+    public List<String> getImages() {
         return imageUrls;
     }
 
-    public void setImageUrls(List<String> imageUrls) {
-        this.imageUrls = imageUrls;
+    @JsonProperty("area")
+    public Integer getAreaAlias() {
+        return areaSqft;
     }
 
-    public String getLegalDocumentPath() {
-        return legalDocumentPath;
+    @JsonProperty("locality")
+    public String getLocality() {
+        return area;
     }
 
-    public void setLegalDocumentPath(String legalDocumentPath) {
-        this.legalDocumentPath = legalDocumentPath;
+    @JsonProperty("possession")
+    public Integer getPossession() {
+        return possessionYear;
     }
 
-    public Boolean getIsVerified() {
-        return isVerified;
+    @JsonProperty("availability")
+    public AvailabilityStatus getAvailability() {
+        return availabilityStatus;
     }
 
-    public void setIsVerified(Boolean isVerified) {
-        this.isVerified = isVerified;
+    @JsonProperty("rent")
+    public BigDecimal getRent() {
+        return rentAmount;
     }
 
-    public String getPanoramaImagePath() {
+    @JsonProperty("rent_amount")
+    public BigDecimal getRentAmountAlias() {
+        return rentAmount;
+    }
+
+    @JsonProperty("type")
+    public PropertyType getType() {
+        return propertyType;
+    }
+
+    @JsonProperty("construction_status")
+    public ConstructionStatus getConstructionStatusAlias() {
+        return constructionStatus;
+    }
+
+    @JsonProperty("brochure_url")
+    public String getBrochureUrlAlias() {
+        return brochureUrl;
+    }
+
+    @JsonProperty("google_map_link")
+    public String getGoogleMapLinkAlias() {
+        return googleMapLink;
+    }
+
+    @JsonProperty("virtual_tour_link")
+    public String getVirtualTourLinkAlias() {
+        return virtualTourLink;
+    }
+
+    @JsonProperty("panorama_image_path")
+    public String getPanoramaImagePathAlias() {
         return panoramaImagePath;
     }
 
-    public void setPanoramaImagePath(String panoramaImagePath) {
-        this.panoramaImagePath = panoramaImagePath;
+    @JsonProperty("builder_id")
+    public Long getBuilderId() {
+        return builder != null ? builder.getId() : null;
     }
 
-    public Double getLatitude() {
-        return latitude;
+    @JsonProperty("builder_name")
+    public String getBuilderName() {
+        return builder != null ? builder.getCompanyName() : null;
     }
 
-    public void setLatitude(Double latitude) {
-        this.latitude = latitude;
+    @JsonProperty("virtualTours")
+    public List<String> getVirtualTours() {
+        return panoramaImages;
     }
 
-    public Double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(Double longitude) {
-        this.longitude = longitude;
-    }
-
-    public Builder getBuilder() {
-        return builder;
-    }
-
-    public void setBuilder(Builder builder) {
-        this.builder = builder;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    // Add explicit getter for panoramaImages for serialization if needed,
+    // but @Data usually handles field-based serialization if not hidden.
+    // However, we want to ensure it's available.
+    public List<String> getPanoramaImages() {
+        return panoramaImages;
     }
 }

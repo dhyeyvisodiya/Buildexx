@@ -24,26 +24,25 @@ const Login = () => {
     else navigate('/user-dashboard');
   };
 
+  const [errors, setErrors] = useState({});
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
 
-    if (!email || !password) {
-      setError('Please fill in all required fields');
-      return;
-    }
+    if (!email) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email address';
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
+    if (!password) newErrors.password = 'Password is required';
+    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setLoading(true);
+    setErrors({});
     setError('');
 
     try {
@@ -147,7 +146,10 @@ const Login = () => {
                     type="email"
                     className="form-control"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    }}
                     placeholder="you@example.com"
                     style={{
                       background: 'rgba(255,255,255,0.05)',
@@ -156,18 +158,20 @@ const Login = () => {
                       padding: '14px 16px',
                       color: 'var(--primary-text)',
                       fontSize: '0.95rem',
-                      transition: 'all 0.3s ease'
+                      transition: 'all 0.3s ease',
+                      borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#C8A24A';
+                      if (!errors.email) e.target.style.borderColor = '#C8A24A';
                       e.target.style.boxShadow = '0 0 0 3px rgba(200,162,74,0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                      if (!errors.email) e.target.style.borderColor = 'rgba(255,255,255,0.1)';
                       e.target.style.boxShadow = 'none';
                     }}
                     required
                   />
+                  {errors.email && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.email}</div>}
                 </div>
 
                 {/* Password Field with Toggle */}
@@ -180,7 +184,10 @@ const Login = () => {
                       type={showPassword ? 'text' : 'password'}
                       className="form-control"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                      }}
                       placeholder="Enter your password"
                       style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -189,14 +196,15 @@ const Login = () => {
                         padding: '14px 50px 14px 16px',
                         color: '#FFFFFF',
                         fontSize: '0.95rem',
-                        transition: 'all 0.3s ease'
+                        transition: 'all 0.3s ease',
+                        borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
                       }}
                       onFocus={(e) => {
-                        e.target.style.borderColor = '#C8A24A';
+                        if (!errors.password) e.target.style.borderColor = '#C8A24A';
                         e.target.style.boxShadow = '0 0 0 3px rgba(200,162,74,0.1)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                        if (!errors.password) e.target.style.borderColor = 'rgba(255,255,255,0.1)';
                         e.target.style.boxShadow = 'none';
                       }}
                       required
@@ -222,6 +230,7 @@ const Login = () => {
                       <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'} fs-5`}></i>
                     </button>
                   </div>
+                  {errors.password && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.password}</div>}
                 </div>
 
                 {/* Forgot Password Link */}

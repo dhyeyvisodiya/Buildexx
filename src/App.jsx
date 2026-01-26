@@ -17,10 +17,29 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { initializeDatabase } from '../api/db'
+import { useEffect } from 'react'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { currentUser } = useAuth()
+  const { currentUser, isInitializing } = useAuth()
+
+  // Wait for auth initialization to complete before making any redirects
+  if (isInitializing) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid rgba(200,162,74,0.2)',
+          borderTop: '4px solid #C8A24A',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
 
   if (!currentUser) {
     return <Navigate to="/login" replace />
@@ -114,6 +133,11 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    // Run database migrations/initialization on app start
+    initializeDatabase().catch(console.error);
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

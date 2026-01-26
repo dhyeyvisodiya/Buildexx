@@ -6,7 +6,11 @@ import {
   getUserWishlist,
   removeFromWishlist as removeFromWishlistAPI,
   getUserEnquiries,
-  getUserRentHistory
+  getUserRentHistory,
+
+  getUserPayments,
+  fetchUserRentSubscriptions,
+  payRent
 } from '../../api/apiService';
 
 const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemoveFromWishlist }) => {
@@ -19,6 +23,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
   const [wishlist, setWishlist] = useState(propsWishlist || []);
   const [enquiries, setEnquiries] = useState([]);
   const [rentHistory, setRentHistory] = useState([]);
+  const [rentSubscriptions, setRentSubscriptions] = useState([]); // Active recurring rentals
 
   // Fetch data on mount
   useEffect(() => {
@@ -54,12 +59,39 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
       if (rentResult.success) {
         setRentHistory(rentResult.data);
       }
+
+      // Fetch rent subscriptions
+      const subscriptionsResult = await fetchUserRentSubscriptions(currentUser.id);
+      if (subscriptionsResult.success) {
+        setRentSubscriptions(subscriptionsResult.data);
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Clean up function to fetch payments
+  const fetchPayments = async () => {
+    setLoading(true);
+    try {
+      const paymentsResult = await getUserPayments(currentUser.id);
+      setPayments(Array.isArray(paymentsResult) ? paymentsResult : []);
+    } catch (err) {
+      console.error("Error fetching payments", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchPayments();
+    }
+  }, [currentUser]);
+
+  const [payments, setPayments] = useState([]);
 
   const handleRemoveFromWishlist = async (propertyId) => {
     if (propsRemoveFromWishlist) {
@@ -147,7 +179,8 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
               { id: 'overview', label: 'Overview', icon: 'bi-grid' },
               { id: 'wishlist', label: 'Wishlist', icon: 'bi-heart' },
               { id: 'enquiries', label: 'Enquiries', icon: 'bi-envelope' },
-              { id: 'rentals', label: 'Rent History', icon: 'bi-house' }
+              { id: 'rentals', label: 'Rent History', icon: 'bi-house' },
+              { id: 'payments', label: 'My Bookings & Payments', icon: 'bi-credit-card' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -546,11 +579,72 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
             padding: '24px',
             border: '1px solid #E2E8F0'
           }}>
+            {/* Subscriptions Section */}
+            {rentSubscriptions.length > 0 && (
+              <div className="mb-5">
+                <h5 className="fw-bold mb-4 text-primary">
+                  <i className="bi bi-clock-history me-2"></i>
+                  Active Rentals & Payments
+                </h5>
+                <div className="row g-3">
+                  {rentSubscriptions.map(sub => (
+                    <div className="col-md-6" key={sub.id}>
+                      <div className="p-3 border rounded shadow-sm bg-white">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="fw-bold fs-5">{sub.property_name}</span>
+                          <span className="badge bg-success">Active</span>
+                        </div>
+                        <p className="mb-1 text-muted"><i className="bi bi-geo-alt me-1"></i>{sub.city}, {sub.area}</p>
+                        <hr />
+                        <div className="d-flex justify-content-between align-items-center">
+                          <div>
+                            <label className="text-muted small d-block">Monthly Rent</label>
+                            <span className="fw-bold text-dark fs-5">₹{sub.rent_amount}</span>
+                          </div>
+                          <div>
+                            <label className="text-muted small d-block">Next Due</label>
+                            <span className={`fw-bold ${new Date(sub.next_payment_due) <= new Date() ? 'text-danger' : 'text-dark'}`}>
+                              {formatDate(sub.next_payment_due)}
+                            </span>
+                          </div>
+                          <button
+                            className="btn btn-primary"
+                            disabled={new Date(sub.next_payment_due) > new Date(new Date().setDate(new Date().getDate() + 30))} // Disable if far in future? No, user requested "active every month".
+                            // Activating if needed. But user said "every month the button should be active".
+                            // Let's just allow it always, and logic moves date forward.
+                            onClick={async () => {
+                              if (window.confirm(`Pay rent of ₹${sub.rent_amount} for ${sub.property_name}?`)) {
+                                setLoading(true);
+                                try {
+                                  const res = await payRent(sub.id, sub.rent_amount);
+                                  if (res.success) {
+                                    alert('Rent paid successfully!');
+                                    fetchUserData();
+                                  } else {
+                                    alert(res.error);
+                                  }
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }
+                            }}
+                          >
+                            Pay Rent
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-house me-2" style={{ color: '#10B981' }}></i>
-              Rent History ({rentHistory.length})
+              <i className="bi bi-journal-text me-2" style={{ color: '#10B981' }}></i>
+              Rent Requests History ({rentHistory.length})
             </h5>
 
+            {/* Same Rent History Table as before */}
             {rentHistory.length === 0 ? (
               <div className="text-center py-5">
                 <div style={{
@@ -596,7 +690,65 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                             background: rent.status === 'active' ? '#D1FAE5' : '#F1F5F9',
                             color: rent.status === 'active' ? '#059669' : '#64748B'
                           }}>
-                            {rent.status.charAt(0).toUpperCase() + rent.status.slice(1)}
+                            {rent.status ? (rent.status.charAt(0).toUpperCase() + rent.status.slice(1)) : 'Pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* Payments Tab */}
+        {!loading && activeTab === 'payments' && (
+          <div style={{
+            background: 'var(--card-bg)',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '1px solid #E2E8F0'
+          }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <i className="bi bi-credit-card me-2" style={{ color: '#C8A24A' }}></i>
+              My Bookings & Payments ({payments.length})
+            </h5>
+
+            {payments.length === 0 ? (
+              <div className="text-center py-5">
+                <p className="text-muted">No booking payments made yet.</p>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Booking Amount</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Remaining Amount</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map(pay => (
+                      <tr key={pay.id}>
+                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{pay.property ? pay.property.title : 'Property Deleted'}</td>
+                        <td style={{ color: '#64748B' }}>{formatDate(pay.createdAt)}</td>
+                        <td style={{ color: '#10B981', fontWeight: '600' }}>₹{pay.amount}</td>
+                        <td style={{ color: '#DC2626', fontWeight: 'bold' }}>₹{pay.remainingAmount}</td>
+                        <td>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            background: pay.status === 'SUCCESS' ? '#D1FAE5' : '#FEE2E2',
+                            color: pay.status === 'SUCCESS' ? '#059669' : '#DC2626'
+                          }}>
+                            {pay.status}
                           </span>
                         </td>
                       </tr>

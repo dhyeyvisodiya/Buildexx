@@ -81,27 +81,18 @@ CREATE TABLE rent_requests (
 
 -- Insert sample data for testing
 INSERT INTO builders (company_name, owner_name, email, phone, address, gst_number, verification_status) VALUES
-('ABC Construction', 'John Doe', 'john@abcconstruction.com', '9876543210', '123 Main Street, Mumbai', '12ABCDE1234F1Z5', 'VERIFIED'),
-('XYZ Builders', 'Jane Smith', 'jane@xyzbuilders.com', '9123456789', '456 Park Avenue, Delhi', '12XYZAB5678G2Z6', 'PENDING');
+('DV(Builder)', 'DVBhai', 'visodiyadhyey@gmail.com', '123456789', 'Rajkot', '12ABCDE1234F1Z5', 'VERIFIED');
 
 -- Insert sample properties
 INSERT INTO properties (title, description, property_type, purpose, rent_amount, area_sqft, city, area, google_map_link, construction_status, availability_status, builder_id) VALUES
-('Luxury 3BHK Apartment', 'Beautiful 3BHK apartment with modern amenities', 'RESIDENTIAL', 'RENT', 25000.00, 1500, 'Mumbai', 'Bandra', 'https://maps.google.com/...', 'READY', 'AVAILABLE', 1),
-('Commercial Office Space', 'Spacious office space in prime location', 'COMMERCIAL', 'RENT', 50000.00, 2000, 'Delhi', 'Connaught Place', 'https://maps.google.com/...', 'READY', 'AVAILABLE', 2),
-('Premium Villa', 'Luxury villa with garden and parking', 'RESIDENTIAL', 'BUY', 15000000.00, 3000, 'Bangalore', 'Whitefield', 'https://maps.google.com/...', 'READY', 'AVAILABLE', 1);
+('Luxury 3BHK Apartment', 'Beautiful 3BHK apartment with modern amenities', 'RESIDENTIAL', 'RENT', 25000.00, 1500, 'Mumbai', 'Bandra', 'https://maps.google.com/...', 'READY', 'AVAILABLE', 1);
 
 -- Insert sample amenities
 INSERT INTO property_amenities (property_id, amenity) VALUES
 (1, 'Swimming Pool'),
 (1, 'Gym'),
 (1, 'Parking'),
-(1, 'Security'),
-(2, 'Lift'),
-(2, 'Parking'),
-(3, 'Garden'),
-(3, 'Parking'),
-(3, 'Security'),
-(3, 'Swimming Pool');
+(1, 'Security');
 
 -- Insert sample images
 INSERT INTO property_images (property_id, image_url) VALUES
@@ -117,10 +108,8 @@ INSERT INTO property_images (property_id, image_url) VALUES
 
 -- Insert sample enquiries
 INSERT INTO enquiries (property_id, name, phone, email, message, enquiry_type) VALUES
-(1, 'Raj Patel', '9988776655', 'raj@email.com', 'Interested in this property', 'RENT'),
-(2, 'Sunita Sharma', '9911223344', 'sunita@email.com', 'Want to know more about office space', 'RENT');
+(1, 'Raj Patel', '9988776655', 'raj@email.com', 'Interested in this property', 'RENT');
 
 -- Insert sample rent requests
 INSERT INTO rent_requests (property_id, applicant_name, phone, email, monthly_rent, deposit, status) VALUES
-(1, 'Raj Patel', '9988776655', 'raj@email.com', 25000.00, 75000.00, 'PENDING'),
-(2, 'Sunita Sharma', '9911223344', 'sunita@email.com', 50000.00, 100000.00, 'PENDING');
+(1, 'Raj Patel', '9988776655', 'raj@email.com', 25000.00, 75000.00, 'PENDING');

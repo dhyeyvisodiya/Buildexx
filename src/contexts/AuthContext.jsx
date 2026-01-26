@@ -12,6 +12,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // Track initial auth check
   const [pendingRegistration, setPendingRegistration] = useState(null);
 
   // Initialize database removed from here - usage should be in main app or specific feature contexts if needed
@@ -132,6 +133,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('buildex_user');
       }
     }
+    setIsInitializing(false); // Auth check complete
   }, []);
 
   const value = {
@@ -140,7 +142,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
     verifyOtp,
-    loading
+    loading,
+    isInitializing
   };
 
   return (

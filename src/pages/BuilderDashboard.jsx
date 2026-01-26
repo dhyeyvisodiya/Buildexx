@@ -13,7 +13,10 @@ import {
 
   updateRentRequestStatus,
   uploadLegalDocument,
-  uploadPanoramaImages
+  uploadPanoramaImages,
+  getBuilderPayments,
+  createWithdrawalRequest,
+  getBuilderWithdrawals
 } from '../../api/apiService';
 import { getApiUrl } from '../config';
 
@@ -55,7 +58,11 @@ const BuilderDashboard = () => {
   const [properties, setProperties] = useState([]);
   const [buyEnquiries, setBuyEnquiries] = useState([]);
   const [rentRequests, setRentRequests] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]); // List of withdrawals/balance info
+  const [balance, setBalance] = useState({ totalEarned: 0, currentBalance: 0 }); // Derived from withdrawals API
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
 
   // Fetch data on mount
   useEffect(() => {
@@ -67,25 +74,69 @@ const BuilderDashboard = () => {
   const fetchBuilderData = async () => {
     setLoading(true);
     try {
-      // Fetch properties
-      const propertiesResult = await getPropertiesByBuilder(currentUser.id);
+      // Execute all fetches in parallel
+      const [propertiesResult, enquiriesResult, rentResult, paymentsResult, withdrawalsResult] = await Promise.all([
+        getPropertiesByBuilder(currentUser.id),
+        getBuilderEnquiries(currentUser.id),
+        getRentRequestsByBuilder(currentUser.id),
+        getBuilderPayments(currentUser.id),
+        getBuilderWithdrawals(currentUser.id)
+      ]);
+
+      // Handle properties
       if (propertiesResult.success) {
         setProperties(propertiesResult.data);
       }
 
-      // Fetch enquiries
-      const enquiriesResult = await getBuilderEnquiries(currentUser.id);
+      // Handle enquiries
       if (enquiriesResult.success) {
         setBuyEnquiries(enquiriesResult.data);
       }
 
-      // Fetch rent requests
-      const rentResult = await getRentRequestsByBuilder(currentUser.id);
+      // Handle rent requests
       if (rentResult.success) {
         setRentRequests(rentResult.data);
       }
+
+      // Handle payments
+      // apiService returns array
+      setPayments(Array.isArray(paymentsResult) ? paymentsResult : (paymentsResult.data || []));
+
+      // Handle withdrawals
+      if (withdrawalsResult.success) {
+        setWithdrawals(withdrawalsResult.data);
+        setBalance({
+          totalEarned: withdrawalsResult.totalEarned || 0,
+          currentBalance: withdrawalsResult.balance || 0
+        });
+      }
+
     } catch (error) {
       console.error('Error fetching builder data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWithdrawalRequest = async () => {
+    const amount = parseFloat(withdrawalAmount);
+    if (!amount || amount <= 0) return alert('Please enter a valid amount');
+    if (amount > balance.currentBalance) return alert('Insufficient Balance');
+
+    if (!window.confirm(`Request withdrawal of ₹${amount}?`)) return;
+
+    setLoading(true);
+    try {
+      const result = await createWithdrawalRequest(currentUser.id, amount);
+      if (result.success) {
+        alert('Withdrawal request submitted successfully!');
+        setWithdrawalAmount('');
+        fetchBuilderData(); // Refresh data
+      } else {
+        alert('Failed to request withdrawal: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Withdrawal error:', error);
     } finally {
       setLoading(false);
     }
@@ -299,8 +350,10 @@ const BuilderDashboard = () => {
     { id: 'overview', label: 'Overview', icon: 'bi-grid' },
     { id: 'add-property', label: 'Add Property', icon: 'bi-plus-circle' },
     { id: 'my-properties', label: 'My Properties', icon: 'bi-building' },
-    { id: 'buy-enquiries', label: 'Enquiries', icon: 'bi-envelope' },
-    { id: 'rent-requests', label: 'Rent Requests', icon: 'bi-key' }
+    { id: 'enquiries', label: 'Enquiries', icon: 'bi-envelope' },
+    { id: 'rent-requests', label: 'Rent Requests', icon: 'bi-key' },
+    { id: 'received-payments', label: 'Withdrawals', icon: 'bi-wallet2' },
+    { id: 'transactions', label: 'Transactions', icon: 'bi-receipt' }
   ];
 
   const formatDate = (dateString) => {
@@ -475,7 +528,7 @@ const BuilderDashboard = () => {
                     <i className="bi bi-plus-circle me-2"></i>Add New Property
                   </button>
                   <button
-                    onClick={() => setActiveTab('buy-enquiries')}
+                    onClick={() => setActiveTab('enquiries')}
                     className="btn"
                     style={{
                       background: '#0F1E33',
@@ -1199,7 +1252,7 @@ const BuilderDashboard = () => {
 
         {/* Buy Enquiries Tab */}
         {
-          !loading && activeTab === 'buy-enquiries' && (
+          !loading && activeTab === 'enquiries' && (
             <div style={{
               background: '#0F1E33',
               borderRadius: '16px',
@@ -1257,7 +1310,7 @@ const BuilderDashboard = () => {
                               background: enquiry.status === 'approved' ? '#D1FAE5' : enquiry.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
                               color: enquiry.status === 'approved' ? '#059669' : enquiry.status === 'rejected' ? '#DC2626' : '#D97706'
                             }}>
-                              {enquiry.status.charAt(0).toUpperCase() + enquiry.status.slice(1)}
+                              {enquiry.status ? (enquiry.status.charAt(0).toUpperCase() + enquiry.status.slice(1)) : 'Pending'}
                             </span>
                           </td>
                           <td>
@@ -1350,7 +1403,7 @@ const BuilderDashboard = () => {
                               background: request.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
                               color: request.status === 'approved' ? '#059669' : '#D97706'
                             }}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              {request.status ? (request.status.charAt(0).toUpperCase() + request.status.slice(1)) : 'Pending'}
                             </span>
                           </td>
                           <td>
@@ -1382,6 +1435,124 @@ const BuilderDashboard = () => {
             </div>
           )
         }
+
+        {/* Withdrawals Tab */}
+        {!loading && activeTab === 'received-payments' && (
+          <div style={{
+            background: '#0F1E33',
+            borderRadius: '16px',
+            padding: '24px',
+            border: '1px solid #E2E8F0'
+          }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#C8A24A' }}>
+              <i className="bi bi-wallet2 me-2"></i>
+              Withdrawals & Earnings
+            </h5>
+
+            {/* Balance Section */}
+            <div className="row mb-4">
+              <div className="col-md-4">
+                <div className="p-3 rounded" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10B981' }}>
+                  <label className="d-block text-muted small">Total Earnings</label>
+                  <h3 style={{ color: '#10B981' }}>₹{balance.totalEarned}</h3>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="p-3 rounded" style={{ background: 'rgba(200, 162, 74, 0.1)', border: '1px solid #C8A24A' }}>
+                  <label className="d-block text-muted small">Available Balance</label>
+                  <h3 style={{ color: '#C8A24A' }}>₹{balance.currentBalance}</h3>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #475569' }}>
+                  <label className="d-block text-muted small mb-2">Request Withdrawal</label>
+                  <div className="input-group">
+                    <span className="input-group-text bg-transparent text-white border-secondary">₹</span>
+                    <input
+                      type="number"
+                      className="form-control bg-transparent text-white border-secondary"
+                      placeholder="Amount"
+                      value={withdrawalAmount}
+                      onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    />
+                    <button className="btn btn-warning" onClick={handleWithdrawalRequest}>Request</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h6 className="text-white mb-3">Withdrawal History</h6>
+            {withdrawals.length === 0 ? (
+              <p className="text-muted">No withdrawal history.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-dark table-hover" style={{ background: 'transparent' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ color: '#94A3B8' }}>Date</th>
+                      <th style={{ color: '#94A3B8' }}>Requested</th>
+                      <th style={{ color: '#94A3B8' }}>Commission</th>
+                      <th style={{ color: '#94A3B8' }}>Payout</th>
+                      <th style={{ color: '#94A3B8' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withdrawals.map(w => (
+                      <tr key={w.id}>
+                        <td>{formatDate(w.created_at)}</td>
+                        <td className="fw-bold">₹{w.amount}</td>
+                        <td className="text-danger">{w.status === 'approved' ? `₹${w.commission_amount}` : '-'}</td>
+                        <td className="text-success">{w.status === 'approved' ? `₹${w.payout_amount}` : '-'}</td>
+                        <td>
+                          <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
+                            {w.status.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Transactions Tab */}
+        {!loading && activeTab === 'transactions' && (
+          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#F8FAFC' }}>
+              <i className="bi bi-clock-history me-2" style={{ color: '#3B82F6' }}></i>
+              Transaction History (Received Payments) ({payments.length})
+            </h5>
+            <div className="table-responsive">
+              <table className="table table-hover table-dark" style={{ background: 'transparent' }}>
+                <thead>
+                  <tr>
+                    <th style={{ color: '#94A3B8' }}>Date</th>
+                    <th style={{ color: '#94A3B8' }}>Property</th>
+                    <th style={{ color: '#94A3B8' }}>Customer (User)</th>
+                    <th style={{ color: '#94A3B8' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map(p => (
+                    <tr key={p.id}>
+                      <td>{formatDate(p.created_at)}</td>
+                      <td>
+                        <div className="fw-bold">{p.property_name || 'Deleted Property'}</div>
+                      </td>
+                      <td>
+                        <div>{p.user_name || 'Unknown'}</div>
+                        <small className="text-muted">{p.user_email}</small>
+                      </td>
+                      <td className="text-success fw-bold">₹{p.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div >
     </div >
   );

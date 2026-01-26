@@ -18,8 +18,13 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable) // Disable Basic Auth
+                .formLogin(AbstractHttpConfigurer::disable) // Disable Form Login
+                .logout(AbstractHttpConfigurer::disable) // Disable Logout
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll() // Allow all API calls for now
+                        // Explicitly allow OPTIONS for preflight
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/**").permitAll()
                         .anyRequest().permitAll());
         return http.build();
     }
@@ -27,11 +32,13 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(
-                java.util.Arrays.asList("http://localhost:5173", "https://buildexrealty.vercel.app"));
-        configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Allow all origins for dev/debug
+        configuration.setAllowedOrigins(java.util.Collections.singletonList("*"));
+        configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        // Allow credentials must be false if origins is "*"
+        configuration.setAllowCredentials(false);
+
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

@@ -1,24 +1,14 @@
 package com.buildex.config;
 
-import org.springframework.boot.web.servlet.MultipartConfigFactory;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.unit.DataSize;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
 import java.io.File;
 
 @Configuration
 public class FileUploadConfig implements WebMvcConfigurer {
 
-    @Bean
-    public jakarta.servlet.MultipartConfigElement multipartConfigElement() {
-        MultipartConfigFactory factory = new MultipartConfigFactory();
-        factory.setMaxFileSize(DataSize.ofMegabytes(50));
-        factory.setMaxRequestSize(DataSize.ofMegabytes(50));
-        return factory.createMultipartConfig();
-    }
+    // Multipart config moved to application.properties
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

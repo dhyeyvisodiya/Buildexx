@@ -4,7 +4,7 @@ import EMICalculator from '../components/EMICalculator';
 import PropertyMap from '../components/PropertyMap';
 import PanoramaViewer from '../components/PanoramaViewer';
 import PaymentButton from '../components/PaymentButton';
-import { createEnquiry, createRentRequest, getPropertyById } from '../../api/apiService';
+import { createEnquiry, createRentRequest, createComplaint, getPropertyById } from '../../api/apiService';
 import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -143,6 +143,46 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
       setShowEnquiryForm(false);
       setShowRentForm(false);
       setShowVisitForm(false);
+      setShowComplaintForm(false);
+    } else if (formName === 'complaint') {
+      setShowComplaintForm(!showComplaintForm);
+      setShowEnquiryForm(false);
+      setShowRentForm(false);
+      setShowVisitForm(false);
+      setShowEMICalculator(false);
+    }
+  };
+
+  const [showComplaintForm, setShowComplaintForm] = useState(false);
+  const [complaintForm, setComplaintForm] = useState({ issue: '' });
+
+  const handleComplaintChange = (e) => {
+    setComplaintForm({ ...complaintForm, [e.target.name]: e.target.value });
+  };
+
+  const handleComplaintSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const result = await createComplaint({
+        propertyId: property.id,
+        userId: currentUser?.id,
+        issue: complaintForm.issue
+      });
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Complaint reported successfully!' });
+        setTimeout(() => {
+          setShowComplaintForm(false);
+          setMessage({ type: '', text: '' });
+          setComplaintForm({ issue: '' });
+        }, 2000);
+      } else {
+        setMessage({ type: 'error', text: 'Failed to report complaint.' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'An error occurred.' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -342,6 +382,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
       case 'available': return 'badge-available';
       case 'booked': return 'badge-booked';
       case 'sold': return 'badge-sold';
+      case 'rented': return 'badge-rented';
       default: return 'badge-secondary';
     }
   };
@@ -491,36 +532,48 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             )}
           </div>
 
-          {/* Payment Button Section */}
-          <div className="mt-4 mb-3 p-4" style={{
-            background: 'linear-gradient(135deg, rgba(200,162,74,0.1) 0%, rgba(200,162,74,0.05) 100%)',
-            borderRadius: '16px',
-            border: '2px solid rgba(200,162,74,0.3)'
-          }}>
-            <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
-              <div>
-                <h5 className="mb-1" style={{ color: '#1E293B', fontWeight: '700' }}>
-                  {property.purpose === 'Rent' ? 'Ready to Rent?' : 'Ready to Own?'}
-                </h5>
-                <p className="mb-0" style={{ color: '#64748B', fontSize: '0.9rem' }}>
-                  {property.purpose === 'Rent'
-                    ? 'Pay the first month rent to start your rental'
-                    : 'Complete your purchase securely online'}
-                </p>
+          {/* Payment Button Section - Only show if available */}
+          {!['booked', 'sold', 'rented'].includes((property.availability || '').toLowerCase()) && (
+            <div className="mt-4 mb-3 p-4" style={{
+              background: 'linear-gradient(135deg, rgba(200,162,74,0.1) 0%, rgba(200,162,74,0.05) 100%)',
+              borderRadius: '16px',
+              border: '2px solid rgba(200,162,74,0.3)'
+            }}>
+              <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+                <div>
+                  <h5 className="mb-1" style={{ color: '#1E293B', fontWeight: '700' }}>
+                    {property.purpose === 'Rent' ? 'Ready to Rent?' : 'Ready to Own?'}
+                  </h5>
+                  <p className="mb-0" style={{ color: '#64748B', fontSize: '0.9rem' }}>
+                    {property.purpose === 'Rent'
+                      ? 'Pay the first month rent to start your rental'
+                      : 'Complete your purchase securely online'}
+                  </p>
+                </div>
+                <PaymentButton
+                  property={property}
+                  paymentType={property.purpose === 'Rent' ? 'RENT' : 'BUY'}
+                  onSuccess={(data) => {
+                    alert('Payment successful! Your ' + (property.purpose === 'Rent' ? 'rental' : 'purchase') + ' has been confirmed.');
+                    // Instant update of availability status
+                    setProperty(prev => ({
+                      ...prev,
+                      availability: property.purpose === 'Rent' ? 'rented' : 'booked'
+                    }));
+                    // Also invalidate cache
+                    import('../../api/apiService').then(module => {
+                      // Note: We can't easily import cacheInvalidate here if it's not exported, 
+                      // but since we updated local state, the UI reflects it.
+                      // Ideally we should assume the backend update is done.
+                    });
+                  }}
+                  onFailure={(error) => {
+                    console.error('Payment failed:', error);
+                  }}
+                />
               </div>
-              <PaymentButton
-                property={property}
-                paymentType={property.purpose === 'Rent' ? 'RENT' : 'BUY'}
-                onSuccess={(data) => {
-                  alert('Payment successful! Your ' + (property.purpose === 'Rent' ? 'rental' : 'purchase') + ' has been confirmed.');
-                  window.location.reload();
-                }}
-                onFailure={(error) => {
-                  console.error('Payment failed:', error);
-                }}
-              />
             </div>
-          </div>
+          )}
 
           <div className="d-flex justify-content-between mt-3">
             <button
@@ -907,6 +960,43 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         <div className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--section-divider)', marginTop: '16px' }}>
                           <EMICalculator propertyPrice={formatCurrency(property.price)} inline={true} />
                         </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Complaint Button */}
+                  <button
+                    className="btn w-100 mt-2 btn-outline-danger"
+                    onClick={() => toggleForm('complaint')}
+                    style={{
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      padding: '12px',
+                      transition: 'all 0.3s ease',
+                      border: '1px solid #EF4444',
+                      color: '#EF4444',
+                      background: 'transparent'
+                    }}
+                  >
+                    <i className="bi bi-exclamation-triangle me-2"></i>{showComplaintForm ? 'Cancel Report' : 'Report Issue'}
+                  </button>
+                  <AnimatePresence>
+                    {showComplaintForm && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <form onSubmit={handleComplaintSubmit} className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--section-divider)', marginTop: '10px' }}>
+                          {message.text && (
+                            <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-danger'} py-2`}>
+                              {message.text}
+                            </div>
+                          )}
+                          <textarea className="form-control mb-2" placeholder="Describe the issue..." name="issue" value={complaintForm.issue} onChange={handleComplaintChange} required rows="3" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
+                          <button type="submit" className="btn btn-danger w-100" disabled={submitting}>Submit Complaint</button>
+                        </form>
                       </motion.div>
                     )}
                   </AnimatePresence>

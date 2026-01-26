@@ -9,6 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 
 @Service
 public class FileStorageService {
@@ -49,8 +51,39 @@ public class FileStorageService {
         // Create the file path
         Path filePath = Paths.get(UPLOAD_DIR).resolve(uniqueFileName);
 
-        // Copy file to target location
-        Files.copy(file.getInputStream(), filePath);
+        // OPTIMIZATION: Resize image if it's an image file
+        try {
+            BufferedImage originalImage = ImageIO.read(file.getInputStream());
+            if (originalImage != null) {
+                // Resize if width > 1024
+                if (originalImage.getWidth() > 1024) {
+                    int newWidth = 1024;
+                    int newHeight = (int) Math.round(originalImage.getHeight() * (1024.0 / originalImage.getWidth()));
+                    BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+                    java.awt.Graphics2D g2d = resized.createGraphics();
+                    g2d.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                            java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g2d.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+                    g2d.dispose();
+
+                    String ext = extension.replace(".", "");
+                    if (ext.isEmpty())
+                        ext = "jpg"; // Default
+                    ImageIO.write(resized, ext, filePath.toFile());
+                } else {
+                    Files.copy(file.getInputStream(), filePath);
+                }
+            } else {
+                // Not an image or ImageIO failed, just copy
+                Files.copy(file.getInputStream(), filePath);
+            }
+        } catch (Exception e) {
+            // Fallback
+            System.err.println("Resize failed: " + e.getMessage());
+            if (!Files.exists(filePath)) {
+                Files.copy(file.getInputStream(), filePath);
+            }
+        }
 
         return "/uploads/" + uniqueFileName;
     }
@@ -91,5 +124,21 @@ public class FileStorageService {
         } else {
             throw new RuntimeException("Could not read file: " + fileName);
         }
+    }
+
+    public String store360Image(MultipartFile file) throws IOException {
+        // Validate aspect ratio (2:1)
+        try (java.io.InputStream is = file.getInputStream()) {
+            BufferedImage image = ImageIO.read(is);
+            if (image == null) {
+                throw new IllegalArgumentException("Invalid image file: Unable to read image data");
+            }
+            if (image.getWidth() != 2 * image.getHeight()) {
+                throw new IllegalArgumentException(
+                        "Invalid 360 Image: Aspect ratio must be exactly 2:1 (Width = 2 * Height). Uploaded dimensions: "
+                                + image.getWidth() + "x" + image.getHeight());
+            }
+        }
+        return storeFile(file);
     }
 }
