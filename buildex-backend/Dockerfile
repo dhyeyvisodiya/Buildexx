@@ -1,5 +1,5 @@
 # Use Maven image to build the application
-FROM maven:3.8-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy project files
@@ -10,7 +10,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Run stage
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:21-jdk-jammy
 WORKDIR /app
 COPY --from=build /app/target/buildex-backend-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8081
