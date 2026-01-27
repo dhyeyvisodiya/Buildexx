@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import com.buildex.dto.PropertySummaryDTO;
 
 @Service
 public class PropertyService {
@@ -39,10 +40,24 @@ public class PropertyService {
                 org.springframework.data.domain.Sort.by("createdAt").descending())).getContent();
     }
 
-    public org.springframework.data.domain.Page<com.buildex.model.PropertySummary> getAllPropertiesSummaries(int page,
+    public org.springframework.data.domain.Page<PropertySummaryDTO> getAllPropertiesSummaries(int page,
             int size) {
-        return propertyRepository.findAllSummaries(org.springframework.data.domain.PageRequest.of(page, size,
-                org.springframework.data.domain.Sort.by("createdAt").descending()));
+        return propertyRepository.findAll(org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("createdAt").descending()))
+                .map(property -> PropertySummaryDTO.builder()
+                        .id(property.getId())
+                        .title(property.getTitle())
+                        .price(property.getPrice())
+                        .rentAmount(property.getRentAmount())
+                        .city(property.getCity())
+                        // Extract first image as thumbnail if available
+                        .thumbnail((property.getImageUrls() != null && !property.getImageUrls().isEmpty())
+                                ? property.getImageUrls().get(0)
+                                : null)
+                        .type(property.getPropertyType())
+                        .purpose(property.getPurpose())
+                        .availability(property.getAvailabilityStatus())
+                        .build());
     }
 
     public org.springframework.data.domain.Page<Property> getAllProperties(int page, int size) {

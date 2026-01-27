@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.buildex.dto.PropertySummaryDTO;
 
 @RestController
 @RequestMapping("/api/properties")
@@ -58,17 +59,11 @@ public class PropertyController {
         }
     }
 
-    // OPTIMIZED: Return Summaries (DTO) instead of Full Entity for List View
+    // OPTIMIZED: Return Summaries (DTO) with Pagination
     @GetMapping
-    public ResponseEntity<List<com.buildex.model.PropertySummary>> getAllProperties() {
-        // Fetches latest 20 properties as lightweight summaries
-        return ResponseEntity.ok(propertyService.getAllPropertiesSummaries(0, 20).getContent());
-    }
-
-    @GetMapping("/paginated")
-    public ResponseEntity<org.springframework.data.domain.Page<com.buildex.model.PropertySummary>> getAllPropertiesPaginated(
+    public ResponseEntity<org.springframework.data.domain.Page<PropertySummaryDTO>> getAllProperties(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(propertyService.getAllPropertiesSummaries(page, size));
     }
 

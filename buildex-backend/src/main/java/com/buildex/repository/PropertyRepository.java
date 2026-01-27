@@ -27,19 +27,7 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
        @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder", "amenities", "imageUrls",
                      "panoramaImages" })
-       org.springframework.data.domain.Page<Property> findAll(org.springframework.data.domain.Pageable pageable);
-
-       @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder", "amenities", "imageUrls",
-                     "panoramaImages" })
        java.util.Optional<Property> findById(Long id);
-
-       @Query("SELECT p.id as id, p.title as title, p.city as city, p.area as area, " +
-                     "p.price as price, p.rentAmount as rentAmount, " +
-                     "p.propertyType as propertyType, p.purpose as purpose, " +
-                     "p.availabilityStatus as availabilityStatus, " +
-                     "p.imageUrls as imageUrls FROM Property p")
-       org.springframework.data.domain.Page<com.buildex.model.PropertySummary> findAllSummaries(
-                     org.springframework.data.domain.Pageable pageable);
 
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
