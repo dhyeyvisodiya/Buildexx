@@ -126,19 +126,34 @@ public class FileStorageService {
         }
     }
 
+    public String storeRawFile(MultipartFile file) throws IOException {
+        String originalFileName = file.getOriginalFilename();
+        String extension = originalFileName != null ? originalFileName.substring(originalFileName.lastIndexOf("."))
+                : "";
+        String uniqueFileName = UUID.randomUUID().toString() + extension;
+        Path filePath = Paths.get(UPLOAD_DIR).resolve(uniqueFileName);
+        Files.copy(file.getInputStream(), filePath);
+        return "/uploads/" + uniqueFileName;
+    }
+
     public String store360Image(MultipartFile file) throws IOException {
         // Validate aspect ratio (2:1)
         try (java.io.InputStream is = file.getInputStream()) {
             BufferedImage image = ImageIO.read(is);
             if (image == null) {
+                // Determine via file extension if it's an image. If likely image but read
+                // failed, warn but allow?
+                // Or just throw.
                 throw new IllegalArgumentException("Invalid image file: Unable to read image data");
             }
+            // Allow small tolerance? No, 2:1 is standard for equirectangular.
             if (image.getWidth() != 2 * image.getHeight()) {
                 throw new IllegalArgumentException(
                         "Invalid 360 Image: Aspect ratio must be exactly 2:1 (Width = 2 * Height). Uploaded dimensions: "
                                 + image.getWidth() + "x" + image.getHeight());
             }
         }
-        return storeFile(file);
+        // Use raw store to avoid resizing 360 images (quality loss) and OOM
+        return storeRawFile(file);
     }
 }
