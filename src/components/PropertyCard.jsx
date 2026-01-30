@@ -4,6 +4,12 @@ import { useNavigate } from 'react-router-dom';
 const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
   const navigate = useNavigate();
 
+  // Debug logging for image issues
+  console.log('[PropertyCard] Property ID:', property.id, 'Name:', property.name);
+  console.log('[PropertyCard] Images:', property.images);
+  console.log('[PropertyCard] Thumbnail:', property.thumbnail);
+  console.log('[PropertyCard] ImageUrls:', property.imageUrls);
+
   const formatCurrency = (value) => {
     if (!value) return '';
     const valStr = value.toString().replace(/,/g, '').replace('₹', '').replace(/\s/g, '');
@@ -70,7 +76,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
 
       <div className="card-body d-flex flex-column">
         <h5 className="card-title">{property.name}</h5>
-        <p className="card-text text-muted small">{property.locality}, {property.city}</p>
+        <p className="card-text text-muted small">{[property.locality, property.city].filter(Boolean).join(', ')}</p>
 
         <div className="mt-auto">
           <div className="d-flex justify-content-between align-items-center mb-2">

@@ -14,9 +14,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import com.buildex.entity.Builder;
-import com.buildex.repository.BuilderRepository;
-
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*") // Allow frontend access
@@ -26,16 +23,14 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final OtpService otpService;
-    private final BuilderRepository builderRepository;
 
     // Explicit constructor instead of @RequiredArgsConstructor
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService,
-            OtpService otpService, BuilderRepository builderRepository) {
+            OtpService otpService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.otpService = otpService;
-        this.builderRepository = builderRepository;
     }
 
     @PostMapping("/register")
@@ -66,27 +61,7 @@ public class AuthController {
 
         userRepository.save(user);
 
-        // Create Builder entity if role is builder
-        if ("builder".equalsIgnoreCase(request.getRole())) {
-            try {
-                Builder builder = new Builder();
-                builder.setOwnerName(request.getFull_name());
-                builder.setEmail(request.getEmail());
-                builder.setPhone(request.getPhone());
-                // Default company name since not enabled in frontend yet
-                builder.setCompanyName(request.getFull_name() + "'s Company");
-                builder.setVerificationStatus(Builder.VerificationStatus.PENDING);
-
-                builderRepository.save(builder);
-            } catch (Exception e) {
-                // Log error but don't fail user registration?
-                // Better to fail so data is consistent, but user is already saved.
-                // For now print stack trace, effectively "best effort" or need transaction.
-                // Keeping it simple: Just print.
-                e.printStackTrace();
-                System.err.println("Failed to create Builder entity for user: " + user.getEmail());
-            }
-        }
+        // Builder logic merged into User entity; no separate creation needed.
 
         // Generate and Send OTP
         String otp = otpService.generateOtp(user.getEmail());

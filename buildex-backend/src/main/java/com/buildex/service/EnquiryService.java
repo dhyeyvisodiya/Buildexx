@@ -24,10 +24,10 @@ public class EnquiryService {
 
         // Send email to builder
         if (savedEnquiry.getProperty() != null && savedEnquiry.getProperty().getBuilder() != null) {
-            com.buildex.entity.Builder builder = savedEnquiry.getProperty().getBuilder();
+            com.buildex.entity.User builder = savedEnquiry.getProperty().getBuilder();
             emailService.sendEnquiryReceivedEmail(
                     builder.getEmail(),
-                    builder.getCompanyName(),
+                    builder.getCompanyName(), // User now has getCompanyName
                     savedEnquiry.getName(),
                     savedEnquiry.getEmail(),
                     savedEnquiry.getPhone(),

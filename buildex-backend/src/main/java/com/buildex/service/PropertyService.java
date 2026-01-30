@@ -3,6 +3,7 @@ package com.buildex.service;
 import com.buildex.entity.Property;
 import com.buildex.exception.ResourceNotFoundException;
 import com.buildex.repository.PropertyRepository;
+import com.buildex.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,20 +15,24 @@ import com.buildex.dto.PropertySummaryDTO;
 public class PropertyService {
 
     private final PropertyRepository propertyRepository;
-    private final BuilderService builderService;
+    private final UserRepository userRepository;
 
-    public PropertyService(PropertyRepository propertyRepository, BuilderService builderService) {
+    public PropertyService(PropertyRepository propertyRepository, UserRepository userRepository) {
         this.propertyRepository = propertyRepository;
-        this.builderService = builderService;
+        this.userRepository = userRepository;
     }
 
-    public Property createProperty(Long builderId, Property property) {
-        return builderService.getBuilderById(builderId)
-                .map(builder -> {
-                    property.setBuilder(builder);
+    public Property createProperty(Long userId, Property property) {
+        return userRepository.findById(userId)
+                .map(user -> {
+                    // Start of Selection
+                    if (!"builder".equalsIgnoreCase(user.getRole())) {
+                        throw new IllegalArgumentException("User is not a builder");
+                    }
+                    property.setBuilder(user);
                     return propertyRepository.save(property);
                 })
-                .orElseThrow(() -> new ResourceNotFoundException("Builder not found with id: " + builderId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
     public Optional<Property> getPropertyById(Long id) {
@@ -57,6 +62,11 @@ public class PropertyService {
                         .type(property.getPropertyType())
                         .purpose(property.getPurpose())
                         .availability(property.getAvailabilityStatus())
+                        .bedrooms(property.getBedrooms())
+                        .bathrooms(property.getBathrooms())
+                        .areaSqft(property.getAreaSqft())
+                        .builderName(property.getBuilderName())
+                        .isVerified(property.getIsVerified())
                         .build());
     }
 

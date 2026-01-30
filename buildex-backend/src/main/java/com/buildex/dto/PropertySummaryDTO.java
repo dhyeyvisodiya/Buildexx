@@ -25,4 +25,9 @@ public class PropertySummaryDTO {
     private PropertyType type;
     private Purpose purpose;
     private AvailabilityStatus availability;
+    private Integer bedrooms;
+    private Integer bathrooms;
+    private Integer areaSqft;
+    private String builderName; // Useful for display
+    private Boolean isVerified; // Useful for badges
 }

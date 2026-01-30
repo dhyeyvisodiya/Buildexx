@@ -4,7 +4,6 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\co
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\config\SecurityConfig.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\config\WebConfig.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\AuthController.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\BuilderController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\EnquiryController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\HealthController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\ImageController.java
@@ -13,7 +12,6 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\co
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\RentRequestController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\TestEmailController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\dto\PropertySummaryDTO.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Builder.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Complaint.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Enquiry.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Payment.java
@@ -23,13 +21,11 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\en
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\GlobalExceptionHandler.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\ResourceNotFoundException.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\model\PropertySummary.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\BuilderRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\EnquiryRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\PaymentRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\PropertyRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\RentRequestRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\UserRepository.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\BuilderService.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\EmailService.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\EnquiryService.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\ImageService.java

@@ -2,23 +2,18 @@ package com.buildex.controller;
 
 import com.buildex.entity.Property;
 import com.buildex.entity.User;
-import com.buildex.entity.Builder;
 import com.buildex.repository.UserRepository;
-import com.buildex.repository.BuilderRepository;
 import com.buildex.service.PropertyService;
 import com.buildex.service.impl.FileStorageService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,19 +28,29 @@ public class PropertyController {
     private final PropertyService propertyService;
     private final FileStorageService fileStorageService;
     private final UserRepository userRepository;
-    private final BuilderRepository builderRepository;
 
     public PropertyController(PropertyService propertyService, FileStorageService fileStorageService,
-            UserRepository userRepository, BuilderRepository builderRepository) {
+            UserRepository userRepository) {
         this.propertyService = propertyService;
         this.fileStorageService = fileStorageService;
         this.userRepository = userRepository;
-        this.builderRepository = builderRepository;
     }
 
-    @PostMapping("/builder/{builderId}")
-    public ResponseEntity<Property> createProperty(@PathVariable Long builderId, @RequestBody Property property) {
-        Property createdProperty = propertyService.createProperty(builderId, property);
+    @PostMapping("/builder/{userId}")
+    public ResponseEntity<?> createProperty(@PathVariable Long userId, @RequestBody Property property) {
+        // ID Mismatch Fixed: Builder ID is now same as User ID
+        if (!userRepository.existsById(userId)) {
+            return ResponseEntity.badRequest().body("User not found with ID " + userId);
+        }
+
+        // Optional: Check if role is builder
+        userRepository.findById(userId).ifPresent(user -> {
+            if (!"builder".equalsIgnoreCase(user.getRole())) {
+                // throw new RuntimeException("User is not a builder"); // Or handle gracefully
+            }
+        });
+
+        Property createdProperty = propertyService.createProperty(userId, property);
         return new ResponseEntity<>(createdProperty, HttpStatus.CREATED);
     }
 
@@ -80,7 +85,7 @@ public class PropertyController {
         return ResponseEntity.ok(properties);
     }
 
-    // Get properties by User ID (maps user email to builder email)
+    // Get properties by User ID
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Property>> getPropertiesByUserId(@PathVariable Long userId) {
         // Find user by ID
@@ -89,14 +94,8 @@ public class PropertyController {
             return ResponseEntity.ok(List.of()); // Return empty list if user not found
         }
 
-        // Find builder with same email
-        Optional<Builder> builderOpt = builderRepository.findByEmail(userOpt.get().getEmail());
-        if (builderOpt.isEmpty()) {
-            return ResponseEntity.ok(List.of()); // Return empty list if no matching builder
-        }
-
-        // Get properties by builder ID
-        List<Property> properties = propertyService.getPropertiesByBuilderId(builderOpt.get().getId());
+        // Get properties by builder ID (which is userId)
+        List<Property> properties = propertyService.getPropertiesByBuilderId(userId);
         return ResponseEntity.ok(properties);
     }
 

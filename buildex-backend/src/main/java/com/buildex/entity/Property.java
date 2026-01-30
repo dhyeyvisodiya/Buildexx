@@ -127,7 +127,7 @@ public class Property {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "builder_id", nullable = false)
     @JsonIgnore
-    private Builder builder;
+    private User builder;
 
     @CreationTimestamp
     @Column(name = "created_at")

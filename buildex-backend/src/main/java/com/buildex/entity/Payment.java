@@ -42,7 +42,7 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "builder_id")
-    private com.buildex.entity.Builder builder; // Using full path to avoid conflict if any
+    private User builder; // Builder is now a User with role='builder'
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

@@ -29,7 +29,7 @@ public class RentRequestService {
         // Send email to builder
         propertyRepository.findById(rentRequest.getPropertyId()).ifPresent(property -> {
             if (property.getBuilder() != null) {
-                com.buildex.entity.Builder builder = property.getBuilder();
+                com.buildex.entity.User builder = property.getBuilder();
                 // Note: RentRequest doesn't store a 'message' field in database based on entity
                 // definition?
                 // Wait, creating RentRequest in frontend passed 'message'. If entity differs,

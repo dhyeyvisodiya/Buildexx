@@ -24,8 +24,8 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  4.092 s
-[INFO] Finished at: 2026-01-30T18:13:17+05:30
+[INFO] Total time:  3.743 s
+[INFO] Finished at: 2026-01-30T18:14:01+05:30
 [INFO] ------------------------------------------------------------------------
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project buildex-backend: Fatal error compiling: java.lang.ExceptionInInitializerError: com.sun.tools.javac.code.TypeTag :: UNKNOWN -> [Help 1]
 [ERROR] 

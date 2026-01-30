@@ -86,27 +86,44 @@ const normalizeImages = (images) => {
 };
 
 // Normalize property fields from backend to frontend expected format
-const normalizeProperty = (p) => ({
-    ...p,
-    // Image normalization
-    images: normalizeImages(p.images || p.imageUrls),
-    // Panorama field normalization (backend sends camelCase, frontend uses snake_case)
-    panorama_image_path: p.panorama_image_path || p.panoramaImagePath || '',
-    panorama_images: p.panorama_images || p.panoramaImages || [],
-    // Price field normalization
-    rent: p.rent || p.rentAmount || p.rent_amount,
-    // Other field normalizations
-    name: p.name || p.title,
-    locality: p.locality || p.area,
-    availability: p.availability || p.availabilityStatus,
-    type: p.type || p.propertyType || p.property_type,
-    possession: p.possession || p.possessionYear,
-    construction_status: p.construction_status || p.constructionStatus,
-    brochure_url: p.brochure_url || p.brochureUrl,
-    google_map_link: p.google_map_link || p.googleMapLink,
-    virtual_tour_link: p.virtual_tour_link || p.virtualTourLink,
-    builder_name: p.builder_name || p.builderName
-});
+const normalizeProperty = (p) => {
+    // Handle images - prefer images/imageUrls, fallback to thumbnail
+    let imagesSource = p.images || p.imageUrls;
+
+    // If no images array but thumbnail exists (from PropertySummaryDTO), create array from thumbnail
+    if ((!imagesSource || (Array.isArray(imagesSource) && imagesSource.length === 0)) && p.thumbnail) {
+        imagesSource = [p.thumbnail];
+        console.log('[normalizeProperty] Using thumbnail as image source:', p.thumbnail);
+    }
+
+    const normalizedImages = normalizeImages(imagesSource);
+    console.log('[normalizeProperty] Property ID:', p.id, 'Images:', normalizedImages);
+
+    return {
+        ...p,
+        // Image normalization - handle thumbnail field from PropertySummaryDTO
+        images: normalizedImages,
+        // Panorama field normalization (backend sends camelCase, frontend uses snake_case)
+        panorama_image_path: p.panorama_image_path || p.panoramaImagePath || '',
+        panorama_images: p.panorama_images || p.panoramaImages || [],
+        // Price field normalization
+        rent: p.rent || p.rentAmount || p.rent_amount,
+        // Other field normalizations
+        name: p.name || p.title,
+        locality: p.locality || p.area,
+        availability: p.availability || p.availabilityStatus,
+        type: p.type || p.propertyType || p.property_type,
+        possession: p.possession || p.possessionYear,
+        construction_status: p.construction_status || p.constructionStatus,
+        brochure_url: p.brochure_url || p.brochureUrl,
+        google_map_link: p.google_map_link || p.googleMapLink,
+        virtual_tour_link: p.virtual_tour_link || p.virtualTourLink,
+        builder_name: p.builder_name || p.builderName,
+        // Keep areaSqft accessible as 'area' for frontend
+        area: p.area || p.areaSqft
+    };
+};
+
 
 // ============== PROPERTY OPERATIONS ==============
 
@@ -265,13 +282,15 @@ export async function getProperties(filters = {}) {
     const cacheKey = `properties_${JSON.stringify(filters)}`;
 
     // Check cache first (only for no filters - list page)
+    /* Cache Disabled for Debugging
     if (!Object.keys(filters).length) {
         const cached = cacheGet(cacheKey);
         if (cached) {
-            console.log('Using cached properties');
+            console.log('[getProperties] Using cached properties');
             return { success: true, data: cached, fromCache: true };
         }
     }
+    */
 
     try {
         // Build query params from filters
@@ -284,14 +303,52 @@ export async function getProperties(filters = {}) {
         const queryString = params.toString();
         const url = getApiUrl(queryString ? `/api/properties/search?${queryString}` : '/api/properties');
 
+        console.log('[getProperties] Fetching from URL:', url);
+
         const response = await fetch(url);
 
+        console.log('[getProperties] Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error(`Failed to fetch properties: ${response.status}`);
+            const errorText = await response.text();
+            console.error('[getProperties] Error response:', errorText);
+            throw new Error(`Failed to fetch properties: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
-        const processed = (Array.isArray(data) ? data : []).map(normalizeProperty);
+
+        console.log('[getProperties] Raw response data:', data);
+        console.log('[getProperties] Data type:', typeof data);
+        console.log('[getProperties] Is array:', Array.isArray(data));
+
+        // Handle Spring Boot Page response (paginated) or plain array
+        let propertiesArray;
+        if (Array.isArray(data)) {
+            // Plain array response
+            propertiesArray = data;
+            console.log('[getProperties] Data is plain array with', propertiesArray.length, 'items');
+        } else if (data && typeof data === 'object') {
+            // Spring Boot Page response - extract content array
+            if (data.content && Array.isArray(data.content)) {
+                propertiesArray = data.content;
+                console.log('[getProperties] Data is Page object with', propertiesArray.length, 'items in content');
+                console.log('[getProperties] Page info - Total elements:', data.totalElements, 'Total pages:', data.totalPages);
+            } else {
+                // Fallback: maybe it's a single object or unknown structure
+                console.warn('[getProperties] Unknown data structure, treating as empty:', data);
+                propertiesArray = [];
+            }
+        } else {
+            console.warn('[getProperties] Data is null/undefined, treating as empty');
+            propertiesArray = [];
+        }
+
+        const processed = propertiesArray.map(normalizeProperty);
+        console.log('[getProperties] Processed', processed.length, 'properties');
+
+        if (processed.length > 0) {
+            console.log('[getProperties] First property sample:', JSON.stringify(processed[0], null, 2));
+        }
 
         // Cache the results
         if (!Object.keys(filters).length) {
@@ -300,7 +357,7 @@ export async function getProperties(filters = {}) {
 
         return { success: true, data: processed };
     } catch (error) {
-        console.error('Error fetching properties:', error);
+        console.error('[getProperties] Error fetching properties:', error);
         return { success: false, error: 'Backend not available. Please ensure the server is running.', data: [] };
     }
 }
@@ -477,6 +534,9 @@ export async function createProperty(propertyData) {
             panoramaImages: panoramaImages || [],
             isVerified: false
         };
+
+        console.log('[createProperty] Using builderId:', builderId);
+        console.log('[createProperty] API URL:', getApiUrl(`/api/properties/builder/${builderId}`));
 
         const response = await fetch(getApiUrl(`/api/properties/builder/${builderId}`), {
             method: 'POST',

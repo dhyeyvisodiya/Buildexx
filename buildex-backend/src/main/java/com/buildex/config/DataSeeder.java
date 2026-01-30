@@ -1,42 +1,52 @@
 package com.buildex.config;
 
-import com.buildex.entity.Builder;
+import com.buildex.entity.User;
 import com.buildex.entity.Property;
-import com.buildex.repository.BuilderRepository;
+import com.buildex.repository.UserRepository;
 import com.buildex.repository.PropertyRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.HashSet;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
 
-    private final BuilderRepository builderRepository;
+    private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
 
-    public DataSeeder(BuilderRepository builderRepository, PropertyRepository propertyRepository) {
-        this.builderRepository = builderRepository;
+    public DataSeeder(UserRepository userRepository, PropertyRepository propertyRepository) {
+        this.userRepository = userRepository;
         this.propertyRepository = propertyRepository;
     }
 
     @Override
     public void run(String... args) throws Exception {
-        if (builderRepository.count() == 0) {
-            System.out.println("No builders found. Seeding sample data...");
+        // Seed Properties if none exist
+        if (propertyRepository.count() == 0) {
+            System.out.println("No properties found. Seeding sample property data...");
 
-            // Create Builder
-            Builder builder = new Builder();
-            builder.setCompanyName("DV(Builder)");
-            builder.setOwnerName("DVBhai");
-            builder.setEmail("visodiyadhyey@gmail.com");
-            builder.setPhone("123456789");
-            builder.setVerificationStatus(Builder.VerificationStatus.VERIFIED);
+            // Find an existing builder or create one
+            User builder = userRepository.findAll().stream()
+                    .filter(u -> "builder".equalsIgnoreCase(u.getRole()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        System.out.println("No builder found. Creating sample builder...");
+                        User newBuilder = new User();
+                        newBuilder.setUsername("dvbhai");
+                        newBuilder.setEmail("visodiyadhyey@gmail.com");
+                        newBuilder.setPassword("123456");
+                        newBuilder.setFullName("DVBhai");
+                        newBuilder.setPhone("123456789");
+                        newBuilder.setRole("builder");
+                        newBuilder.setStatus("active");
+                        newBuilder.setCompanyName("DV(Builder)");
+                        newBuilder.setVerificationStatus(User.VerificationStatus.VERIFIED);
+                        return userRepository.save(newBuilder);
+                    });
 
-            builder = builderRepository.save(builder);
-            System.out.println("Sample Builder created: " + builder.getCompanyName());
+            System.out.println("Using Builder: " + builder.getCompanyName());
 
             // Create Property
             Property property = new Property();
@@ -54,11 +64,11 @@ public class DataSeeder implements CommandLineRunner {
 
             // Set Images (Using Arrays.asList directly as Entity expects List)
             property.setImageUrls(Arrays.asList(
-                    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80",
                     "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80"));
 
             // Set Amenities
-            property.setAmenities(Arrays.asList("Gym", "Parking", "Security"));
+            property.setAmenities(Arrays.asList("Gym", "Parking", "Security", "Pool"));
 
             // Set 360 Images
             property.setPanoramaImages(Arrays.asList(
@@ -66,9 +76,8 @@ public class DataSeeder implements CommandLineRunner {
 
             propertyRepository.save(property);
             System.out.println("Sample Property created: " + property.getTitle());
-
         } else {
-            System.out.println("Database already contains data. Skipping seed.");
+            System.out.println("Properties already exist. Skipping seed.");
         }
     }
 }

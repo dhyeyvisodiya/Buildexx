@@ -136,7 +136,7 @@ public class PaymentService {
 
             // Send Email to Builder
             if (property.getBuilder() != null) {
-                com.buildex.entity.Builder builder = property.getBuilder();
+                User builder = property.getBuilder();
                 String payerName = (payment.getUser() != null) ? payment.getUser().getFullName() : "Customer";
                 emailService.sendPaymentReceivedEmail(
                         builder.getEmail(),

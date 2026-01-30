@@ -52,24 +52,36 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   }, [userLocation, nearbyMode]);
 
   const fetchProperties = async () => {
+    console.log('[PropertyList] fetchProperties called - starting fetch');
     setLoading(true);
     setNearbyMode(false);
     try {
       const result = await getProperties();
+      console.log('[PropertyList] getProperties result:', result);
+      console.log('[PropertyList] Result success:', result.success);
+      console.log('[PropertyList] Result data:', result.data);
+      console.log('[PropertyList] Result data length:', result.data?.length);
+
       if (result.success) {
+        console.log('[PropertyList] Setting properties with', result.data.length, 'items');
         setProperties(result.data);
         setFilteredProperties(result.data);
 
         // Extract unique cities
         const uniqueCities = [...new Set(result.data.map(p => p.city).filter(Boolean))];
+        console.log('[PropertyList] Unique cities found:', uniqueCities);
         setCities(uniqueCities);
+      } else {
+        console.error('[PropertyList] Failed to fetch properties:', result.error);
       }
     } catch (error) {
-      console.error('Error fetching properties:', error);
+      console.error('[PropertyList] Error fetching properties:', error);
     } finally {
+      console.log('[PropertyList] fetchProperties completed, setting loading to false');
       setLoading(false);
     }
   };
+
 
   const fetchNearbyProperties = async (lat, lng, radius = 10) => {
     setLoading(true);

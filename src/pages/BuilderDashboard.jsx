@@ -201,6 +201,11 @@ const BuilderDashboard = () => {
         }
       } else {
         // Create new property
+        console.log('[BuilderDashboard] Creating property with:');
+        console.log('[BuilderDashboard] currentUser:', currentUser);
+        console.log('[BuilderDashboard] currentUser.id:', currentUser?.id);
+        console.log('[BuilderDashboard] Using builderId:', currentUser?.id);
+
         const result = await createProperty({
           builderId: currentUser.id,
           ...propertyForm
