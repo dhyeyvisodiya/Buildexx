@@ -536,3 +536,88 @@ button.dashboard-tab.active i {
     padding: 16px;
   }
 }
+
+/* ========================================
+   Dark Theme Overrides for Bootstrap Components
+   Ensures tables, forms, and other Bootstrap elements
+   match the dark dashboard theme
+   ======================================== */
+
+/* Table Dark Theme Override */
+.builder-dashboard-page .table,
+.builder-dashboard-page table {
+  background: transparent !important;
+  --bs-table-bg: transparent !important;
+  --bs-table-color: var(--primary-text) !important;
+  color: var(--primary-text) !important;
+}
+
+.builder-dashboard-page .table thead th,
+.builder-dashboard-page table thead th {
+  background: rgba(17, 42, 70, 0.5) !important;
+  color: var(--primary-text) !important;
+  border-color: rgba(226, 232, 240, 0.1) !important;
+  font-weight: 600;
+}
+
+.builder-dashboard-page .table tbody tr,
+.builder-dashboard-page table tbody tr {
+  background: transparent !important;
+  --bs-table-bg: transparent !important;
+  border-color: rgba(226, 232, 240, 0.1) !important;
+}
+
+.builder-dashboard-page .table tbody td,
+.builder-dashboard-page table tbody td {
+  background: transparent !important;
+  color: var(--primary-text) !important;
+  border-color: rgba(226, 232, 240, 0.1) !important;
+}
+
+.builder-dashboard-page .table-hover tbody tr:hover,
+.builder-dashboard-page table.table-hover tbody tr:hover {
+  background: rgba(200, 162, 74, 0.1) !important;
+  --bs-table-hover-bg: rgba(200, 162, 74, 0.1) !important;
+}
+
+/* Form Controls Dark Theme Override */
+.builder-dashboard-page .form-control,
+.builder-dashboard-page .form-select {
+  background: var(--card-bg) !important;
+  color: var(--primary-text) !important;
+  border-color: rgba(226, 232, 240, 0.15) !important;
+}
+
+.builder-dashboard-page .form-control:focus,
+.builder-dashboard-page .form-select:focus {
+  background: var(--card-bg) !important;
+  color: var(--primary-text) !important;
+  border-color: var(--construction-gold) !important;
+  box-shadow: 0 0 0 2px rgba(200, 162, 74, 0.2) !important;
+}
+
+.builder-dashboard-page .form-control::placeholder {
+  color: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* Dropdown Options - Need specific styling */
+.builder-dashboard-page .form-select option {
+  background: #1E3A5F;
+  color: var(--primary-text);
+}
+
+/* Input Group Dark Theme */
+.builder-dashboard-page .input-group-text {
+  background: rgba(17, 42, 70, 0.8) !important;
+  color: var(--primary-text) !important;
+  border-color: rgba(226, 232, 240, 0.15) !important;
+}
+
+/* Alerts Dark Theme */
+.builder-dashboard-page .alert {
+  border-radius: 12px;
+}
+
+.builder-dashboard-page .text-muted {
+  color: #94A3B8 !important;
+}

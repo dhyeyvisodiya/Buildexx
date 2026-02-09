@@ -440,11 +440,11 @@ const BuilderDashboard = () => {
   };
 
   const inputStyle = {
-    background: '#FFFFFF',
-    border: '1px solid #E2E8F0',
+    background: 'var(--card-bg)',
+    border: '1px solid rgba(226, 232, 240, 0.15)',
     borderRadius: '10px',
     padding: '12px 16px',
-    color: '#0F172A',
+    color: 'var(--primary-text)',
     transition: 'all 0.3s ease'
   };
 
@@ -566,13 +566,13 @@ const BuilderDashboard = () => {
             {/* Quick Actions */}
             <div className="col-12">
               <div style={{
-                background: '#FFFFFF',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: '1px solid #E2E8F0',
+                border: '1px solid rgba(226, 232, 240, 0.1)',
                 boxShadow: 'var(--card-shadow)'
               }}>
-                <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>Quick Actions</h5>
+                <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>Quick Actions</h5>
                 <div className="d-flex gap-3 flex-wrap">
                   <button
                     onClick={() => setActiveTab('add-property')}
@@ -611,14 +611,14 @@ const BuilderDashboard = () => {
         {/* Add/Edit Property Tab */}
         {!loading && activeTab === 'add-property' && (
           <div style={{
-            background: '#FFFFFF',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '32px',
-            border: '1px solid #E2E8F0',
+            border: '1px solid rgba(226, 232, 240, 0.1)',
             boxShadow: 'var(--card-shadow)'
           }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+              <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
                 <i className={`bi ${editMode ? 'bi-pencil' : 'bi-plus-circle'} me-2`} style={{ color: '#C8A24A' }}></i>
                 {editMode ? 'Edit Property' : 'Add New Property'}
               </h5>
@@ -644,7 +644,7 @@ const BuilderDashboard = () => {
               <div className="row g-4">
                 {/* Property Name */}
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Property Name *</label>
+                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Name *</label>
                   <input
                     type="text"
                     name="name"
@@ -658,7 +658,7 @@ const BuilderDashboard = () => {
 
                 {/* Property Type */}
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Property Type *</label>
+                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Type *</label>
                   <select
                     name="type"
                     value={propertyForm.type}
@@ -693,7 +693,7 @@ const BuilderDashboard = () => {
 
                       {/* Purpose */}
                       <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Purpose *</label>
+                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Purpose *</label>
                         <select
                           name="purpose"
                           value={propertyForm.purpose}
@@ -725,7 +725,7 @@ const BuilderDashboard = () => {
 
                       {/* Price/Rent */}
                       <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>
+                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
                           {propertyForm.purpose === 'Rent' ? 'Monthly Rent *' : 'Price *'}
                         </label>
                         <input
@@ -1242,14 +1242,14 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'my-properties' && (
             <div style={{
-              background: '#FFFFFF',
+              background: 'var(--card-bg)',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
               <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+                <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
                   <i className="bi bi-building me-2" style={{ color: '#C8A24A' }}></i>
                   My Properties ({properties.length})
                 </h5>
@@ -1283,8 +1283,8 @@ const BuilderDashboard = () => {
                   }}>
                     <i className="bi bi-building" style={{ fontSize: '3rem', color: '#C8A24A' }}></i>
                   </div>
-                  <h5 style={{ color: '#0F172A' }}>No properties listed yet</h5>
-                  <p style={{ color: '#64748B', maxWidth: '400px', margin: '0 auto' }}>
+                  <h5 style={{ color: 'var(--primary-text)' }}>No properties listed yet</h5>
+                  <p style={{ color: '#94A3B8', maxWidth: '400px', margin: '0 auto' }}>
                     Start by adding your first property to get it listed on the platform
                   </p>
                   <button
@@ -1292,7 +1292,7 @@ const BuilderDashboard = () => {
                     className="btn mt-3"
                     style={{
                       background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                      color: '#0F172A',
+                      color: 'var(--charcoal-slate)',
                       padding: '12px 24px',
                       borderRadius: '12px',
                       fontWeight: '600',
@@ -1307,23 +1307,23 @@ const BuilderDashboard = () => {
                   <table className="table table-hover">
                     <thead>
                       <tr>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Type</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Area</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>City</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Price</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Availability</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Approval Status</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Property</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Type</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Area</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>City</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Price</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Availability</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Approval Status</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {properties.map(property => (
                         <tr key={property.id}>
-                          <td style={{ color: '#0F172A', fontWeight: '500' }}>{property.name}</td>
-                          <td style={{ color: '#64748B' }}>{property.type}</td>
-                          <td style={{ color: '#64748B' }}>{property.locality || '-'}</td>
-                          <td style={{ color: '#64748B' }}>{property.city || '-'}</td>
+                          <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{property.name}</td>
+                          <td style={{ color: '#94A3B8' }}>{property.type}</td>
+                          <td style={{ color: '#94A3B8' }}>{property.locality || '-'}</td>
+                          <td style={{ color: '#94A3B8' }}>{property.city || '-'}</td>
                           <td style={{ color: '#C8A24A', fontWeight: '600' }}>{property.price || property.rent}</td>
                           <td>
                             <select
@@ -1383,13 +1383,13 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'enquiries' && (
             <div style={{
-              background: '#FFFFFF',
+              background: 'var(--card-bg)',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>
                 <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
                 Buy Enquiries ({buyEnquiries.length})
               </h5>
@@ -1408,8 +1408,8 @@ const BuilderDashboard = () => {
                   }}>
                     <i className="bi bi-envelope-open" style={{ fontSize: '3rem', color: '#60A5FA' }}></i>
                   </div>
-                  <h5 style={{ color: '#0F172A' }}>No enquiries yet</h5>
-                  <p style={{ color: '#64748B' }}>
+                  <h5 style={{ color: 'var(--primary-text)' }}>No enquiries yet</h5>
+                  <p style={{ color: '#94A3B8' }}>
                     When buyers show interest in your properties, their enquiries will appear here
                   </p>
                 </div>
@@ -1428,9 +1428,9 @@ const BuilderDashboard = () => {
                     <tbody>
                       {buyEnquiries.map(enquiry => (
                         <tr key={enquiry.id}>
-                          <td style={{ color: '#0F172A' }}>{enquiry.property_name}</td>
-                          <td style={{ color: '#64748B' }}>{enquiry.customer_name || enquiry.full_name}</td>
-                          <td style={{ color: '#64748B' }}>{formatDate(enquiry.created_at)}</td>
+                          <td style={{ color: 'var(--primary-text)' }}>{enquiry.property_name}</td>
+                          <td style={{ color: '#94A3B8' }}>{enquiry.customer_name || enquiry.full_name}</td>
+                          <td style={{ color: '#94A3B8' }}>{formatDate(enquiry.created_at)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1477,13 +1477,13 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'rent-requests' && (
             <div style={{
-              background: '#FFFFFF',
+              background: 'var(--card-bg)',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>
                 <i className="bi bi-key me-2" style={{ color: '#8B5CF6' }}></i>
                 Rent Requests ({rentRequests.length})
               </h5>
@@ -1502,8 +1502,8 @@ const BuilderDashboard = () => {
                   }}>
                     <i className="bi bi-key" style={{ fontSize: '3rem', color: '#A78BFA' }}></i>
                   </div>
-                  <h5 style={{ color: '#0F172A' }}>No rent requests</h5>
-                  <p style={{ color: '#64748B' }}>
+                  <h5 style={{ color: 'var(--primary-text)' }}>No rent requests</h5>
+                  <p style={{ color: '#94A3B8' }}>
                     Rental requests for your properties will appear here
                   </p>
                 </div>
@@ -1522,9 +1522,9 @@ const BuilderDashboard = () => {
                     <tbody>
                       {rentRequests.map(request => (
                         <tr key={request.id}>
-                          <td style={{ color: '#0F172A' }}>{request.property_name}</td>
-                          <td style={{ color: '#64748B' }}>{request.customer_name}</td>
-                          <td style={{ color: '#64748B' }}>{formatDate(request.created_at)}</td>
+                          <td style={{ color: 'var(--primary-text)' }}>{request.property_name}</td>
+                          <td style={{ color: '#94A3B8' }}>{request.customer_name}</td>
+                          <td style={{ color: '#94A3B8' }}>{formatDate(request.created_at)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1571,10 +1571,10 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'received-payments' && (
             <div style={{
-              background: '#FFFFFF',
+              background: 'var(--card-bg)',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
               <h5 className="fw-bold mb-4" style={{ color: '#C8A24A' }}>
@@ -1622,11 +1622,11 @@ const BuilderDashboard = () => {
                   <table className="table table-hover" style={{ background: 'transparent' }}>
                     <thead>
                       <tr>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Requested</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Commission</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}> payout</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Date</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Requested</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Commission</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}> payout</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1655,13 +1655,13 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'transactions' && (
             <div style={{
-              background: '#FFFFFF',
+              background: 'var(--card-bg)',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>
                 <i className="bi bi-clock-history me-2" style={{ color: '#3B82F6' }}></i>
                 Transaction History (Received Payments) ({payments.length})
               </h5>
@@ -1669,10 +1669,10 @@ const BuilderDashboard = () => {
                 <table className="table table-hover" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Customer (User)</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Amount</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Date</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Property</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Customer (User)</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>

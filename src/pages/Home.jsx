@@ -45,102 +45,85 @@ const Home = () => {
     <div className="home-page">
       {/* Hero Section */}
       <section className="hero-section animate__animated animate__fadeIn" style={{
-        background: 'linear-gradient(135deg, var(--charcoal-slate) 0%, #1E293B 50%, #0F172A 100%)',
-        borderBottom: '1px solid var(--card-border)',
+        background: `linear-gradient(to bottom, rgba(11, 28, 48, 0.85), rgba(11, 28, 48, 0.9)), url('https://images.unsplash.com/photo-1486325212027-8081e485255e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
         position: 'relative',
         overflow: 'hidden',
-        minHeight: 'calc(100vh - 80px)',
+        minHeight: '85vh',
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        {/* Animated background elements */}
-        <div style={{ position: 'absolute', top: '10%', left: '5%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(200,162,74,0.1) 0%, transparent 70%)', borderRadius: '50%', animation: 'float 6s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(200,162,74,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'float 8s ease-in-out infinite reverse' }} />
+        <div className="container text-center" style={{ position: 'relative', zIndex: 1, maxWidth: '800px' }}>
+          {/* Main Headline */}
+          <h1 className="display-3 fw-bold mb-5 animate__animated animate__fadeInUp" style={{
+            color: '#FFFFFF',
+            letterSpacing: '-1px',
+            lineHeight: 1.1
+          }}>
+            Find Your Perfect Property.
+          </h1>
 
-        <div className="container-fluid py-5" style={{ position: 'relative', zIndex: 1 }}>
-          <div className="row align-items-center">
-            <div className="col-lg-6">
-              <div className="mb-3">
-                <span style={{
-                  background: 'linear-gradient(90deg, rgba(200,162,74,0.2), rgba(200,162,74,0.1))',
-                  padding: '8px 16px',
-                  borderRadius: '50px',
-                  fontSize: '0.85rem',
-                  color: '#C8A24A',
-                  border: '1px solid rgba(200,162,74,0.3)'
-                }}>
-                  🏆 #1 Verified Real Estate Platform in India
-                </span>
-              </div>
-              <h1 className="display-3 fw-bold mb-3 animate__animated animate__fadeInUp" style={{ lineHeight: 1.1 }}>
-                Find Your <span style={{ background: 'linear-gradient(90deg, #C8A24A, #E6C86E)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Dream Home</span> Today
-              </h1>
-              <p className="lead mb-4 animate__animated animate__fadeInUp animate__delay-1s" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1.2rem' }}>
-                Verified New Schemes & Smart Rental Management Platform. Discover properties from trusted builders with complete transparency.
-              </p>
+          {/* Search Label */}
+          <p className="mb-4 animate__animated animate__fadeInUp animate__delay-1s" style={{
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '1rem',
+            letterSpacing: '0.5px'
+          }}>
+            Start your search with Buildex
+          </p>
 
-              <div className="d-flex gap-3 animate__animated animate__fadeInUp animate__delay-3s">
-                <button
-                  className="btn btn-primary px-4 py-3"
-                  onClick={() => navigate('/property-list', { state: { purpose: 'Buy' } })}
-                  style={{
-                    background: 'linear-gradient(90deg, var(--construction-gold), var(--deep-bronze))',
-                    border: 'none',
-                    color: 'var(--primary-text)',
-                    boxShadow: '0 4px 20px rgba(158, 124, 47, 0.4)',
-                    transition: 'all 0.3s ease',
-                    borderRadius: '12px',
-                    fontWeight: '600'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-3px)';
-                    e.target.style.boxShadow = '0 8px 25px rgba(158, 124, 47, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 20px rgba(158, 124, 47, 0.4)';
-                  }}
-                >
-                  <i className="bi bi-house-door me-2"></i>Buy Property
-                </button>
-                <button
-                  className="btn px-4 py-3"
-                  onClick={() => navigate('/property-list', { state: { purpose: 'Rent' } })}
-                  style={{
-                    border: '2px solid var(--construction-gold)',
-                    color: 'var(--construction-gold)',
-                    background: 'transparent',
-                    transition: 'all 0.3s ease',
-                    borderRadius: '12px',
-                    fontWeight: '600'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(200,162,74,0.1)';
-                    e.target.style.transform = 'translateY(-3px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'transparent';
-                    e.target.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <i className="bi bi-key me-2"></i>Rent Property
-                </button>
-              </div>
-            </div>
-            <div className="col-lg-6 d-none d-lg-block">
-              <div className="hero-image-container animate__animated animate__fadeInRight" style={{
-                height: '450px',
-                overflow: 'hidden',
-                borderRadius: '24px',
-                backgroundImage: "url('/images/hero.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                position: 'relative',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
-              }}>
-              </div>
-            </div>
-          </div>
+          {/* Explore Properties Button */}
+          <button
+            onClick={() => navigate('/property-list')}
+            className="animate__animated animate__fadeInUp animate__delay-2s"
+            style={{
+              background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+              border: 'none',
+              borderRadius: '50px',
+              padding: '16px 48px',
+              color: '#0F172A',
+              fontWeight: '600',
+              fontSize: '1.1rem',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 10px 40px rgba(200, 162, 74, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-3px) scale(1.02)';
+              e.target.style.boxShadow = '0 15px 50px rgba(200, 162, 74, 0.45)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0) scale(1)';
+              e.target.style.boxShadow = '0 10px 40px rgba(200, 162, 74, 0.3)';
+            }}
+          >
+            <i className="bi bi-building me-2"></i>
+            Explore Properties
+          </button>
+        </div>
+      </section>
+
+      {/* Company Tagline Section */}
+      <section style={{
+        background: 'var(--charcoal-slate)',
+        padding: '60px 0',
+        textAlign: 'center',
+        borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+      }}>
+        <div className="container">
+          <p style={{
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontSize: '1.25rem',
+            maxWidth: '700px',
+            margin: '0 auto',
+            lineHeight: 1.6,
+            fontWeight: '400'
+          }}>
+            Buildex is a leader in verified real estate in India. Our platform prides itself on transparency, trust, and true market wisdom.
+          </p>
         </div>
       </section>
 
