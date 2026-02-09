@@ -30,7 +30,6 @@ public class User {
     private String phone;
 
     private String role; // user, builder, admin
-
     private String status; // active, pending_verification
 
     // --- Builder Specific Fields ---
@@ -171,4 +170,5 @@ public class User {
     public void setVerificationStatus(VerificationStatus verificationStatus) {
         this.verificationStatus = verificationStatus;
     }
+
 }

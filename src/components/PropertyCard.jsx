@@ -4,12 +4,6 @@ import { useNavigate } from 'react-router-dom';
 const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
   const navigate = useNavigate();
 
-  // Debug logging for image issues
-  console.log('[PropertyCard] Property ID:', property.id, 'Name:', property.name);
-  console.log('[PropertyCard] Images:', property.images);
-  console.log('[PropertyCard] Thumbnail:', property.thumbnail);
-  console.log('[PropertyCard] ImageUrls:', property.imageUrls);
-
   const formatCurrency = (value) => {
     if (!value) return '';
     const valStr = value.toString().replace(/,/g, '').replace('₹', '').replace(/\s/g, '');
@@ -23,6 +17,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
       case 'available': return 'badge-available';
       case 'booked': return 'badge-booked';
       case 'sold': return 'badge-sold';
+      case 'rented': return 'badge-rented';
       default: return 'badge-secondary';
     }
   };
@@ -31,8 +26,9 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
     const status = (availability || '').toLowerCase();
     switch (status) {
       case 'available': return 'Available';
-      case 'booked': return 'Booked';
+      case 'booked': return '🔄 Under Process';
       case 'sold': return 'Sold';
+      case 'rented': return 'Rented';
       default: return availability || 'Unknown';
     }
   };
@@ -61,22 +57,54 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
             onError={(e) => {
               e.target.onerror = null;
               e.target.style.display = 'none';
-              e.target.parentNode.innerHTML = '<div class="property-image bg-light d-flex align-items-center justify-content-center" style="height: 250px"><span class="text-muted">Image Error</span></div>';
+              e.target.parentNode.innerHTML = '<div class="property-image bg-light d-flex align-items-center justify-content-center" style="height: 250px"><span>Image Error</span></div>';
             }}
           />
         ) : (
           <div className="property-image bg-light d-flex align-items-center justify-content-center" style={{ height: '250px' }}>
-            <span className="text-muted">No Image</span>
+            <span>No Image</span>
           </div>
         )}
         <span className={`availability-badge ${getAvailabilityClass(property.availability)}`}>
           {getAvailabilityText(property.availability)}
         </span>
+        {/* Verified Badge */}
+        {(property.is_verified || property.isVerified) && (
+          <span style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            background: 'linear-gradient(135deg, #10B981, #059669)',
+            color: 'white',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
+          }}>
+            <i className="bi bi-patch-check-fill"></i> Verified
+          </span>
+        )}
       </div>
 
       <div className="card-body d-flex flex-column">
         <h5 className="card-title">{property.name}</h5>
-        <p className="card-text text-muted small">{[property.locality, property.city].filter(Boolean).join(', ')}</p>
+        <p className="card-text small">
+          {[property.locality, property.city].filter(Boolean).join(', ')}
+          {/* Builder name with verified indicator */}
+          {property.builder_name && (
+            <span style={{ display: 'block', marginTop: '4px', color: '#64748B' }}>
+              <i className="bi bi-person-fill me-1"></i>
+              {property.builder_name}
+              {(property.is_verified || property.isVerified) && (
+                <i className="bi bi-patch-check-fill ms-1" style={{ color: '#10B981', fontSize: '0.8rem' }} title="Verified Builder"></i>
+              )}
+            </span>
+          )}
+        </p>
 
         <div className="mt-auto">
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -124,7 +152,9 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
                   background: 'transparent',
                   borderRadius: '6px',
                   fontWeight: '600',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  marginLeft: '10px',
+                  marginRight: '10px'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.background = '#F5F0E6';

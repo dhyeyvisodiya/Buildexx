@@ -74,6 +74,8 @@ export async function initializeDatabase() {
         is_verified BOOLEAN DEFAULT FALSE,
         panorama_image_path TEXT,
         panorama_images TEXT[],
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -86,19 +88,35 @@ export async function initializeDatabase() {
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE`;
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS panorama_image_path TEXT`;
       await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS panorama_images TEXT[]`;
+      await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION`;
+      await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION`;
+      await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS availability_status VARCHAR(20) DEFAULT 'AVAILABLE'`;
+      await sql`ALTER TABLE properties ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`;
+
+      // Force uppercase and clean up old constraints
+      try {
+        await sql`UPDATE properties SET availability_status = UPPER(COALESCE(availability_status, 'AVAILABLE'))`;
+        await sql`ALTER TABLE properties DROP CONSTRAINT IF EXISTS properties_availability_status_check`;
+        // No new constraint for now to avoid migration blocks, backend handles it
+      } catch (e) {
+        console.warn('Property status migration warning:', e.message);
+      }
 
       // Enquiries migrations
       await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE`;
-      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS enquiry_type VARCHAR(20) DEFAULT 'buy' CHECK (enquiry_type IN ('buy', 'rent'))`;
-      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS name VARCHAR(100)`; // Ensure 'name' exists to match apiService
+      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS enquiry_type VARCHAR(20) DEFAULT 'buy'`;
+      await sql`ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS name VARCHAR(100)`;
 
-      // Rent requests migrations
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS builder_id INTEGER REFERENCES users(id) ON DELETE CASCADE`;
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(100)`;
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS email VARCHAR(100)`;
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(15)`;
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS rent_amount VARCHAR(50)`;
-      await sql`ALTER TABLE rent_requests ADD COLUMN IF NOT EXISTS move_in_date DATE`;
+      // Fix enquiry_type constraint - wrap in try/catch to avoid noise
+      try {
+        await sql`ALTER TABLE enquiries DROP CONSTRAINT IF EXISTS enquiries_enquiry_type_check`;
+        await sql`ALTER TABLE enquiries ADD CONSTRAINT enquiries_enquiry_type_check CHECK (enquiry_type IN ('buy', 'rent', 'visit', 'contact'))`;
+      } catch (err) {
+        // Only log if it's not a "already exists" or "does not exist" error
+        if (!err.message.includes('already exists') && !err.message.includes('does not exist')) {
+          console.log('Enquiry constraint update: ', err.message);
+        }
+      }
 
       // Complaints migrations
       await sql`ALTER TABLE complaints ADD COLUMN IF NOT EXISTS issue TEXT`;

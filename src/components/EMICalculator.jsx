@@ -59,14 +59,14 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
 
     const content = (
         <div style={{
-            background: '#FFFFFF',
+            background: inline ? 'transparent' : '#0F172A',
             borderRadius: inline ? '12px' : '24px',
             maxWidth: inline ? '100%' : '600px',
             width: '100%',
             maxHeight: inline ? 'none' : '90vh',
             overflow: inline ? 'visible' : 'auto',
             boxShadow: inline ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            border: inline ? '1px solid #E2E8F0' : 'none'
+            border: inline ? 'none' : '1px solid #334155'
         }}>
             {/* Header */}
             <div style={{
@@ -132,7 +132,7 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
                             width: '100%',
                             height: '8px',
                             borderRadius: '4px',
-                            background: `linear-gradient(to right, #C8A24A 0%, #C8A24A ${(principal - 500000) / (100000000 - 500000) * 100}%, #E2E8F0 ${(principal - 500000) / (100000000 - 500000) * 100}%, #E2E8F0 100%)`,
+                            background: `linear-gradient(to right, #C8A24A 0%, #C8A24A ${(principal - 500000) / (100000000 - 500000) * 100}%, #334155 ${(principal - 500000) / (100000000 - 500000) * 100}%, #334155 100%)`,
                             appearance: 'none',
                             cursor: 'pointer'
                         }}
@@ -169,7 +169,7 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
                             width: '100%',
                             height: '8px',
                             borderRadius: '4px',
-                            background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(interestRate - 5) / 10 * 100}%, #E2E8F0 ${(interestRate - 5) / 10 * 100}%, #E2E8F0 100%)`,
+                            background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(interestRate - 5) / 10 * 100}%, #334155 ${(interestRate - 5) / 10 * 100}%, #334155 100%)`,
                             appearance: 'none',
                             cursor: 'pointer'
                         }}
@@ -206,7 +206,7 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
                             width: '100%',
                             height: '8px',
                             borderRadius: '4px',
-                            background: `linear-gradient(to right, #10B981 0%, #10B981 ${(tenure - 1) / 29 * 100}%, #E2E8F0 ${(tenure - 1) / 29 * 100}%, #E2E8F0 100%)`,
+                            background: `linear-gradient(to right, #10B981 0%, #10B981 ${(tenure - 1) / 29 * 100}%, #334155 ${(tenure - 1) / 29 * 100}%, #334155 100%)`,
                             appearance: 'none',
                             cursor: 'pointer'
                         }}
@@ -243,26 +243,26 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
                 <div className="row g-3 mb-4">
                     <div className="col-6">
                         <div style={{
-                            background: '#F8FAFC',
+                            background: '#1E293B',
                             borderRadius: '12px',
                             padding: '16px',
                             textAlign: 'center',
-                            border: '1px solid #E2E8F0'
+                            border: '1px solid #334155'
                         }}>
-                            <p style={{ color: '#64748B', margin: '0 0 4px 0', fontSize: '0.85rem' }}>Total Interest</p>
+                            <p style={{ color: '#94A3B8', margin: '0 0 4px 0', fontSize: '0.85rem' }}>Total Interest</p>
                             <h5 style={{ color: '#EF4444', margin: 0, fontWeight: '700' }}>{formatCurrency(totalInterest)}</h5>
                         </div>
                     </div>
                     <div className="col-6">
                         <div style={{
-                            background: '#F8FAFC',
+                            background: '#1E293B',
                             borderRadius: '12px',
                             padding: '16px',
                             textAlign: 'center',
-                            border: '1px solid #E2E8F0'
+                            border: '1px solid #334155'
                         }}>
-                            <p style={{ color: '#64748B', margin: '0 0 4px 0', fontSize: '0.85rem' }}>Total Payment</p>
-                            <h5 style={{ color: '#0F172A', margin: 0, fontWeight: '700' }}>{formatCurrency(totalPayment)}</h5>
+                            <p style={{ color: '#94A3B8', margin: '0 0 4px 0', fontSize: '0.85rem' }}>Total Payment</p>
+                            <h5 style={{ color: '#F8FAFC', margin: 0, fontWeight: '700' }}>{formatCurrency(totalPayment)}</h5>
                         </div>
                     </div>
                 </div>
@@ -301,12 +301,12 @@ const EMICalculator = ({ propertyPrice, onClose, inline = false }) => {
 
                 {/* Disclaimer */}
                 <p style={{
-                    color: '#94A3B8',
+                    color: '#F8FAFC',
                     fontSize: '0.75rem',
                     textAlign: 'center',
                     margin: 0,
                     padding: '12px',
-                    background: '#F8FAFC',
+                    background: '#334155',
                     borderRadius: '8px'
                 }}>
                     <i className="bi bi-info-circle me-1"></i>

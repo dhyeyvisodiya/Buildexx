@@ -146,7 +146,7 @@ public class Property {
     }
 
     public enum AvailabilityStatus {
-        AVAILABLE, BOOKED, SOLD
+        AVAILABLE, BOOKED, SOLD, RENTED
     }
 
     // Getters and Setters handled by @Data annotation

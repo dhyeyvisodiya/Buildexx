@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import EMICalculator from '../components/EMICalculator';
+import FinancialCalculators from '../components/FinancialCalculators';
 import PropertyMap from '../components/PropertyMap';
+import NearbyPlaces from '../components/NearbyPlaces';
 import PanoramaViewer from '../components/PanoramaViewer';
 import PaymentButton from '../components/PaymentButton';
-import { createEnquiry, createRentRequest, createComplaint, getPropertyById } from '../../api/apiService';
+import ReportListing from '../components/ReportListing';
+import { createEnquiry, createRentRequest, createComplaint, getPropertyById, reportProperty } from '../../api/apiService';
 import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,14 +25,41 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showReportModal, setShowReportModal] = useState(false);
+
+  // Caching refs to prevent repeated API calls
+  const loadedPropertyIdRef = useRef(null);
+  const cachedPropertyRef = useRef(null);
+
+  // Handle report submission
+  const handleReportSubmit = async (reportData) => {
+    try {
+      await reportProperty(reportData);
+      return true;
+    } catch (error) {
+      console.error('Error reporting property:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const fetchProperty = async () => {
+      // Skip fetch if same property already loaded
+      if (loadedPropertyIdRef.current === id && cachedPropertyRef.current) {
+        console.log('[PropertyDetail] Using cached property data for ID:', id);
+        setProperty(cachedPropertyRef.current);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       if (id) {
         const result = await getPropertyById(id);
         if (result.success) {
           setProperty(result.data);
+          // Cache the data
+          cachedPropertyRef.current = result.data;
+          loadedPropertyIdRef.current = id;
         }
       }
       setIsLoading(false);
@@ -45,6 +74,10 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
     if (isNaN(num)) return value;
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
   };
+
+  // Helper: Normalize purpose check (case-insensitive)
+  const isBuyProperty = property && (property.purpose || '').toString().toLowerCase().trim() === 'buy';
+  const isRentProperty = property && (property.purpose || '').toString().toLowerCase().trim() === 'rent';
 
   // Helper to convert Google Maps URL to embed URL
   const getEmbedMapUrl = (url) => {
@@ -208,7 +241,8 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
         propertyId: property.id,
         ...visitForm,
         message: visitMessage,
-        userId: currentUser ? currentUser.id : null
+        userId: currentUser ? currentUser.id : null,
+        enquiryType: 'visit'
       });
 
       if (result.success) {
@@ -265,7 +299,11 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
         userId: currentUser?.id,
         builderId: property.builder_id,
         moveInDate: rentForm.moveInDate,
-        message: rentForm.message
+        message: rentForm.message,
+        rentAmount: property.rent_amount || property.price || '0',
+        applicantName: rentForm.fullName,
+        email: rentForm.email,
+        phone: rentForm.phone
       });
       // Also create an enquiry record for message tracking if needed, or just rely on rent request
       // Ideally rent request table should have message column or link to enquiry. 
@@ -379,11 +417,11 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
   const getAvailabilityClass = (availability) => {
     const status = (availability || '').toLowerCase();
     switch (status) {
-      case 'available': return 'badge-available';
-      case 'booked': return 'badge-booked';
-      case 'sold': return 'badge-sold';
-      case 'rented': return 'badge-rented';
-      default: return 'badge-secondary';
+      case 'available': return 'bg-success';
+      case 'booked': return 'bg-warning text-dark';
+      case 'sold': return 'bg-danger';
+      case 'rented': return 'bg-info text-dark';
+      default: return 'bg-secondary';
     }
   };
 
@@ -438,8 +476,8 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           </div>
           <div className="col-md-4 text-md-end">
             <h2 style={{ color: '#C8A24A' }}>{property.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(property.rent || property.rent_amount)}/mo` : formatCurrency(property.price)}</h2>
-            <span className={`badge ${getAvailabilityClass(property.availability)} fs-6`}>
-              {getAvailabilityText(property.availability)}
+            <span className={`badge ${getAvailabilityClass(property.availability_status || property.availability)} fs-6`}>
+              {getAvailabilityText(property.availability_status || property.availability)}
             </span>
           </div>
         </div>
@@ -533,7 +571,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           </div>
 
           {/* Payment Button Section - Only show if available */}
-          {!['booked', 'sold', 'rented'].includes((property.availability || '').toLowerCase()) && (
+          {!['booked', 'sold', 'rented'].includes((property.availability_status || property.availability || '').toLowerCase()) && (
             <div className="mt-4 mb-3 p-4" style={{
               background: 'linear-gradient(135deg, rgba(200,162,74,0.1) 0%, rgba(200,162,74,0.05) 100%)',
               borderRadius: '16px',
@@ -558,7 +596,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                     // Instant update of availability status
                     setProperty(prev => ({
                       ...prev,
-                      availability: property.purpose === 'Rent' ? 'rented' : 'booked'
+                      availability_status: property.purpose === 'Rent' ? 'rented' : 'booked'
                     }));
                     // Also invalidate cache
                     import('../../api/apiService').then(module => {
@@ -747,6 +785,11 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
               )}
             </div>
 
+            {/* Nearby Places Section */}
+            <div className="nearby-section mb-5 animate__animated animate__fadeInUp animate__delay-3s">
+              <NearbyPlaces property={property} height="350px" />
+            </div>
+
             {/* 360° Virtual Tour Section - Using Pannellum */}
             <div className="view-section mb-5 animate__animated animate__fadeInUp animate__delay-4s">
               <h3>
@@ -792,7 +835,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                   <h4 className="card-title">Interested in this property?</h4>
                   <p className="card-text">Get in touch with our experts for more information.</p>
 
-                  {property.purpose === 'Buy' ? (
+                  {isBuyProperty ? (
                     <>
                       <button
                         className="btn btn-primary w-100 mb-2"
@@ -868,7 +911,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                               <input className="form-control mb-2" placeholder="Email" name="email" value={rentForm.email} onChange={handleRentChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                               <input className="form-control mb-2" placeholder="Phone" name="phone" value={rentForm.phone} onChange={handleRentChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                               <div className="mb-2">
-                                <small className="text-muted d-block mb-1">Move-in Date</small>
+                                <small className="d-block mb-1" style={{ color: '#D4A437' }}>Move-in Date</small>
                                 <input type="date" className="form-control" name="moveInDate" value={rentForm.moveInDate} onChange={handleRentChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                               </div>
                               <textarea className="form-control mb-2" placeholder="Message" name="message" value={rentForm.message} onChange={handleRentChange} required rows="3" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
@@ -913,7 +956,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                           <input className="form-control mb-2" placeholder="Email" name="email" value={visitForm.email} onChange={handleVisitChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                           <input className="form-control mb-2" placeholder="Phone" name="phone" value={visitForm.phone} onChange={handleVisitChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                           <div className="mb-2">
-                            <small className="text-muted d-block mb-1">Visit Date</small>
+                            <small className="d-block mb-1" style={{ color: '#D4A437' }}>Visit Date</small>
                             <input type="date" className="form-control" name="visitDate" value={visitForm.visitDate} onChange={handleVisitChange} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
                           </div>
                           <textarea className="form-control mb-2" placeholder="Message" name="message" value={visitForm.message} onChange={handleVisitChange} rows="3" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
@@ -923,32 +966,37 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                     )}
                   </AnimatePresence>
 
-                  {/* EMI Calculator Button */}
-                  {property.purpose === 'Buy' && (
-                    <button
-                      className="btn w-100 mt-2"
-                      onClick={() => toggleForm('emi')}
-                      style={{
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        padding: '12px',
-                        transition: 'all 0.3s ease',
-                        background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                        border: 'none',
-                        color: '#FFFFFF'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'translateY(-2px)';
-                        e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    >
-                      <i className="bi bi-calculator me-2"></i>{showEMICalculator ? 'Hide Calculator' : 'Calculate EMI'}
-                    </button>
-                  )}
+                  {/* Financial Tools Button - Context-aware for BUY/RENT */}
+                  <button
+                    className="btn w-100 mt-2"
+                    onClick={() => toggleForm('emi')}
+                    style={{
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      padding: '12px',
+                      transition: 'all 0.3s ease',
+                      background: isBuyProperty
+                        ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
+                        : 'linear-gradient(135deg, #8B5CF6, #6366F1)',
+                      border: 'none',
+                      color: '#FFFFFF'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = isBuyProperty
+                        ? '0 4px 12px rgba(59, 130, 246, 0.4)'
+                        : '0 4px 12px rgba(139, 92, 246, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    <i className="bi bi-calculator me-2"></i>
+                    {showEMICalculator
+                      ? 'Hide Calculator'
+                      : (isBuyProperty ? 'Buying Tools' : 'Rental Tools')}
+                  </button>
                   <AnimatePresence>
                     {showEMICalculator && (
                       <motion.div
@@ -957,8 +1005,14 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         exit={{ height: 0, opacity: 0 }}
                         style={{ overflow: 'hidden' }}
                       >
-                        <div className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--section-divider)', marginTop: '16px' }}>
-                          <EMICalculator propertyPrice={formatCurrency(property.price)} inline={true} />
+                        <div className="mt-3">
+                          <FinancialCalculators
+                            propertyPrice={property.price}
+                            monthlyRent={property.rent || property.rent_amount || (property.price ? property.price / 300 : 25000)}
+                            purpose={property.purpose?.toLowerCase() || 'buy'}
+                            propertyType={property.property_type}
+                            inline={true}
+                          />
                         </div>
                       </motion.div>
                     )}
@@ -1069,7 +1123,14 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
         </div>
       </div >
 
-
+      {/* Report Listing Modal - can be triggered from elsewhere if needed */}
+      <ReportListing
+        isOpen={showReportModal}
+        propertyId={property?.id}
+        propertyName={property?.name}
+        onSubmit={handleReportSubmit}
+        onClose={() => setShowReportModal(false)}
+      />
 
 
     </div >

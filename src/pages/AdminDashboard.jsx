@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import TabLoading from '../components/TabLoading';
 import {
   getAllBuilders,
   updateBuilderStatus,
@@ -7,7 +9,7 @@ import {
   updatePropertyStatus,
   deleteProperty,
   getAllComplaints,
-
+  updatePropertyAvailability,
   updateComplaintStatus,
   verifyProperty,
   getAdminPayments,
@@ -15,11 +17,33 @@ import {
   updateWithdrawalStatus
 } from '../../api/apiService';
 import { getApiUrl } from '../config';
+import '../DashboardStyles.css';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const handleAvailabilityChange = async (propertyId, newStatus) => {
+    try {
+      setUpdatingId(propertyId);
+      const result = await updatePropertyAvailability(propertyId, newStatus);
+
+      if (result.success) {
+        toast.success("Availability updated");
+        setProperties(prev => prev.map(p =>
+          p.id === propertyId ? { ...p, availability_status: newStatus } : p
+        ));
+      } else {
+        toast.error("Failed to update");
+      }
+    } catch (e) {
+      toast.error("Error updating");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   // State management from database
   const [builders, setBuilders] = useState([]);
@@ -265,24 +289,14 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <div className="mb-4">
-          <div className="d-flex gap-2 flex-wrap">
+          <div className="dashboard-tabs">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: activeTab === tab.id ? 'var(--construction-gold)' : 'var(--card-bg)',
-                  border: activeTab === tab.id ? 'none' : '1px solid var(--card-border)',
-                  color: activeTab === tab.id ? 'var(--off-white)' : 'var(--muted-text)',
-                  padding: '12px 20px',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
+                className={`dashboard-tab ${activeTab === tab.id ? 'active' : ''}`}
               >
-                <i className={`bi ${tab.icon} me-2`}></i>
+                <i className={`bi ${tab.icon}`}></i>
                 {tab.label}
               </button>
             ))}
@@ -291,11 +305,7 @@ const AdminDashboard = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-5">
-            <div className="spinner-border" style={{ color: '#7C3AED' }} role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
+          <TabLoading text={`Loading ${activeTab === 'overview' ? 'admin overview' : activeTab === 'builders' ? 'builders list' : activeTab === 'properties' ? 'properties' : activeTab === 'complaints' ? 'complaints' : activeTab === 'payments' ? 'payments' : 'withdrawals'}...`} />
         )}
 
         {/* Overview Tab */}
@@ -337,54 +347,13 @@ const AdminDashboard = () => {
                 </div>
               </div>
             ))}
-
-            {/* Platform Health */}
-            <div className="col-12">
-              <div style={{
-                background: 'var(--card-bg)',
-                borderRadius: '16px',
-                padding: '24px',
-                border: 'none'
-              }}>
-                <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>Platform Health</h5>
-                <div className="row g-4">
-                  <div className="col-md-4">
-                    <div style={{ padding: '20px', background: '#F0FDF4', borderRadius: '12px' }}>
-                      <div className="d-flex align-items-center gap-2 mb-2">
-                        <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
-                        <span style={{ fontWeight: '600', color: '#0F172A' }}>Database</span>
-                      </div>
-                      <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>Connected to NeonDB</p>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div style={{ padding: '20px', background: '#F0FDF4', borderRadius: '12px' }}>
-                      <div className="d-flex align-items-center gap-2 mb-2">
-                        <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
-                        <span style={{ fontWeight: '600', color: '#0F172A' }}>API Status</span>
-                      </div>
-                      <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>All Systems Normal</p>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div style={{ padding: '20px', background: '#F0FDF4', borderRadius: '12px' }}>
-                      <div className="d-flex align-items-center gap-2 mb-2">
-                        <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
-                        <span style={{ fontWeight: '600', color: '#0F172A' }}>Auth Service</span>
-                      </div>
-                      <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>Running Smoothly</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
         {/* Builders Tab */}
         {!loading && activeTab === 'builders' && (
           <div style={{
-            background: '#0F1E33',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
             border: '1px solid #E2E8F0'
@@ -534,6 +503,7 @@ const AdminDashboard = () => {
                       <th style={{ color: '#0F172A', fontWeight: '600' }}>Type</th>
                       <th style={{ color: '#0F172A', fontWeight: '600' }}>City</th>
                       <th style={{ color: '#0F172A', fontWeight: '600' }}>Legal Doc</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Availability</th>
                       <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
                       <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
                     </tr>
@@ -558,6 +528,20 @@ const AdminDashboard = () => {
                           ) : (
                             <span className="text-muted small">Not Uploaded</span>
                           )}
+                        </td>
+                        <td>
+                          <select
+                            className="form-select form-select-sm"
+                            style={{ width: '120px', cursor: 'pointer' }}
+                            value={(property.availability_status || 'available').toLowerCase()}
+                            onChange={(e) => handleAvailabilityChange(property.id, e.target.value)}
+                            disabled={updatingId === property.id}
+                          >
+                            <option value="available">Available</option>
+                            <option value="booked">Booked</option>
+                            <option value="sold">Sold</option>
+                            <option value="rented">Rented</option>
+                          </select>
                         </td>
                         <td>
                           <div className="d-flex align-items-center gap-2">

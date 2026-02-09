@@ -41,10 +41,20 @@ const PropertyMap = ({
     const markersRef = useRef([]);
 
     // Filter properties with valid coordinates
-    const validProperties = properties.filter(p => p.latitude && p.longitude);
+    const validProperties = properties.filter(p =>
+        (p.latitude !== null && p.latitude !== undefined && !isNaN(p.latitude)) &&
+        (p.longitude !== null && p.longitude !== undefined && !isNaN(p.longitude))
+    );
+
+    console.log('[PropertyMap] Total props:', properties.length, 'Valid for map:', validProperties.length);
+    if (properties.length > 0 && validProperties.length === 0) {
+        console.warn('[PropertyMap] Properties present but none have valid coordinates:',
+            properties.map(p => ({ id: p.id, lat: p.latitude, lng: p.longitude })));
+    }
 
     // Calculate center
-    const mapCenter = center.lat && center.lng
+    const isDefaultCenter = center.lat === 19.0760 && center.lng === 72.8777;
+    const mapCenter = !isDefaultCenter && center.lat && center.lng
         ? [center.lat, center.lng]
         : validProperties.length > 0
             ? [validProperties[0].latitude, validProperties[0].longitude]
@@ -133,12 +143,15 @@ const PropertyMap = ({
             markersRef.current.push(marker);
         });
 
-        // Fit bounds if multiple properties
+        // Fit bounds to show markers
         if (validProperties.length > 1) {
             const bounds = L.latLngBounds(validProperties.map(p => [p.latitude, p.longitude]));
-            mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+            mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        } else if (validProperties.length === 1 && isDefaultCenter) {
+            // If only one property and we are on default center, pan to it
+            mapInstanceRef.current.setView([validProperties[0].latitude, validProperties[0].longitude], 14);
         }
-    }, [validProperties, showSingleProperty, onMarkerClick]);
+    }, [validProperties, showSingleProperty, onMarkerClick, isDefaultCenter]);
 
     return (
         <>

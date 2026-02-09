@@ -30,4 +30,6 @@ public class PropertySummaryDTO {
     private Integer areaSqft;
     private String builderName; // Useful for display
     private Boolean isVerified; // Useful for badges
+    private Double latitude;
+    private Double longitude;
 }

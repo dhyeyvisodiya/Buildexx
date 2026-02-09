@@ -168,7 +168,7 @@ const Footer = () => {
               </li>
               <li className="mb-3 d-flex align-items-center">
                 <i className="bi bi-envelope-fill me-2" style={{ color: 'var(--construction-gold)', fontSize: '1.1rem' }}></i>
-                <span style={{ color: 'white', fontSize: '0.9rem' }}>info@buildex.com</span>
+                <span style={{ color: 'white', fontSize: '0.9rem' }}>info@buildexx.app</span>
               </li>
               <li className="mb-3 d-flex align-items-center">
                 <i className="bi bi-clock-fill me-2" style={{ color: 'var(--construction-gold)', fontSize: '1.1rem' }}></i>

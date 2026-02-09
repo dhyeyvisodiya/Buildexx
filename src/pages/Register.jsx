@@ -25,6 +25,7 @@ const Register = () => {
     else if (user.role === 'builder') navigate('/builder-dashboard');
     else navigate('/user-dashboard');
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
@@ -474,6 +475,7 @@ const Register = () => {
                   )}
                 </button>
               </form>
+
 
               {/* Divider */}
               <div className="d-flex align-items-center my-4">

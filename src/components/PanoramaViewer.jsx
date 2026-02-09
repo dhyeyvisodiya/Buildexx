@@ -98,6 +98,12 @@ const PanoramaViewer = ({
             }
         };
 
+        // Skip if already initialized with same URL (prevents duplicate init)
+        if (viewerRef.current && viewerRef.current._panoramaUrl === processedUrl) {
+            console.log('[PanoramaViewer] Already initialized with this URL, skipping');
+            return;
+        }
+
         cleanupViewer();
 
         // Initialize after a short delay to ensure DOM is ready
@@ -135,6 +141,9 @@ const PanoramaViewer = ({
                         author: 'BuildEx',
                         hotSpotDebug: false
                     });
+
+                    // Store URL reference to prevent duplicate initialization
+                    viewerRef.current._panoramaUrl = processedUrl;
 
                     // Force check loading state
                     setTimeout(() => setLoading(false), 1000);
@@ -231,7 +240,7 @@ const PanoramaViewer = ({
                 <div className="d-flex align-items-center">
                     <i className="bi bi-badge-vr me-2" style={{ color: '#C8A24A', fontSize: '1.5rem' }}></i>
                     <span style={{ color: '#F8FAFC', fontWeight: '600' }}>
-                        {title} {hasMultipleImages && <span className="text-muted ms-2" style={{ fontSize: '0.9em' }}>({currentIndex + 1}/{imageUrls.length})</span>}
+                        {title} {hasMultipleImages && <span className="ms-2" style={{ fontSize: '0.9em' }}>({currentIndex + 1}/{imageUrls.length})</span>}
                     </span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#64748B' }}>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import MapLocationPicker from '../components/MapLocationPicker';
+import TabLoading from '../components/TabLoading';
 import {
   getPropertiesByBuilder,
   createProperty,
@@ -12,6 +14,7 @@ import {
   getRentRequestsByBuilder,
 
   updateRentRequestStatus,
+  updatePropertyAvailability,
   uploadLegalDocument,
   uploadPanoramaImages,
   getBuilderPayments,
@@ -19,6 +22,7 @@ import {
   getBuilderWithdrawals
 } from '../../api/apiService';
 import { getApiUrl } from '../config';
+import '../DashboardStyles.css';
 
 const BuilderDashboard = () => {
   const { currentUser } = useAuth();
@@ -26,6 +30,47 @@ const BuilderDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const getAllowedStatuses = (currentStatus, purpose) => {
+    const p = (purpose || '').toLowerCase();
+    const current = (currentStatus || 'available').toLowerCase();
+
+    if (p === 'rent') {
+      return ['available', 'booked', 'rented'];
+    }
+    // Buy
+    if (current === 'sold') return ['sold'];
+    return ['available', 'booked', 'sold'];
+  };
+
+  const handleAvailabilityChange = async (propertyId, newStatus, currentStatus, purpose) => {
+    if (newStatus === currentStatus) return;
+
+    if ((currentStatus || '').toLowerCase() === 'sold' && newStatus === 'available') {
+      toast.error("Cannot revert 'Sold' status. Contact Admin.");
+      return;
+    }
+
+    try {
+      setUpdatingId(propertyId);
+      const result = await updatePropertyAvailability(propertyId, newStatus);
+
+      if (result.success) {
+        toast.success("Status updated successfully");
+        setProperties(prev => prev.map(p =>
+          p.id === propertyId ? { ...p, availability_status: newStatus } : p
+        ));
+      } else {
+        toast.error(result.error || "Failed to update status");
+      }
+    } catch (e) {
+      toast.error("An error occurred");
+      console.error(e);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   // Form state for adding/editing property
   const [propertyForm, setPropertyForm] = useState({
@@ -164,6 +209,27 @@ const BuilderDashboard = () => {
     }).catch(err => console.error('Image upload failed', err));
   };
 
+  const validatePanoramaDimensions = (file) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        // Check for 2:1 aspect ratio with 5% tolerance
+        const ratio = img.width / img.height;
+        const isValid = Math.abs(ratio - 2) < 0.1; // Allow 1.9 - 2.1
+        if (!isValid) {
+          alert(`Skipped ${file.name}: Image dimensions ${img.width}x${img.height} do not match 2: 1 aspect ratio required for 360° view.`);
+        }
+        resolve(isValid ? file : null);
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => {
+        alert(`Failed to load image: ${file.name} `);
+        resolve(null);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleSubmitProperty = async (e) => {
     e.preventDefault();
 
@@ -178,7 +244,7 @@ const BuilderDashboard = () => {
       // Auto-scroll to the missing field
       // We need to wait a tick for the error message to render (optional) or just scroll immediately
       // Assuming inputs have 'name' attribute matching the field name
-      const element = document.querySelector(`[name="${missingField}"]`);
+      const element = document.querySelector(`[name = "${missingField}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         element.focus();
@@ -432,24 +498,14 @@ const BuilderDashboard = () => {
 
         {/* Tabs */}
         <div className="mb-4">
-          <div className="d-flex gap-2 flex-wrap">
+          <div className="dashboard-tabs">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: activeTab === tab.id ? 'var(--construction-gold)' : 'var(--card-bg)',
-                  border: activeTab === tab.id ? 'none' : '1px solid #E2E8F0',
-                  color: activeTab === tab.id ? '#0F172A' : '#64748B',
-                  padding: '12px 20px',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
+                className={`dashboard - tab ${activeTab === tab.id ? 'active' : ''} `}
               >
-                <i className={`bi ${tab.icon} me-2`}></i>
+                <i className={`bi ${tab.icon} `}></i>
                 {tab.label}
               </button>
             ))}
@@ -458,11 +514,7 @@ const BuilderDashboard = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-5">
-            <div className="spinner-border" style={{ color: '#C8A24A' }} role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
+          <TabLoading text={`Loading ${activeTab === 'overview' ? 'dashboard overview' : activeTab === 'add-property' ? 'property form' : activeTab === 'my-properties' ? 'your properties' : activeTab === 'enquiries' ? 'enquiries' : activeTab === 'rent-requests' ? 'rent requests' : activeTab === 'payments' ? 'payments' : 'withdrawals'}...`} />
         )}
 
         {/* Overview Tab */}
@@ -497,7 +549,7 @@ const BuilderDashboard = () => {
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      <i className={`bi ${stat.icon} fs-4`} style={{ color: stat.color }}></i>
+                      <i className={`bi ${stat.icon} fs - 4`} style={{ color: stat.color }}></i>
                     </div>
                     <div>
                       <h3 className="fw-bold mb-0" style={{ color: 'var(--primary-text)', fontSize: '1.5rem' }}>{stat.value}</h3>
@@ -562,7 +614,7 @@ const BuilderDashboard = () => {
           }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
-                <i className={`bi ${editMode ? 'bi-pencil' : 'bi-plus-circle'} me-2`} style={{ color: 'var(--construction-gold)' }}></i>
+                <i className={`bi ${editMode ? 'bi-pencil' : 'bi-plus-circle'} me - 2`} style={{ color: 'var(--construction-gold)' }}></i>
                 {editMode ? 'Edit Property' : 'Add New Property'}
               </h5>
               {editMode && (
@@ -578,7 +630,7 @@ const BuilderDashboard = () => {
             </div>
 
             {formMessage.text && (
-              <div className={`alert ${formMessage.type === 'success' ? 'alert-success' : 'alert-danger'} mb-4`} style={{ borderRadius: '12px' }}>
+              <div className={`alert ${formMessage.type === 'success' ? 'alert-success' : 'alert-danger'} mb - 4`} style={{ borderRadius: '12px' }}>
                 {formMessage.text}
               </div>
             )}
@@ -646,8 +698,24 @@ const BuilderDashboard = () => {
                         >
                           <option value="" style={{ color: 'black' }}>Select Purpose</option>
                           <option value="Buy" style={{ color: 'black' }}>For Sale</option>
-                          <option value="Rent" style={{ color: 'black' }}>For Rent</option>
+                          {/* Disable Rent for Land types */}
+                          {!['Plot', 'Agricultural Land'].includes(propertyForm.type) && (
+                            <option value="Rent" style={{ color: 'black' }}>For Rent</option>
+                          )}
                         </select>
+                        {/* Warning hint for uncommon combinations */}
+                        {propertyForm.type === 'Guest House' && propertyForm.purpose === 'Buy' && (
+                          <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
+                            <i className="bi bi-info-circle me-1"></i>
+                            Guest houses are typically listed for rent
+                          </small>
+                        )}
+                        {propertyForm.type === 'Industrial' && propertyForm.purpose === 'Rent' && (
+                          <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
+                            <i className="bi bi-info-circle me-1"></i>
+                            Industrial properties are usually sold or leased
+                          </small>
+                        )}
                       </div>
 
                       {/* Price/Rent */}
@@ -801,9 +869,20 @@ const BuilderDashboard = () => {
                           style={inputStyle}
                         >
                           <option value="available" style={{ color: 'black' }}>Available</option>
-                          <option value="sold" style={{ color: 'black' }}>Sold Out</option>
                           <option value="booked" style={{ color: 'black' }}>Booked</option>
+                          {/* Show Rented for Rent purpose, Sold for Buy purpose */}
+                          {propertyForm.purpose === 'Rent' ? (
+                            <option value="rented" style={{ color: 'black' }}>Rented</option>
+                          ) : (
+                            <option value="sold" style={{ color: 'black' }}>Sold</option>
+                          )}
                         </select>
+                        <small style={{ color: '#64748B', display: 'block', marginTop: '4px' }}>
+                          {propertyForm.purpose === 'Rent'
+                            ? 'Available → Booked → Rented'
+                            : 'Available → Booked → Sold'
+                          }
+                        </small>
                       </div>
 
                       {/* Brochure Upload */}
@@ -940,14 +1019,28 @@ const BuilderDashboard = () => {
                                 const files = Array.from(e.target.files);
                                 if (files.length > 0) {
                                   setLoading(true);
-                                  const result = await uploadPanoramaImages(files);
+
+                                  // Validate Dimensions
+                                  const validFiles = [];
+                                  for (const file of files) {
+                                    const validFile = await validatePanoramaDimensions(file);
+                                    if (validFile) validFiles.push(validFile);
+                                  }
+
+                                  if (validFiles.length === 0) {
+                                    setLoading(false);
+                                    e.target.value = null; // Reset input
+                                    return;
+                                  }
+
+                                  const result = await uploadPanoramaImages(validFiles);
                                   setLoading(false);
                                   if (result.success) {
                                     setPropertyForm(prev => ({
                                       ...prev,
                                       panoramaImages: [...(prev.panoramaImages || []), ...result.data]
                                     }));
-                                    alert(`${files.length} panorama image(s) uploaded successfully!`);
+                                    alert(`${validFiles.length} panorama image(s) uploaded successfully!`);
                                   } else {
                                     alert('Failed to upload panorama images');
                                   }
@@ -966,7 +1059,13 @@ const BuilderDashboard = () => {
                             >
                               <i className="bi bi-cloud-upload me-2"></i> Upload 360° Images
                             </button>
+                          </div>
+                          <div className="d-flex flex-column">
                             <small className="text-muted">Upload multiple images to create a walkthrough.</small>
+                            <small style={{ color: '#F8FAFC', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', marginTop: '4px', width: 'fit-content' }}>
+                              <i className="bi bi-info-circle me-1" style={{ color: '#3B82F6' }}></i>
+                              Note: Please upload 360° images with <strong>2:1 aspect ratio</strong> (e.g. 6000x3000 or 4000x2000).
+                            </small>
                           </div>
 
                           {/* Panorama Preview Grid */}
@@ -980,7 +1079,7 @@ const BuilderDashboard = () => {
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #334155' }}
                                     onError={(e) => { e.target.src = 'https://via.placeholder.com/100x60?text=Error'; }}
                                   />
-                                  <button
+                                  < button
                                     type="button"
                                     className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center"
                                     style={{ width: '18px', height: '18px', borderRadius: '50%', transform: 'translate(30%, -30%)' }}
@@ -992,19 +1091,19 @@ const BuilderDashboard = () => {
                                     }}
                                   >
                                     <i className="bi bi-x" style={{ fontSize: '12px' }}></i>
-                                  </button>
+                                  </button >
                                   <div className="position-absolute bottom-0 start-0 bg-dark text-white px-1 rounded-1" style={{ fontSize: '10px', opacity: 0.8 }}>
                                     {index + 1}
                                   </div>
-                                </div>
+                                </div >
                               ))}
-                            </div>
+                            </div >
                           )}
-                        </div>
-                      </div>
+                        </div >
+                      </div >
 
                       {/* Property Location Section */}
-                      <div className="col-12">
+                      < div className="col-12" >
                         <div style={{
                           background: 'rgba(200,162,74,0.05)',
                           border: '1px solid rgba(200,162,74,0.2)',
@@ -1037,10 +1136,10 @@ const BuilderDashboard = () => {
                             height="300px"
                           />
                         </div>
-                      </div>
+                      </div >
 
                       {/* Description */}
-                      <div className="col-12">
+                      < div className="col-12" >
                         <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Description</label>
                         <textarea
                           name="description"
@@ -1051,10 +1150,10 @@ const BuilderDashboard = () => {
                           placeholder="Describe the property features, location advantages, nearby facilities..."
                           style={inputStyle}
                         />
-                      </div>
+                      </div >
 
                       {/* Amenities */}
-                      <div className="col-12">
+                      < div className="col-12" >
                         <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Amenities</label>
                         <input
                           type="text"
@@ -1065,10 +1164,10 @@ const BuilderDashboard = () => {
                           placeholder="Enter amenities separated by commas (e.g., Pool, Gym, Parking, Garden)"
                           style={inputStyle}
                         />
-                      </div>
+                      </div >
 
                       {/* Images */}
-                      <div className="col-12">
+                      < div className="col-12" >
                         <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Images</label>
                         <div className="mb-3">
                           <input
@@ -1085,11 +1184,11 @@ const BuilderDashboard = () => {
                           readOnly
                           value={Array.isArray(propertyForm.images) ? `${propertyForm.images.length} images selected` : ''}
                         />
-                      </div>
-                    </motion.div>
+                      </div >
+                    </motion.div >
                   )}
-                </AnimatePresence>
-              </div>
+                </AnimatePresence >
+              </div >
 
               <div className="mt-4 pt-3 d-flex gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <button
@@ -1129,7 +1228,7 @@ const BuilderDashboard = () => {
                   </button>
                 )}
               </div>
-            </form>
+            </form >
           </div >
         )
         }
@@ -1205,7 +1304,8 @@ const BuilderDashboard = () => {
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Type</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Price</th>
-                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Availability</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Approval Status</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
                       </tr>
                     </thead>
@@ -1215,6 +1315,20 @@ const BuilderDashboard = () => {
                           <td style={{ color: '#0F172A', fontWeight: '500' }}>{property.name}</td>
                           <td style={{ color: '#64748B' }}>{property.type}</td>
                           <td style={{ color: '#C8A24A', fontWeight: '600' }}>{property.price || property.rent}</td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              style={{ width: '120px', fontSize: '0.85rem', borderColor: '#E2E8F0', cursor: 'pointer' }}
+                              value={(property.availability_status || 'available').toLowerCase()}
+                              onChange={(e) => handleAvailabilityChange(property.id, e.target.value, property.availability_status, property.purpose)}
+                              disabled={updatingId === property.id || ((property.availability_status || '').toLowerCase() === 'sold' && (property.purpose || '').toLowerCase() === 'buy')}
+                            >
+                              {getAllowedStatuses(property.availability_status, property.purpose).map(s => (
+                                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                              ))}
+                            </select>
+                            {updatingId === property.id && <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Updating...</small>}
+                          </td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1442,122 +1556,126 @@ const BuilderDashboard = () => {
         }
 
         {/* Withdrawals Tab */}
-        {!loading && activeTab === 'received-payments' && (
-          <div style={{
-            background: '#0F1E33',
-            borderRadius: '16px',
-            padding: '24px',
-            border: '1px solid #E2E8F0'
-          }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#C8A24A' }}>
-              <i className="bi bi-wallet2 me-2"></i>
-              Withdrawals & Earnings
-            </h5>
+        {
+          !loading && activeTab === 'received-payments' && (
+            <div style={{
+              background: '#0F1E33',
+              borderRadius: '16px',
+              padding: '24px',
+              border: '1px solid #E2E8F0'
+            }}>
+              <h5 className="fw-bold mb-4" style={{ color: '#C8A24A' }}>
+                <i className="bi bi-wallet2 me-2"></i>
+                Withdrawals & Earnings
+              </h5>
 
-            {/* Balance Section */}
-            <div className="row mb-4">
-              <div className="col-md-4">
-                <div className="p-3 rounded" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10B981' }}>
-                  <label className="d-block text-muted small">Total Earnings</label>
-                  <h3 style={{ color: '#10B981' }}>₹{balance.totalEarned}</h3>
+              {/* Balance Section */}
+              <div className="row mb-4">
+                <div className="col-md-4">
+                  <div className="p-3 rounded" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10B981' }}>
+                    <label className="d-block style={{ color: '#D4A437' }} small">Total Earnings</label>
+                    <h3 style={{ color: '#10B981' }}>₹{balance.totalEarned}</h3>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-4">
-                <div className="p-3 rounded" style={{ background: 'rgba(200, 162, 74, 0.1)', border: '1px solid #C8A24A' }}>
-                  <label className="d-block text-muted small">Available Balance</label>
-                  <h3 style={{ color: '#C8A24A' }}>₹{balance.currentBalance}</h3>
+                <div className="col-md-4">
+                  <div className="p-3 rounded" style={{ background: 'rgba(200, 162, 74, 0.1)', border: '1px solid #C8A24A' }}>
+                    <label className="d-block small">Available Balance</label>
+                    <h3 style={{ color: '#C8A24A' }}>₹{balance.currentBalance}</h3>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-4">
-                <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #475569' }}>
-                  <label className="d-block text-muted small mb-2">Request Withdrawal</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-transparent text-white border-secondary">₹</span>
-                    <input
-                      type="number"
-                      className="form-control bg-transparent text-white border-secondary"
-                      placeholder="Amount"
-                      value={withdrawalAmount}
-                      onChange={(e) => setWithdrawalAmount(e.target.value)}
-                    />
-                    <button className="btn btn-warning" onClick={handleWithdrawalRequest}>Request</button>
+                <div className="col-md-4">
+                  <div className="p-3 rounded" style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #475569' }}>
+                    <label className="d-block small mb-2">Request Withdrawal</label>
+                    <div className="input-group">
+                      <span className="input-group-text bg-transparent text-white border-secondary">₹</span>
+                      <input
+                        type="number"
+                        className="form-control bg-transparent text-white border-secondary"
+                        placeholder="Amount"
+                        value={withdrawalAmount}
+                        onChange={(e) => setWithdrawalAmount(e.target.value)}
+                      />
+                      <button className="btn btn-warning" onClick={handleWithdrawalRequest}>Request</button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <h6 className="text-white mb-3">Withdrawal History</h6>
-            {withdrawals.length === 0 ? (
-              <p className="text-muted">No withdrawal history.</p>
-            ) : (
+              <h6 className="text-white mb-3">Withdrawal History</h6>
+              {withdrawals.length === 0 ? (
+                <p className="text-muted">No withdrawal history.</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-dark table-hover" style={{ background: 'transparent' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ color: '#94A3B8' }}>Date</th>
+                        <th style={{ color: '#94A3B8' }}>Requested</th>
+                        <th style={{ color: '#94A3B8' }}>Commission</th>
+                        <th style={{ color: '#94A3B8' }}>Payout</th>
+                        <th style={{ color: '#94A3B8' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {withdrawals.map(w => (
+                        <tr key={w.id}>
+                          <td>{formatDate(w.created_at)}</td>
+                          <td className="fw-bold">₹{w.amount}</td>
+                          <td className="text-danger">{w.status === 'approved' ? `₹${w.commission_amount}` : '-'}</td>
+                          <td className="text-success">{w.status === 'approved' ? `₹${w.payout_amount}` : '-'}</td>
+                          <td>
+                            <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
+                              {w.status.toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        {/* Transactions Tab */}
+        {
+          !loading && activeTab === 'transactions' && (
+            <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+              <h5 className="fw-bold mb-4" style={{ color: '#F8FAFC' }}>
+                <i className="bi bi-clock-history me-2" style={{ color: '#3B82F6' }}></i>
+                Transaction History (Received Payments) ({payments.length})
+              </h5>
               <div className="table-responsive">
-                <table className="table table-dark table-hover" style={{ background: 'transparent' }}>
+                <table className="table table-hover table-dark" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
                       <th style={{ color: '#94A3B8' }}>Date</th>
-                      <th style={{ color: '#94A3B8' }}>Requested</th>
-                      <th style={{ color: '#94A3B8' }}>Commission</th>
-                      <th style={{ color: '#94A3B8' }}>Payout</th>
-                      <th style={{ color: '#94A3B8' }}>Status</th>
+                      <th style={{ color: '#94A3B8' }}>Property</th>
+                      <th style={{ color: '#94A3B8' }}>Customer (User)</th>
+                      <th style={{ color: '#94A3B8' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {withdrawals.map(w => (
-                      <tr key={w.id}>
-                        <td>{formatDate(w.created_at)}</td>
-                        <td className="fw-bold">₹{w.amount}</td>
-                        <td className="text-danger">{w.status === 'approved' ? `₹${w.commission_amount}` : '-'}</td>
-                        <td className="text-success">{w.status === 'approved' ? `₹${w.payout_amount}` : '-'}</td>
+                    {payments.map(p => (
+                      <tr key={p.id}>
+                        <td>{formatDate(p.created_at)}</td>
                         <td>
-                          <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
-                            {w.status.toUpperCase()}
-                          </span>
+                          <div className="fw-bold">{p.property_name || 'Deleted Property'}</div>
                         </td>
+                        <td>
+                          <div>{p.user_name || 'Unknown'}</div>
+                          <small className="text-muted">{p.user_email}</small>
+                        </td>
+                        <td className="text-success fw-bold">₹{p.amount}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Transactions Tab */}
-        {!loading && activeTab === 'transactions' && (
-          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#F8FAFC' }}>
-              <i className="bi bi-clock-history me-2" style={{ color: '#3B82F6' }}></i>
-              Transaction History (Received Payments) ({payments.length})
-            </h5>
-            <div className="table-responsive">
-              <table className="table table-hover table-dark" style={{ background: 'transparent' }}>
-                <thead>
-                  <tr>
-                    <th style={{ color: '#94A3B8' }}>Date</th>
-                    <th style={{ color: '#94A3B8' }}>Property</th>
-                    <th style={{ color: '#94A3B8' }}>Customer (User)</th>
-                    <th style={{ color: '#94A3B8' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map(p => (
-                    <tr key={p.id}>
-                      <td>{formatDate(p.created_at)}</td>
-                      <td>
-                        <div className="fw-bold">{p.property_name || 'Deleted Property'}</div>
-                      </td>
-                      <td>
-                        <div>{p.user_name || 'Unknown'}</div>
-                        <small className="text-muted">{p.user_email}</small>
-                      </td>
-                      <td className="text-success fw-bold">₹{p.amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
-          </div>
-        )}
+          )
+        }
       </div >
     </div >
   );

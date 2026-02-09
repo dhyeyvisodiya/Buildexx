@@ -4,8 +4,6 @@ import com.buildex.entity.User;
 import com.buildex.repository.UserRepository;
 import com.buildex.service.EmailService;
 import com.buildex.service.OtpService;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +22,7 @@ public class AuthController {
     private final EmailService emailService;
     private final OtpService otpService;
 
-    // Explicit constructor instead of @RequiredArgsConstructor
+    // Explicit constructor
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService,
             OtpService otpService) {
         this.userRepository = userRepository;

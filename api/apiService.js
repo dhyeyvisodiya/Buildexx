@@ -1,5 +1,6 @@
 import sql from './db.js';
 import { getApiUrl } from '../src/config';
+import { sendNewEnquiryEmail, sendRentRequestEmail, sendEmail, sendAdminComplaintEmail } from './emailService.js';
 
 // ============== LOCAL STORAGE CACHE ==============
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
@@ -111,7 +112,7 @@ const normalizeProperty = (p) => {
         // Other field normalizations
         name: p.name || p.title,
         locality: p.locality || p.area,
-        availability: p.availability || p.availabilityStatus,
+        availability: (p.availability || p.availabilityStatus || 'AVAILABLE').toUpperCase(),
         type: p.type || p.propertyType || p.property_type,
         possession: p.possession || p.possessionYear,
         construction_status: p.construction_status || p.constructionStatus,
@@ -120,7 +121,10 @@ const normalizeProperty = (p) => {
         virtual_tour_link: p.virtual_tour_link || p.virtualTourLink,
         builder_name: p.builder_name || p.builderName,
         // Keep areaSqft accessible as 'area' for frontend
-        area: p.area || p.areaSqft
+        area: p.area || p.areaSqft,
+        // Ensure coordinates are numbers or null, with robust check for 0
+        latitude: (p.latitude !== null && p.latitude !== undefined) ? parseFloat(p.latitude) : null,
+        longitude: (p.longitude !== null && p.longitude !== undefined) ? parseFloat(p.longitude) : null
     };
 };
 
@@ -444,11 +448,13 @@ export async function getNearbyProperties(lat, lng, radiusKm = 10) {
 
         // Filter by distance and add distance property
         const nearbyProperties = results
-            .map(p => ({
-                ...p,
-                images: normalizeImages(p.images),
-                distance: calculateDistance(lat, lng, p.latitude, p.longitude)
-            }))
+            .map(p => {
+                const normalized = normalizeProperty(p);
+                return {
+                    ...normalized,
+                    distance: calculateDistance(lat, lng, p.latitude, p.longitude)
+                };
+            })
             .filter(p => p.distance <= radiusKm)
             .sort((a, b) => a.distance - b.distance);
 
@@ -685,12 +691,40 @@ export async function getBuilderEnquiries(builderId) {
 export async function createEnquiry(enquiryData) {
     try {
         const { propertyId, userId, builderId, fullName, email, phone, message, enquiryType } = enquiryData;
+        const type = (enquiryType || 'buy').toLowerCase(); // Normalize type
 
         const result = await sql`
       INSERT INTO enquiries (property_id, builder_id, name, email, phone, message, enquiry_type)
-      VALUES (${propertyId}, ${builderId}, ${fullName}, ${email}, ${phone}, ${message}, ${enquiryType || 'buy'})
+      VALUES (${propertyId}, ${builderId}, ${fullName}, ${email}, ${phone}, ${message}, ${type})
       RETURNING *
     `;
+
+        // Send Email Notification
+        try {
+            // Fetch property & builder details
+            const [details] = await sql`
+                SELECT p.title, u.email as builder_email, u.full_name as builder_name
+                FROM properties p
+                JOIN users u ON p.builder_id = u.id
+                WHERE p.id = ${propertyId}
+            `;
+
+            if (details) {
+                await sendNewEnquiryEmail(
+                    details.builder_email,
+                    details.builder_name || 'Builder',
+                    fullName,
+                    email,
+                    phone,
+                    details.title,
+                    `[${type.toUpperCase()}] ${message}`
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send enquiry email:', emailErr);
+            // Don't fail the enquiry creation if email fails
+        }
+
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error creating enquiry:', error);
@@ -717,12 +751,39 @@ export async function updateEnquiryStatus(enquiryId, status) {
 // Create a new rent request
 export async function createRentRequest(requestData) {
     try {
-        const { propertyId, userId, builderId, moveInDate, message } = requestData;
+        const { propertyId, userId, builderId, moveInDate, message, rentAmount, applicantName, email, phone } = requestData;
+
         const result = await sql`
-      INSERT INTO rent_requests(property_id, builder_id, move_in_date, status, applicant_name, email, phone)
-    VALUES(${propertyId}, ${builderId}, ${moveInDate}, 'pending', 'Unknown', 'Unknown', '0000000000')
-    RETURNING *
-        `;
+      INSERT INTO rent_requests (property_id, user_id, builder_id, move_in_date, rent_amount, applicant_name, email, phone, status)
+      VALUES (${propertyId}, ${userId}, ${builderId}, ${moveInDate}, ${rentAmount}, ${applicantName}, ${email}, ${phone}, 'pending')
+      RETURNING *
+    `;
+
+        // Send Email Notification
+        try {
+            const [details] = await sql`
+                SELECT p.title, u.email as builder_email, u.full_name as builder_name
+                FROM properties p
+                JOIN users u ON p.builder_id = u.id
+                WHERE p.id = ${propertyId}
+            `;
+
+            if (details) {
+                await sendRentRequestEmail(
+                    details.builder_email,
+                    details.builder_name || 'Builder',
+                    applicantName,
+                    email,
+                    phone,
+                    details.title,
+                    rentAmount,
+                    moveInDate
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send rent request email:', emailErr);
+        }
+
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error creating rent request:', error);
@@ -929,21 +990,7 @@ RETURNING *
     }
 }
 
-// Create complaint
-export async function createComplaint(complaintData) {
-    try {
-        const { propertyId, userId, issue } = complaintData;
-        const result = await sql`
-      INSERT INTO complaints (property_id, user_id, issue, status)
-      VALUES (${propertyId}, ${userId}, ${issue}, 'open')
-      RETURNING *
-    `;
-        return { success: true, data: result[0] };
-    } catch (error) {
-        console.error('Error creating complaint:', error);
-        return { success: false, error: error.message };
-    }
-}
+
 
 // ============== WISHLIST OPERATIONS ==============
 
@@ -1168,6 +1215,111 @@ export async function updateWithdrawalStatus(withdrawalId, status, commissionAmo
         return { success: true, data: result[0] };
     } catch (error) {
         console.error('Error updating withdrawal:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============== REPORT & COMPLAINT OPERATIONS ==============
+
+export async function reportProperty(reportData) {
+    try {
+        const { propertyId, userId, reason, details } = reportData;
+        const issue = `REPORT: ${reason} - ${details || ''}`;
+
+        const result = await sql`
+            INSERT INTO complaints (property_id, user_id, issue, status)
+            VALUES (${propertyId}, ${userId}, ${issue}, 'open')
+            RETURNING *
+        `;
+
+        // Send Email to Admin
+        try {
+            // Fetch property name
+            const [prop] = await sql`SELECT title FROM properties WHERE id = ${propertyId}`;
+            // Fetch user name
+            const [user] = await sql`SELECT full_name FROM users WHERE id = ${userId}`;
+
+            // Get admins
+            const admins = await sql`SELECT email FROM users WHERE role = 'admin'`;
+
+            for (const admin of admins) {
+                await sendAdminComplaintEmail(
+                    admin.email,
+                    user?.full_name || 'User',
+                    prop?.title || 'Unknown Property',
+                    issue
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send report email:', emailErr);
+        }
+
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error reporting property:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function createComplaint(complaintData) {
+    try {
+        const { propertyId, userId, issue } = complaintData;
+
+        const result = await sql`
+            INSERT INTO complaints (property_id, user_id, issue, status)
+            VALUES (${propertyId}, ${userId}, ${issue}, 'open')
+            RETURNING *
+        `;
+
+        // Send Email to Admin
+        try {
+            const [prop] = await sql`SELECT title FROM properties WHERE id = ${propertyId}`;
+            const [user] = await sql`SELECT full_name FROM users WHERE id = ${userId}`;
+
+            const admins = await sql`SELECT email FROM users WHERE role = 'admin'`;
+
+            for (const admin of admins) {
+                await sendAdminComplaintEmail(
+                    admin.email,
+                    user?.full_name || 'User',
+                    prop?.title || 'Unknown Property',
+                    issue
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send complaint email:', emailErr);
+        }
+
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error creating complaint:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============== PROPERTY AVAILABILITY ==============
+
+export async function updatePropertyAvailability(propertyId, status) {
+    try {
+        const result = await sql`
+            UPDATE properties
+            SET availability_status = ${status.toUpperCase()}, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${propertyId}
+            RETURNING *
+        `;
+
+        // Invalidate cache if function exists, otherwise ignore error
+        try {
+            if (typeof cacheInvalidate === 'function') {
+                cacheInvalidate('properties');
+            }
+        } catch (e) {
+            console.warn('Cache invalidation failed or not available:', e);
+        }
+
+        return { success: true, data: result[0] };
+    } catch (error) {
+        console.error('Error updating availability:', error);
         return { success: false, error: error.message };
     }
 }

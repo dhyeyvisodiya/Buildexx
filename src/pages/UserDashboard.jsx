@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import PropertyCard from '../components/PropertyCard';
+import TabLoading from '../components/TabLoading';
 import {
   getUserWishlist,
   removeFromWishlist as removeFromWishlistAPI,
@@ -12,6 +13,7 @@ import {
   fetchUserRentSubscriptions,
   payRent
 } from '../../api/apiService';
+import '../DashboardStyles.css';
 
 const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemoveFromWishlist }) => {
   const navigate = useNavigate();
@@ -174,7 +176,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
 
         {/* Dashboard Tabs */}
         <div className="mb-4">
-          <div className="d-flex gap-2 flex-wrap">
+          <div className="dashboard-tabs">
             {[
               { id: 'overview', label: 'Overview', icon: 'bi-grid' },
               { id: 'wishlist', label: 'Wishlist', icon: 'bi-heart' },
@@ -185,18 +187,9 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: activeTab === tab.id ? 'var(--construction-gold)' : 'var(--card-bg)',
-                  border: activeTab === tab.id ? 'none' : '1px solid var(--card-border)',
-                  color: activeTab === tab.id ? '#0F172A' : 'var(--muted-text)',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer'
-                }}
+                className={`dashboard-tab ${activeTab === tab.id ? 'active' : ''}`}
               >
-                <i className={`bi ${tab.icon} me-2`}></i>
+                <i className={`bi ${tab.icon}`}></i>
                 {tab.label}
               </button>
             ))}
@@ -205,11 +198,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-5">
-            <div className="spinner-border" style={{ color: '#C8A24A' }} role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
+          <TabLoading text={`Loading ${activeTab === 'overview' ? 'overview' : activeTab === 'wishlist' ? 'wishlist' : activeTab === 'enquiries' ? 'enquiries' : activeTab === 'rentals' ? 'rent history' : 'payments'}...`} />
         )}
 
         {/* Overview Tab */}
@@ -718,7 +707,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
 
             {payments.length === 0 ? (
               <div className="text-center py-5">
-                <p className="text-muted">No booking payments made yet.</p>
+                <p className="style={{ color: '#D4A437' }}">No booking payments made yet.</p>
               </div>
             ) : (
               <div className="table-responsive">

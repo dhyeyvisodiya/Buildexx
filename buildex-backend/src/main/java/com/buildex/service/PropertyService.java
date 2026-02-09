@@ -67,6 +67,8 @@ public class PropertyService {
                         .areaSqft(property.getAreaSqft())
                         .builderName(property.getBuilderName())
                         .isVerified(property.getIsVerified())
+                        .latitude(property.getLatitude())
+                        .longitude(property.getLongitude())
                         .build());
     }
 

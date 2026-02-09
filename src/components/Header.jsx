@@ -183,10 +183,10 @@ const Header = ({ compareCount, wishlistCount }) => {
                     <button
                       className="nav-link dropdown-toggle btn btn-link text-decoration-none d-flex align-items-center"
                       data-bs-toggle="dropdown"
-                      style={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                      style={{ color: 'rgba(255, 255, 255, 0.9)', padding: '4px 8px' }}
                     >
-                      <i className="bi bi-person-circle me-1"></i>
-                      <span className="ms-1">{currentUser.fullName || currentUser.username || currentUser.email.split('@')[0]}</span>
+                      <i className="bi bi-person-circle me-1 fs-5"></i>
+                      <span className="ms-1 fw-semibold">{currentUser.username}</span>
                     </button>
                     <ul className="dropdown-menu dropdown-menu-end animate__animated animate__fadeIn">
                       <li className="dropdown-header">

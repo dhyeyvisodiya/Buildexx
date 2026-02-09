@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
 import LocationSearch from '../components/LocationSearch';
@@ -8,15 +8,72 @@ import { getProperties, getNearbyProperties } from '../../api/apiService';
 import { useGeolocation } from '../lib/useGeolocation';
 
 const PropertyList = ({ addToCompare, addToWishlist }) => {
+  const CACHE_VERSION = 'v4';
   const navigate = useNavigate();
   const location = useLocation();
-  const [properties, setProperties] = useState([]);
-  const [filteredProperties, setFilteredProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('propertiesCache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+          // If we have data, verify it has coordinates (v2 schema)
+          if (parsed.data && parsed.data.length > 0) {
+            const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
+            if (hasCoords) return parsed.data;
+            console.log('[PropertyList] Cached data lacks coordinates, ignoring');
+          } else {
+            return []; // Empty list is fine to cache
+          }
+        }
+      }
+    } catch (e) { console.warn('Cache load failed:', e); }
+    return [];
+  });
+
+  const [filteredProperties, setFilteredProperties] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('propertiesCache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+          if (parsed.data && parsed.data.length > 0) {
+            const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
+            if (hasCoords) return parsed.data;
+          } else {
+            return [];
+          }
+        }
+      }
+    } catch (e) { }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('propertiesCache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+          if (parsed.data && parsed.data.length > 0) {
+            const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
+            if (hasCoords) return false;
+          } else if (parsed.data) {
+            return false;
+          }
+        }
+      }
+    } catch (e) { }
+    return true;
+  });
   const [isSearching, setIsSearching] = useState(false);
   const [cities, setCities] = useState([]);
   const [localities, setLocalities] = useState([]);
   const [suggestions, setSuggestions] = useState([]); // OSM Suggestions
+
+  // Caching refs to prevent repeated API calls
+  const dataLoadedRef = useRef(false);
+  const cachedPropertiesRef = useRef([]);
 
   // View toggle: 'list' or 'map'
   const [viewMode, setViewMode] = useState('list');
@@ -38,8 +95,19 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     search: ''
   });
 
-  // Fetch properties from database on mount
+  // Fetch properties from database on mount (with caching)
   useEffect(() => {
+    // If we loaded from cache instantly, we don't need to do anything here
+    if (!loading && properties.length > 0) {
+      console.log('[PropertyList] Initialized from cache');
+
+      // Ensure cities/localities are populated
+      const uniqueCities = [...new Set(properties.map(p => p.city).filter(Boolean))];
+      setCities(uniqueCities);
+      return;
+    }
+
+    // Otherwise fetch
     fetchProperties();
   }, []);
 
@@ -57,19 +125,22 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     setNearbyMode(false);
     try {
       const result = await getProperties();
-      console.log('[PropertyList] getProperties result:', result);
-      console.log('[PropertyList] Result success:', result.success);
-      console.log('[PropertyList] Result data:', result.data);
-      console.log('[PropertyList] Result data length:', result.data?.length);
 
       if (result.success) {
-        console.log('[PropertyList] Setting properties with', result.data.length, 'items');
         setProperties(result.data);
         setFilteredProperties(result.data);
 
+        // Cache the data in Ref and SessionStorage
+        cachedPropertiesRef.current = result.data;
+        dataLoadedRef.current = true;
+        sessionStorage.setItem('propertiesCache', JSON.stringify({
+          data: result.data,
+          timestamp: Date.now(),
+          version: CACHE_VERSION
+        }));
+
         // Extract unique cities
         const uniqueCities = [...new Set(result.data.map(p => p.city).filter(Boolean))];
-        console.log('[PropertyList] Unique cities found:', uniqueCities);
         setCities(uniqueCities);
       } else {
         console.error('[PropertyList] Failed to fetch properties:', result.error);
@@ -77,7 +148,6 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     } catch (error) {
       console.error('[PropertyList] Error fetching properties:', error);
     } finally {
-      console.log('[PropertyList] fetchProperties completed, setting loading to false');
       setLoading(false);
     }
   };
@@ -151,6 +221,23 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     if (nearbyMode) return; // Skip filtering in nearby mode
 
     let result = properties;
+
+    // Property Visibility Rules:
+    // - Sold: Hide from all searches
+    // - Rented: Hide from rent listings
+    // - Available & Booked: Always show
+    result = result.filter(property => {
+      const status = (property.availability || '').toLowerCase();
+      const purpose = (property.purpose || '').toLowerCase();
+
+      // Hide sold properties completely
+      if (status === 'sold') return false;
+
+      // Hide rented properties from rent listings
+      if (status === 'rented' && purpose === 'rent') return false;
+
+      return true;
+    });
 
     if (filters.type) {
       result = result.filter(property => property.type === filters.type);
@@ -598,9 +685,11 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             }}>
               {filteredProperties.length}
             </span>
-            <h5 className="mb-0" style={{ color: '#0F172A' }}>
-              {nearbyMode ? 'Properties Near You' : 'Properties Found'}
-            </h5>
+            <div className="d-flex flex-column">
+              <h5 className="mb-0" style={{ color: '#0F172A' }}>
+                {nearbyMode ? 'Properties Near You' : 'Properties Found'}
+              </h5>
+            </div>
           </div>
         </div>
 

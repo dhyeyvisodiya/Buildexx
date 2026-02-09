@@ -1,10 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import { initializeDatabase } from '../api/db.js';
+import { sendOtpEmail, sendNewEnquiryEmail } from '../api/emailService.js';
 
 dotenv.config();
 
@@ -19,15 +17,6 @@ initializeDatabase().catch(err => console.error('DB Init Error:', err));
 
 // In-memory store for OTPs (for demonstration/MVP)
 const otpStore = new Map();
-
-// Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Or use 'smtp.ethereal.email' for testing
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
 
 // Helper to generate OTP
 const generateOTP = () => {
@@ -47,29 +36,18 @@ app.post('/api/auth/register', async (req, res) => {
   const otp = generateOTP();
   otpStore.set(email, { otp, timestamp: Date.now(), userData: req.body });
 
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'BuildEx Registration OTP',
-    text: `Your OTP for BuildEx registration is: ${otp}. It is valid for 10 minutes.`
-  };
-
   try {
-    if (process.env.EMAIL_USER) {
-      await transporter.sendMail(mailOptions);
-      console.log(`OTP sent to ${email}: ${otp}`); // Log for dev purposes
+    const result = await sendOtpEmail(email, otp, username || 'User');
+
+    if (result.success) {
+      console.log(`✅ OTP sent to ${email}`);
       res.json({ success: true, message: 'OTP sent successfully' });
     } else {
-      console.warn('EMAIL_USER not set. OTP logged only.');
-      console.log(`MOCK OTP for ${email}: ${otp}`);
-      res.json({ success: true, message: 'OTP generated (Mock Mode)' });
+      console.error('❌ Failed to send OTP:', result.error);
+      res.status(500).json({ success: false, message: 'Failed to send OTP email', error: result.error });
     }
   } catch (error) {
     console.error('Error sending email:', error);
-    // Detailed error logging
-    if (error.response) {
-      console.error(error.response.body);
-    }
     res.status(500).json({ success: false, message: 'Failed to send OTP email', error: error.message });
   }
 });
@@ -112,20 +90,29 @@ app.post('/api/contact/send', async (req, res) => {
   const { to, subject, message, customerDetails } = req.body;
   // to: builder email, customerDetails: { name, email, phone }
 
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: to || process.env.EMAIL_USER, // Default to admin if no specific builder email
-    subject: `New Inquiry: ${subject}`,
-    text: `You have a new inquiry from ${customerDetails.name} (${customerDetails.email}, ${customerDetails.phone}).\n\nMessage:\n${message}`
-  };
-
   try {
-    if (process.env.EMAIL_USER) {
-      await transporter.sendMail(mailOptions);
+    // Determine recipient - default to generic notification email or specific builder
+    const recipient = to || 'notifications@buildexx.app';
+    const builderName = 'Builder'; // Generic name if not provided
+
+    // We map the structure to match sendNewEnquiryEmail signature
+    // sendNewEnquiryEmail(toEmail, builderName, userName, userEmail, userPhone, propertyName, message)
+
+    const result = await sendNewEnquiryEmail(
+      recipient,
+      builderName,
+      customerDetails.name,
+      customerDetails.email,
+      customerDetails.phone,
+      subject || 'General Inquiry', // Using subject as property name fallback
+      message
+    );
+
+    if (result.success) {
       res.json({ success: true, message: 'Inquiry sent' });
     } else {
-      console.log('Mock Email Inquiry:', mailOptions);
-      res.json({ success: true, message: 'Inquiry sent (Mock)' });
+      console.error('Failed to send inquiry:', result.error);
+      res.status(500).json({ success: false, message: 'Failed to send inquiry' });
     }
   } catch (error) {
     console.error('Email error:', error);
@@ -136,5 +123,5 @@ app.post('/api/contact/send', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Email Service configured for: ${process.env.EMAIL_USER ? process.env.EMAIL_USER : 'NOT SET (Mock Mode)'}`);
+  console.log(`Email Service: Resend API Integration Active`);
 });
