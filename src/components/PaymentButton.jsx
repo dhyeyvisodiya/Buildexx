@@ -25,20 +25,27 @@ const PaymentButton = ({
     const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demo';
 
     // Determine amount based on payment type
-    // FIXED: Use Booking Token (11000) for BUY, and 1 Month Rent for RENT
-    const BOOKING_TOKEN_AMOUNT = 11000;
-
-    const paymentAmount = amount || (paymentType === 'RENT'
+    // Token amount is 15% of the total price/rent
+    const totalAmount = paymentType === 'RENT'
         ? (property.min_rent_amount || property.rent_amount || property.rent || 0)
-        : BOOKING_TOKEN_AMOUNT);
+        : (property.price || 0);
+
+    const numericTotal = typeof totalAmount === 'string'
+        ? parseFloat(totalAmount.replace(/[^0-9.]/g, ''))
+        : Number(totalAmount);
+
+    const TOKEN_PERCENTAGE = 0.15;
+    const calculatedToken = numericTotal * TOKEN_PERCENTAGE;
+
+    const paymentAmount = amount || calculatedToken;
 
     const numericAmount = typeof paymentAmount === 'string'
         ? parseFloat(paymentAmount.replace(/[^0-9.]/g, ''))
         : Number(paymentAmount);
 
     const defaultButtonText = paymentType === 'RENT'
-        ? `Pay Rent (Booking) ₹${numericAmount.toLocaleString('en-IN')}`
-        : `Pay Booking Token ₹${numericAmount.toLocaleString('en-IN')}`;
+        ? `Pay Rent (15% Booking) ₹${numericAmount.toLocaleString('en-IN')}`
+        : `Pay Booking Token (15%) ₹${numericAmount.toLocaleString('en-IN')}`;
 
 
 
@@ -152,8 +159,8 @@ const PaymentButton = ({
 
     // Dynamic Text based on booking - MOVED inside component to avoid redeclaration if multiple instances
     const bookingAmountText = property.purpose?.toLowerCase() === 'rent'
-        ? 'Pay 1 Month Rent (Booking)'
-        : 'Pay Booking Token';
+        ? 'Pay Rent (15% Booking)'
+        : 'Pay Booking Token (15%)';
 
     // Calculate display text once using all state
     const currentDisplayText = isBooked

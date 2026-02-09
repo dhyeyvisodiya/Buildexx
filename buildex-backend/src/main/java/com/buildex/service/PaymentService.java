@@ -48,16 +48,15 @@ public class PaymentService {
     }
 
     public BigDecimal calculateBookingAmount(Property property) {
-        if (property.getPurpose() == Property.Purpose.RENT) {
-            // For Rent: Booking amount is 1 month rent
-            return property.getRentAmount() != null ? property.getRentAmount() : BigDecimal.ZERO;
-        } else {
-            // For Buy: Booking amount is token amount (e.g., 50,000 or 1% or just fixed)
-            // Current request: "implements the booking amount for the payment not the full
-            // amount"
-            // Let's set a standard Booking Token for BUY properties, say 11,000 INR
-            return new BigDecimal("11000");
-        }
+        BigDecimal totalAmount = property.getPurpose() == Property.Purpose.RENT
+                ? property.getRentAmount()
+                : property.getPrice();
+
+        if (totalAmount == null)
+            return BigDecimal.ZERO;
+
+        // Booking amount is 15% of the total price/rent
+        return totalAmount.multiply(new BigDecimal("0.15"));
     }
 
     @Transactional

@@ -26,7 +26,11 @@ import '../DashboardStyles.css';
 
 const BuilderDashboard = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('builderActiveTab') || 'overview');
+
+  useEffect(() => {
+    localStorage.setItem('builderActiveTab', activeTab);
+  }, [activeTab]);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState(null);
@@ -436,11 +440,11 @@ const BuilderDashboard = () => {
   };
 
   const inputStyle = {
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: '#FFFFFF',
+    border: '1px solid #E2E8F0',
     borderRadius: '10px',
     padding: '12px 16px',
-    color: 'white',
+    color: '#0F172A',
     transition: 'all 0.3s ease'
   };
 
@@ -484,7 +488,7 @@ const BuilderDashboard = () => {
                   <i className="bi bi-person-workspace fs-1" style={{ color: 'var(--charcoal-slate)' }}></i>
                 </div>
                 <div>
-                  <h2 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
+                  <h2 className="fw-bold mb-1" style={{ color: '#FFFFFF' }}>
                     Builder Dashboard
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
@@ -503,9 +507,9 @@ const BuilderDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`dashboard - tab ${activeTab === tab.id ? 'active' : ''} `}
+                className={`dashboard-tab ${activeTab === tab.id ? 'active' : ''}`}
               >
-                <i className={`bi ${tab.icon} `}></i>
+                <i className={`bi ${tab.icon}`}></i>
                 {tab.label}
               </button>
             ))}
@@ -532,9 +536,8 @@ const BuilderDashboard = () => {
                   background: 'var(--card-bg)',
                   borderRadius: '16px',
                   padding: '24px',
-                  boxShadow: 'var(--card-shadow)',
                   border: 'none',
-                  height: '100%'
+                  boxShadow: 'var(--card-shadow)'
                 }}>
                   <div className="d-flex align-items-center gap-3">
                     <div style={{
@@ -563,12 +566,13 @@ const BuilderDashboard = () => {
             {/* Quick Actions */}
             <div className="col-12">
               <div style={{
-                background: '#0F1E33',
+                background: '#FFFFFF',
                 borderRadius: '16px',
                 padding: '24px',
-                border: '1px solid #E2E8F0'
+                border: '1px solid #E2E8F0',
+                boxShadow: 'var(--card-shadow)'
               }}>
-                <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>Quick Actions</h5>
+                <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>Quick Actions</h5>
                 <div className="d-flex gap-3 flex-wrap">
                   <button
                     onClick={() => setActiveTab('add-property')}
@@ -607,14 +611,15 @@ const BuilderDashboard = () => {
         {/* Add/Edit Property Tab */}
         {!loading && activeTab === 'add-property' && (
           <div style={{
-            background: '#0F1E33',
+            background: '#FFFFFF',
             borderRadius: '16px',
             padding: '32px',
-            border: '1px solid #E2E8F0'
+            border: '1px solid #E2E8F0',
+            boxShadow: 'var(--card-shadow)'
           }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
-                <i className={`bi ${editMode ? 'bi-pencil' : 'bi-plus-circle'} me - 2`} style={{ color: 'var(--construction-gold)' }}></i>
+              <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+                <i className={`bi ${editMode ? 'bi-pencil' : 'bi-plus-circle'} me-2`} style={{ color: '#C8A24A' }}></i>
                 {editMode ? 'Edit Property' : 'Add New Property'}
               </h5>
               {editMode && (
@@ -639,7 +644,7 @@ const BuilderDashboard = () => {
               <div className="row g-4">
                 {/* Property Name */}
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Name *</label>
+                  <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Property Name *</label>
                   <input
                     type="text"
                     name="name"
@@ -653,7 +658,7 @@ const BuilderDashboard = () => {
 
                 {/* Property Type */}
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Type *</label>
+                  <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Property Type *</label>
                   <select
                     name="type"
                     value={propertyForm.type}
@@ -688,7 +693,7 @@ const BuilderDashboard = () => {
 
                       {/* Purpose */}
                       <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Purpose *</label>
+                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Purpose *</label>
                         <select
                           name="purpose"
                           value={propertyForm.purpose}
@@ -720,7 +725,7 @@ const BuilderDashboard = () => {
 
                       {/* Price/Rent */}
                       <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
+                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>
                           {propertyForm.purpose === 'Rent' ? 'Monthly Rent *' : 'Price *'}
                         </label>
                         <input
@@ -1237,10 +1242,11 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'my-properties' && (
             <div style={{
-              background: '#0F1E33',
+              background: '#FFFFFF',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0'
+              border: '1px solid #E2E8F0',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
@@ -1303,6 +1309,8 @@ const BuilderDashboard = () => {
                       <tr>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Type</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Area</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>City</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Price</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Availability</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Approval Status</th>
@@ -1314,6 +1322,8 @@ const BuilderDashboard = () => {
                         <tr key={property.id}>
                           <td style={{ color: '#0F172A', fontWeight: '500' }}>{property.name}</td>
                           <td style={{ color: '#64748B' }}>{property.type}</td>
+                          <td style={{ color: '#64748B' }}>{property.locality || '-'}</td>
+                          <td style={{ color: '#64748B' }}>{property.city || '-'}</td>
                           <td style={{ color: '#C8A24A', fontWeight: '600' }}>{property.price || property.rent}</td>
                           <td>
                             <select
@@ -1373,10 +1383,11 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'enquiries' && (
             <div style={{
-              background: '#0F1E33',
+              background: '#FFFFFF',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0'
+              border: '1px solid #E2E8F0',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
                 <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
@@ -1466,10 +1477,11 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'rent-requests' && (
             <div style={{
-              background: '#0F1E33',
+              background: '#FFFFFF',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0'
+              border: '1px solid #E2E8F0',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
                 <i className="bi bi-key me-2" style={{ color: '#8B5CF6' }}></i>
@@ -1559,10 +1571,11 @@ const BuilderDashboard = () => {
         {
           !loading && activeTab === 'received-payments' && (
             <div style={{
-              background: '#0F1E33',
+              background: '#FFFFFF',
               borderRadius: '16px',
               padding: '24px',
-              border: '1px solid #E2E8F0'
+              border: '1px solid #E2E8F0',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <h5 className="fw-bold mb-4" style={{ color: '#C8A24A' }}>
                 <i className="bi bi-wallet2 me-2"></i>
@@ -1601,19 +1614,19 @@ const BuilderDashboard = () => {
                 </div>
               </div>
 
-              <h6 className="text-white mb-3">Withdrawal History</h6>
+              <h6 className="mb-3" style={{ color: '#0F172A' }}>Withdrawal History</h6>
               {withdrawals.length === 0 ? (
                 <p className="text-muted">No withdrawal history.</p>
               ) : (
                 <div className="table-responsive">
-                  <table className="table table-dark table-hover" style={{ background: 'transparent' }}>
+                  <table className="table table-hover" style={{ background: 'transparent' }}>
                     <thead>
                       <tr>
-                        <th style={{ color: '#94A3B8' }}>Date</th>
-                        <th style={{ color: '#94A3B8' }}>Requested</th>
-                        <th style={{ color: '#94A3B8' }}>Commission</th>
-                        <th style={{ color: '#94A3B8' }}>Payout</th>
-                        <th style={{ color: '#94A3B8' }}>Status</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Requested</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Commission</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}> payout</th>
+                        <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1641,19 +1654,25 @@ const BuilderDashboard = () => {
         {/* Transactions Tab */}
         {
           !loading && activeTab === 'transactions' && (
-            <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
-              <h5 className="fw-bold mb-4" style={{ color: '#F8FAFC' }}>
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              border: '1px solid #E2E8F0',
+              boxShadow: 'var(--card-shadow)'
+            }}>
+              <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
                 <i className="bi bi-clock-history me-2" style={{ color: '#3B82F6' }}></i>
                 Transaction History (Received Payments) ({payments.length})
               </h5>
               <div className="table-responsive">
-                <table className="table table-hover table-dark" style={{ background: 'transparent' }}>
+                <table className="table table-hover" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#94A3B8' }}>Date</th>
-                      <th style={{ color: '#94A3B8' }}>Property</th>
-                      <th style={{ color: '#94A3B8' }}>Customer (User)</th>
-                      <th style={{ color: '#94A3B8' }}>Amount</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Customer (User)</th>
+                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>

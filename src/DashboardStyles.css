@@ -40,30 +40,45 @@
   --stat-orange: #F59E0B;
 }
 
-/* Tab Container */
+/* Tab Container - Pill wrapper - HIGH SPECIFICITY */
+div.dashboard-tabs,
 .dashboard-tabs {
-  display: flex;
-  gap: var(--tab-gap);
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  display: inline-flex !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  background: #0B1C30 !important;
+  backdrop-filter: blur(12px) !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+  margin-bottom: 2.5rem !important;
+  flex-wrap: wrap !important;
+  z-index: 10 !important;
+  position: relative !important;
 }
 
-/* Individual Tab Button */
-.dashboard-tab {
-  background: var(--tab-bg-inactive);
-  border: 1px solid var(--tab-border-inactive);
-  color: var(--tab-text-inactive);
-  padding: var(--tab-padding);
-  border-radius: var(--tab-border-radius);
-  font-weight: var(--tab-font-weight);
-  font-size: var(--tab-font-size);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
+/* Individual Tab Button - Redesigned as Pill - HIGH SPECIFICITY */
+body .dashboard-tabs button.dashboard-tab,
+.dashboard-tabs button.dashboard-tab,
+button.dashboard-tab {
+  background: transparent !important;
+  border: none !important;
+  color: #94A3B8 !important;
+  padding: 12px 24px !important;
+  border-radius: 14px !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Tab Icon */
@@ -73,27 +88,28 @@
 }
 
 /* Hover State */
-.dashboard-tab:hover:not(.active) {
-  background: var(--tab-bg-hover);
-  border-color: var(--tab-border-hover);
-  color: var(--tab-text-hover);
-  transform: translateY(-2px);
+.dashboard-tabs .dashboard-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF;
+  transform: scale(1.02);
 }
 
-.dashboard-tab:hover:not(.active) i {
-  transform: scale(1.1);
+.dashboard-tabs .dashboard-tab:hover:not(.active) i {
+  transform: translateY(-1px) scale(1.1);
 }
 
-/* Active State */
-.dashboard-tab.active {
-  background: var(--tab-bg-active);
-  border: none;
-  color: var(--tab-text-active);
-  box-shadow: 0 4px 15px rgba(200, 162, 74, 0.35);
+/* Active State - Gold Pill - HIGH SPECIFICITY */
+body .dashboard-tabs button.dashboard-tab.active,
+.dashboard-tabs button.dashboard-tab.active,
+button.dashboard-tab.active {
+  background: linear-gradient(135deg, #FFD700 0%, #C8A24A 100%) !important;
+  color: #0F172A !important;
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45) !important;
+  transform: translateY(-1px) !important;
 }
 
-.dashboard-tab.active i {
-  color: var(--tab-text-active);
+button.dashboard-tab.active i {
+  color: #0F172A !important;
 }
 
 /* Focus State for Accessibility */

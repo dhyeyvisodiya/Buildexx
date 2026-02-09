@@ -19,7 +19,11 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('userActiveTab') || 'overview');
+
+  useEffect(() => {
+    localStorage.setItem('userActiveTab', activeTab);
+  }, [activeTab]);
 
   // State from database
   const [wishlist, setWishlist] = useState(propsWishlist || []);

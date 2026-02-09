@@ -592,7 +592,17 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                   property={property}
                   paymentType={property.purpose === 'Rent' ? 'RENT' : 'BUY'}
                   onSuccess={(data) => {
-                    alert('Payment successful! Your ' + (property.purpose === 'Rent' ? 'rental' : 'purchase') + ' has been confirmed.');
+                    const now = new Date();
+                    const dateTime = now.toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: true
+                    });
+                    alert(`Payment Successful!\n\nTransaction Date & Time: ${dateTime}\nTransaction ID: ${data.razorpayPaymentId || 'N/A'}\n\nYour ${property.purpose === 'Rent' ? 'rental' : 'purchase'} has been confirmed.`);
                     // Instant update of availability status
                     setProperty(prev => ({
                       ...prev,

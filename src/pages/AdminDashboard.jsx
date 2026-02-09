@@ -21,7 +21,11 @@ import '../DashboardStyles.css';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('adminActiveTab') || 'overview');
+
+  useEffect(() => {
+    localStorage.setItem('adminActiveTab', activeTab);
+  }, [activeTab]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
 
