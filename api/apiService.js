@@ -112,8 +112,13 @@ const normalizeProperty = (p) => {
         // Other field normalizations
         name: p.name || p.title,
         locality: p.locality || p.area,
-        availability: (p.availability || p.availabilityStatus || 'AVAILABLE').toUpperCase(),
-        type: p.type || p.propertyType || p.property_type,
+        // Normalize enums to Title Case for frontend display compatibility
+        availability: (p.availability || p.availabilityStatus || 'Available').charAt(0).toUpperCase() + (p.availability || p.availabilityStatus || 'available').slice(1).toLowerCase(),
+        // Ensure type matches the dropdown options (Title Case)
+        type: (p.type || p.propertyType || p.property_type || '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+        // Ensure purpose matches the dropdown options (Title Case)
+        purpose: (p.purpose || 'Buy').charAt(0).toUpperCase() + (p.purpose || 'buy').slice(1).toLowerCase(),
+
         possession: p.possession || p.possessionYear,
         construction_status: p.construction_status || p.constructionStatus,
         brochure_url: p.brochure_url || p.brochureUrl,
@@ -400,6 +405,18 @@ export async function getPropertyById(id) {
     }
 }
 
+// Get all unique cities
+export async function getCities() {
+    try {
+        const response = await fetch(getApiUrl('/api/properties/cities'));
+        if (!response.ok) throw new Error('Failed to fetch cities');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        return [];
+    }
+}
+
 // Get properties by builder (uses user ID, backend maps to builder via email)
 // Get properties by builder (Direct SQL for performance)
 export async function getPropertiesByBuilder(userId) {
@@ -638,13 +655,23 @@ export async function updateProperty(propertyId, updates) {
 // Delete property
 export async function deleteProperty(propertyId) {
     try {
-        await sql`DELETE FROM properties WHERE id = ${propertyId}`;
+        const response = await fetch(getApiUrl(`/api/properties/${propertyId}`), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
 
-        // Invalidate caches
-        cacheInvalidate(`property_${propertyId}`);
-        cacheInvalidate('properties');
-
-        return { success: true };
+        if (response.ok) {
+            // Invalidate caches
+            cacheInvalidate(`property_${propertyId}`);
+            cacheInvalidate('properties');
+            return { success: true };
+        } else {
+            const errorText = await response.text();
+            console.error('Error deleting property:', errorText);
+            return { success: false, error: errorText };
+        }
     } catch (error) {
         console.error('Error deleting property:', error);
         return { success: false, error: error.message };

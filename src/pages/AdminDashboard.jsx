@@ -16,6 +16,7 @@ import {
   getAdminWithdrawals,
   updateWithdrawalStatus
 } from '../../api/apiService';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { getApiUrl } from '../config';
 import '../DashboardStyles.css';
 
@@ -28,6 +29,11 @@ const AdminDashboard = () => {
   }, [activeTab]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+
+  // Delete Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false); // New state
 
   const handleAvailabilityChange = async (propertyId, newStatus) => {
     try {
@@ -49,6 +55,10 @@ const AdminDashboard = () => {
     }
   };
 
+  // ... (rest of code) ...
+
+
+
   // State management from database
   const [builders, setBuilders] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -62,6 +72,7 @@ const AdminDashboard = () => {
   }, []);
 
   const fetchAdminData = async () => {
+    // ... same content ...
     setLoading(true);
     try {
       // Fetch builders
@@ -101,10 +112,10 @@ const AdminDashboard = () => {
   };
 
   // CRUD Operations...
-  // (existing verification handlers)
 
   // Handle Withdrawal Approval
   const handleApproveWithdrawal = async (id, amount) => {
+    // ... same content ...
     // Simulating simple logic: 5% commission
     const commission = amount * 0.05;
     const payout = amount - commission;
@@ -123,6 +134,7 @@ const AdminDashboard = () => {
 
 
   const handleVerifyBuilder = async (id) => {
+    // ... same content ...
     try {
       const result = await updateBuilderStatus(id, 'active');
       if (result.success) {
@@ -134,6 +146,7 @@ const AdminDashboard = () => {
   };
 
   const handleBlockBuilder = async (id) => {
+    // ... same content ...
     try {
       const result = await updateBuilderStatus(id, 'blocked');
       if (result.success) {
@@ -145,6 +158,7 @@ const AdminDashboard = () => {
   };
 
   const handleUnblockBuilder = async (id) => {
+    // ... same content ...
     try {
       const result = await updateBuilderStatus(id, 'active');
       if (result.success) {
@@ -156,6 +170,7 @@ const AdminDashboard = () => {
   };
 
   const handleApproveProperty = async (id) => {
+    // ... same content ...
     try {
       const result = await updatePropertyStatus(id, 'approved');
       if (result.success) {
@@ -166,21 +181,34 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteProperty = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this property permanently? This action cannot be undone.')) {
-      return;
-    }
+  // Updated Delete Handler using Modal
+  const handleDeleteProperty = (id) => {
+    setPropertyToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteProperty = async () => {
+    if (!propertyToDelete) return;
+
     try {
-      const result = await deleteProperty(id);
+      const result = await deleteProperty(propertyToDelete);
       if (result.success) {
-        setProperties(prev => prev.filter(p => p.id !== id));
+        toast.success('Property deleted successfully');
+        setProperties(prev => prev.filter(p => p.id !== propertyToDelete));
+      } else {
+        toast.error(result.error || 'Failed to delete property');
       }
     } catch (error) {
       console.error('Error deleting property:', error);
+      toast.error('An error occurred while deleting');
+    } finally {
+      setDeleteModalOpen(false);
+      setPropertyToDelete(null);
     }
   };
 
   const handleResolveComplaint = async (id) => {
+    // ... same content ...
     try {
       const result = await updateComplaintStatus(id, 'resolved');
       if (result.success) {
@@ -192,6 +220,7 @@ const AdminDashboard = () => {
   };
 
   const handleVerifyProperty = async (id) => {
+    // ... same content ...
     try {
       const result = await verifyProperty(id, true, currentUser.id);
       if (result.success) {
@@ -218,6 +247,7 @@ const AdminDashboard = () => {
   };
 
   const stats = {
+    // ... same content ...
     totalBuilders: builders.length,
     pendingVerifications: builders.filter(b => b.status === 'pending' || b.status === 'pending_verification').length,
     totalProperties: properties.length,
@@ -227,6 +257,7 @@ const AdminDashboard = () => {
   };
 
   const tabs = [
+    // ... same content ...
     { id: 'overview', label: 'Overview', icon: 'bi-grid' },
     { id: 'builders', label: 'Builders', icon: 'bi-people' },
     { id: 'properties', label: 'Properties', icon: 'bi-building' },
@@ -245,6 +276,17 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-dashboard-page" style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDeleteProperty}
+        title="Delete Property"
+        message="Are you sure you want to delete this property permanently? This will also delete all associated enquiries, complaints, and requests. This action cannot be undone."
+        confirmText="Delete Property"
+        isDanger={true}
+      />
+
       <div className="container-fluid py-4">
         {/* Dashboard Header */}
         <div className="row mb-4">

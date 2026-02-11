@@ -11,9 +11,13 @@ import java.util.List;
 @Repository
 public interface EnquiryRepository extends JpaRepository<Enquiry, Long> {
     List<Enquiry> findByPropertyId(Long propertyId);
-    
+
     List<Enquiry> findByPropertyIdIn(List<Long> propertyIds);
-    
+
     @Query("SELECT e FROM Enquiry e WHERE e.property.builder.id = :builderId")
     List<Enquiry> findByBuilderId(@Param("builderId") Long builderId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Enquiry e WHERE e.property.id = :propertyId")
+    void deleteByPropertyId(Long propertyId);
 }

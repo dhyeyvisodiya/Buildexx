@@ -1,26 +1,39 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion';
 import './App.css'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import BackToTop from './components/BackToTop'
 import ErrorBoundary from './components/ErrorBoundary'
-import Home from './pages/Home'
-import PropertyList from './pages/PropertyList'
-import PropertyDetail from './pages/PropertyDetail'
-import ComparePropertiesPage from './pages/CompareProperties'
-import ComparePropertiesModal from './components/CompareProperties'
-import Wishlist from './pages/Wishlist'
-import UserDashboard from './pages/UserDashboard'
-import BuilderDashboard from './pages/BuilderDashboard'
-import AdminDashboard from './pages/AdminDashboard'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import ForgotPassword from './pages/ForgotPassword'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { initializeDatabase } from '../api/db'
 import { Toaster } from 'react-hot-toast'
 
+// Lazy Load Pages
+const Home = lazy(() => import('./pages/Home'));
+const PropertyList = lazy(() => import('./pages/PropertyList'));
+const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
+const ComparePropertiesPage = lazy(() => import('./pages/CompareProperties'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const UserDashboard = lazy(() => import('./pages/UserDashboard'));
+const BuilderDashboard = lazy(() => import('./pages/BuilderDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+
+// ComparePropertiesModal is a component
+const ComparePropertiesModal = lazy(() => import('./components/CompareProperties'));
+
+// Loading Component
+const PageLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+    <div className="spinner-border" style={{ color: '#C8A24A' }} role="status">
+      <span className="visually-hidden">Loading...</span>
+    </div>
+  </div>
+);
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -28,19 +41,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // Wait for auth initialization to complete before making any redirects
   if (isInitializing) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid rgba(200,162,74,0.2)',
-          borderTop: '4px solid #C8A24A',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (!currentUser) {
@@ -97,40 +98,44 @@ function AppContent() {
         wishlistCount={wishlist.length}
       />
       <main style={{ flex: '1' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/property-list" element={<PropertyList addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
-          <Route path="/properties" element={<PropertyList addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
-          <Route path="/property/:id" element={<PropertyDetail addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
+        <Suspense fallback={<PageLoader />}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<Home />} />
+              <Route path="/property-list" element={<PropertyList addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
+              <Route path="/properties" element={<PropertyList addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
+              <Route path="/property/:id" element={<PropertyDetail addToCompare={addToCompare} addToWishlist={addToWishlist} />} />
 
-          <Route path="/compare" element={<ComparePropertiesPage compareList={compareList} removeFromCompare={removeFromCompare} />} />
-          <Route path="/wishlist" element={<Wishlist wishlist={wishlist} removeFromWishlist={removeFromWishlist} />} />
+              <Route path="/compare" element={<ComparePropertiesPage compareList={compareList} removeFromCompare={removeFromCompare} />} />
+              <Route path="/wishlist" element={<Wishlist wishlist={wishlist} removeFromWishlist={removeFromWishlist} />} />
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Protected Routes */}
-          <Route path="/user-dashboard" element={
-            <ProtectedRoute allowedRoles={['user', 'admin']}>
-              <UserDashboard wishlist={wishlist} />
-            </ProtectedRoute>
-          } />
+              {/* Protected Routes */}
+              <Route path="/user-dashboard" element={
+                <ProtectedRoute allowedRoles={['user', 'admin']}>
+                  <UserDashboard wishlist={wishlist} />
+                </ProtectedRoute>
+              } />
 
-          <Route path="/builder-dashboard" element={
-            <ProtectedRoute allowedRoles={['builder', 'admin']}>
-              <BuilderDashboard />
-            </ProtectedRoute>
-          } />
+              <Route path="/builder-dashboard" element={
+                <ProtectedRoute allowedRoles={['builder', 'admin']}>
+                  <BuilderDashboard />
+                </ProtectedRoute>
+              } />
 
-          <Route path="/admin-dashboard" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+              <Route path="/admin-dashboard" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
 
-          <Route path="*" element={<Home />} />
-        </Routes>
+              <Route path="*" element={<Home />} />
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
       </main>
       <Footer />
       <BackToTop />
@@ -230,15 +235,20 @@ function AppContent() {
       )}
 
       {/* Compare Properties Modal */}
-      <ComparePropertiesModal
-        isOpen={showCompareModal}
-        properties={compareList}
-        onRemove={removeFromCompare}
-        onClose={() => setShowCompareModal(false)}
-      />
+      <Suspense fallback={null}>
+        {showCompareModal && (
+          <ComparePropertiesModal
+            isOpen={showCompareModal}
+            properties={compareList}
+            onRemove={removeFromCompare}
+            onClose={() => setShowCompareModal(false)}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }
+
 
 function App() {
   useEffect(() => {

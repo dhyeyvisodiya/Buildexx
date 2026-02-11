@@ -44,12 +44,33 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
 
   useEffect(() => {
     const fetchProperty = async () => {
-      // Skip fetch if same property already loaded
+      // 1. Check in-memory ref cache
       if (loadedPropertyIdRef.current === id && cachedPropertyRef.current) {
-        console.log('[PropertyDetail] Using cached property data for ID:', id);
+        console.log('[PropertyDetail] Using in-memory cached property data for ID:', id);
         setProperty(cachedPropertyRef.current);
         setIsLoading(false);
         return;
+      }
+
+      // 2. Check sessionStorage cache
+      const sessionCache = sessionStorage.getItem(`property_detail_${id}`);
+      if (sessionCache) {
+        try {
+          const { data, timestamp } = JSON.parse(sessionCache);
+          // Valid for 5 minutes
+          if (Date.now() - timestamp < 5 * 60 * 1000) {
+            console.log('[PropertyDetail] Using session cached property data for ID:', id);
+            setProperty(data);
+            cachedPropertyRef.current = data;
+            loadedPropertyIdRef.current = id;
+            setIsLoading(false);
+            // Background refresh could be added here if needed, but for now we trust cache
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing session cache:', e);
+          sessionStorage.removeItem(`property_detail_${id}`);
+        }
       }
 
       setIsLoading(true);
@@ -60,6 +81,10 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           // Cache the data
           cachedPropertyRef.current = result.data;
           loadedPropertyIdRef.current = id;
+          sessionStorage.setItem(`property_detail_${id}`, JSON.stringify({
+            data: result.data,
+            timestamp: Date.now()
+          }));
         }
       }
       setIsLoading(false);

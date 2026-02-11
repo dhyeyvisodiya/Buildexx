@@ -21,6 +21,7 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\en
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\GlobalExceptionHandler.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\ResourceNotFoundException.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\model\PropertySummary.java
+C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\ComplaintRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\EnquiryRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\PaymentRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\PropertyRepository.java

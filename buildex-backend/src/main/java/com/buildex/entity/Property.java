@@ -129,6 +129,22 @@ public class Property {
     @JsonIgnore
     private User builder;
 
+    // =============================================
+    // CASCADE DELETE RELATIONSHIPS
+    // =============================================
+
+    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Payment> payments;
+
+    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Complaint> complaints;
+
+    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Enquiry> enquiries;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

@@ -72,6 +72,11 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.getAllPropertiesSummaries(page, size));
     }
 
+    @GetMapping("/cities")
+    public ResponseEntity<List<String>> getAllCities() {
+        return ResponseEntity.ok(propertyService.getAllCities());
+    }
+
     @GetMapping("/{propertyId}")
     public ResponseEntity<Property> getPropertyById(@PathVariable Long propertyId) {
         Optional<Property> property = propertyService.getPropertyById(propertyId);
@@ -122,13 +127,14 @@ public class PropertyController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Property>> searchProperties(
+    public ResponseEntity<List<PropertySummaryDTO>> searchProperties(
             @RequestParam(required = false) Property.Purpose purpose,
             @RequestParam(required = false) Property.PropertyType propertyType,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String area,
             @RequestParam(required = false) Property.AvailabilityStatus availabilityStatus) {
-        List<Property> properties = propertyService.searchProperties(purpose, propertyType, city, area,
+        List<PropertySummaryDTO> properties = propertyService.searchPropertiesSummaries(purpose, propertyType, city,
+                area,
                 availabilityStatus);
         return ResponseEntity.ok(properties);
     }

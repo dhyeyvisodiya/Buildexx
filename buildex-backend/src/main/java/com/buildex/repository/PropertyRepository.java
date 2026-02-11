@@ -53,4 +53,10 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
                      @Param("area") String area,
                      @Param("availabilityStatus") AvailabilityStatus availabilityStatus,
                      org.springframework.data.domain.Pageable pageable);
+
+       @Query("SELECT DISTINCT p.city FROM Property p WHERE p.city IS NOT NULL ORDER BY p.city")
+       List<String> findAllCities();
+
+       @Query(value = "SELECT image_url FROM property_images WHERE property_id = :propertyId LIMIT 1", nativeQuery = true)
+       String findThumbnail(@Param("propertyId") Long propertyId);
 }

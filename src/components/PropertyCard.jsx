@@ -35,36 +35,29 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
 
   return (
     <div className="property-card card h-100 animate__animated animate__fadeInUp" style={{
-      transition: 'all 0.3s ease',
       cursor: 'pointer'
-    }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-5px)';
-        e.currentTarget.style.boxShadow = '0 12px 24px rgba(15, 23, 42, 0.15)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(15, 23, 42, 0.08)';
-      }}>
+    }}>
       <div className="position-relative">
-        {property.images && property.images.length > 0 ? (
-          <img
-            src={property.images[0]}
-            className="property-image card-img-top"
-            alt={property.name}
-            style={{ height: '250px', objectFit: 'cover' }}
-            loading="lazy"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.style.display = 'none';
-              e.target.parentNode.innerHTML = '<div class="property-image bg-light d-flex align-items-center justify-content-center" style="height: 250px"><span>Image Error</span></div>';
-            }}
-          />
-        ) : (
-          <div className="property-image bg-light d-flex align-items-center justify-content-center" style={{ height: '250px' }}>
-            <span>No Image</span>
-          </div>
-        )}
+        <div className="property-image-wrapper" style={{ height: '250px', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+          {property.images && property.images.length > 0 ? (
+            <img
+              src={property.images[0]}
+              className="property-image card-img-top"
+              alt={property.name}
+              style={{ height: '100%', width: '100%', objectFit: 'cover' }}
+              loading="lazy"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.style.display = 'none';
+                e.target.parentNode.innerHTML = '<div class="property-image bg-light d-flex align-items-center justify-content-center" style="height: 100%; width: 100%"><span>Image Error</span></div>';
+              }}
+            />
+          ) : (
+            <div className="property-image bg-light d-flex align-items-center justify-content-center" style={{ height: '100%', width: '100%' }}>
+              <span>No Image</span>
+            </div>
+          )}
+        </div>
         <span className={`availability-badge ${getAvailabilityClass(property.availability)}`}>
           {getAvailabilityText(property.availability)}
         </span>
@@ -93,7 +86,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
       <div className="card-body d-flex flex-column">
         <h5 className="card-title">{property.name}</h5>
         <p className="card-text small">
-          {[property.locality, property.city].filter(Boolean).join(', ')}
+          {[property.locality, property.city].filter(Boolean).join(', ') || property.city || 'Location N/A'}
           {/* Builder name with verified indicator */}
           {property.builder_name && (
             <span style={{ display: 'block', marginTop: '4px', color: '#64748B' }}>
@@ -198,7 +191,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

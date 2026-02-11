@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import AuthLayout from '../components/layout/AuthLayout';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Register = () => {
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    username: '',
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    role: 'user'
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState('user');
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
@@ -19,6 +25,69 @@ const Register = () => {
   const { register, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const [errors, setErrors] = useState({});
+
+  // Slide Animation Variants
+  const variants = {
+    enter: (direction) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction) => ({
+      zIndex: 0,
+      x: direction < 0 ? 100 : -100,
+      opacity: 0
+    })
+  };
+
+  const [direction, setDirection] = useState(0);
+
+  const nextStep = () => {
+    if (validateStep(step)) {
+      setDirection(1);
+      setStep(step + 1);
+    }
+  };
+
+  const prevStep = () => {
+    setDirection(-1);
+    setStep(step - 1);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const validateStep = (currentStep) => {
+    const newErrors = {};
+    if (currentStep === 1) {
+      if (!formData.username.trim()) newErrors.username = 'Username is required';
+      else if (formData.username.length < 3) newErrors.username = 'Min 3 chars';
+
+      if (!formData.email) newErrors.email = 'Email required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
+
+      if (!formData.password) newErrors.password = 'Required';
+      else if (formData.password.length < 6) newErrors.password = 'Min 6 chars';
+
+      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Match password';
+    } else if (currentStep === 2) {
+      if (!formData.fullName.trim()) newErrors.fullName = 'Name required';
+      if (formData.phone && !/^\d{10}$/.test(formData.phone)) newErrors.phone = '10 digits';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return false;
+    }
+    return true;
+  };
 
   const handleRegisterSuccess = (user) => {
     if (user.role === 'admin') navigate('/admin-dashboard');
@@ -28,27 +97,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-
-    if (!username.trim()) newErrors.username = 'Username is required';
-    else if (username.length < 3) newErrors.username = 'Username must be at least 3 characters';
-
-    if (!fullName.trim()) newErrors.fullName = 'Full Name is required';
-
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email address';
-
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-
-    if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-
-    if (phone && !/^\d{10}$/.test(phone)) newErrors.phone = 'Phone number must be 10 digits';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+    if (!validateStep(step)) return;
 
     setLoading(true);
     setErrors({});
@@ -56,8 +105,16 @@ const Register = () => {
 
     try {
       if (!showOtp) {
-        // Step 1: Register (Initiate)
-        const result = await register(username, email, password, fullName, phone, role);
+        // Step 1 & 2 done: Register (Initiate)
+        const result = await register(
+          formData.username,
+          formData.email,
+          formData.password,
+          formData.fullName,
+          formData.phone,
+          formData.role
+        );
+
         if (result.success) {
           if (result.requiresOtp) {
             setShowOtp(true);
@@ -70,8 +127,8 @@ const Register = () => {
           setLoading(false);
         }
       } else {
-        // Step 2: Verify OTP
-        const result = await verifyOtp(email, otp);
+        // Verify OTP
+        const result = await verifyOtp(formData.email, otp);
         if (result.success) {
           handleRegisterSuccess(result.user);
         } else {
@@ -90,445 +147,323 @@ const Register = () => {
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: '12px',
     padding: '14px 16px',
-    color: 'var(--primary-text)',
+    color: '#FFF',
     fontSize: '0.95rem',
+    width: '100%',
     transition: 'all 0.3s ease'
   };
 
   const handleFocus = (e) => {
     e.target.style.borderColor = '#C8A24A';
-    e.target.style.boxShadow = '0 0 0 3px rgba(200,162,74,0.1)';
+    e.target.style.background = 'rgba(255,255,255,0.08)';
   };
 
   const handleBlur = (e) => {
     e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-    e.target.style.boxShadow = 'none';
+    e.target.style.background = 'rgba(255,255,255,0.05)';
   };
 
   return (
-    <div className="register-page animate__animated animate__fadeIn" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, var(--charcoal-slate) 0%, var(--card-bg) 50%, var(--charcoal-slate) 100%)',
-      position: 'relative',
-      overflow: 'hidden',
-      padding: '40px 0'
-    }}>
-      {/* Background decorations */}
-      <div style={{
-        position: 'absolute',
-        top: '5%',
-        right: '5%',
-        width: '350px',
-        height: '350px',
-        background: 'radial-gradient(circle, rgba(200,162,74,0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 6s ease-in-out infinite'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '5%',
-        left: '5%',
-        width: '400px',
-        height: '400px',
-        background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 8s ease-in-out infinite reverse'
-      }} />
-
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
-            <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              padding: '40px',
-              position: 'relative'
+    <AuthLayout
+      title={showOtp ? "Verify Email" : step === 1 ? "Create Account" : "Profile Details"}
+      subtitle={showOtp ? "Enter the OTP sent to your email." : step === 1 ? "Start your journey with us." : "Tell us a bit more about you."}
+      quote={{
+        text: "Real estate cannot be lost or stolen, nor can it be carried away.",
+        author: "Franklin D. Roosevelt"
+      }}
+    >
+      <div style={{ position: 'relative', minHeight: '400px' }}>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="alert alert-danger d-flex align-items-center" role="alert" style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#FCA5A5',
+              borderRadius: '10px'
             }}>
-              {/* Header */}
-              <div className="text-center mb-4">
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 10px 30px rgba(200,162,74,0.3)'
-                }}>
-                  <i className="bi bi-person-plus fs-1" style={{ color: 'var(--charcoal-slate)' }}></i>
-                </div>
-                <h2 className="fw-bold" style={{ color: '#FFFFFF', marginBottom: '8px' }}>Create Account</h2>
-                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem' }}>Join Buildex today</p>
-              </div>
+            <i className="bi bi-exclamation-circle me-2"></i>
+            <div>{error}</div>
+          </motion.div>
+        )}
 
-              {error && (
-                <div className="animate__animated animate__shakeX" style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: '12px',
-                  padding: '12px 16px',
-                  marginBottom: '20px',
-                  color: '#FCA5A5',
-                  fontSize: '0.9rem'
-                }}>
-                  <i className="bi bi-exclamation-circle me-2"></i>{error}
-                </div>
-              )}
+        {/* Progress Indicators */}
+        {!showOtp && (
+          <div className="d-flex justify-content-center mb-4 gap-2">
+            <motion.div
+              animate={{ width: step === 1 ? 24 : 8, backgroundColor: step >= 1 ? '#C8A24A' : 'rgba(255,255,255,0.2)' }}
+              style={{ height: '8px', borderRadius: '4px' }}
+            />
+            <motion.div
+              animate={{ width: step === 2 ? 24 : 8, backgroundColor: step >= 2 ? '#C8A24A' : 'rgba(255,255,255,0.2)' }}
+              style={{ height: '8px', borderRadius: '4px' }}
+            />
+          </div>
+        )}
 
+        <AnimatePresence initial={false} custom={direction} mode='wait'>
+          {showOtp ? (
+            <motion.div
+              key="otp"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+            >
               <form onSubmit={handleSubmit}>
-                <div className="row">
-                  {/* Username */}
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                      <i className="bi bi-person me-2"></i>Username *
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        if (errors.username) setErrors(prev => ({ ...prev, username: '' }));
-                      }}
-                      placeholder="Choose username"
-                      style={{
-                        ...inputStyle,
-                        borderColor: errors.username ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                      }}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    />
-                    {errors.username && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.username}</div>}
-                  </div>
-
-                  {/* Full Name */}
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                      <i className="bi bi-person-badge me-2"></i>Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={fullName}
-                      onChange={(e) => {
-                        setFullName(e.target.value);
-                        if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
-                      }}
-                      placeholder="Your full name"
-                      style={{
-                        ...inputStyle,
-                        borderColor: errors.fullName ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                      }}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    />
-                    {errors.fullName && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.fullName}</div>}
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                    <i className="bi bi-envelope me-2"></i>Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                    }}
-                    placeholder="you@example.com"
-                    style={{
-                      ...inputStyle,
-                      borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                    }}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                  {errors.email && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.email}</div>}
-                </div>
-
-                {/* Phone */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                    <i className="bi bi-phone me-2"></i>Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="form-control"
-                    value={phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setPhone(val);
-                      if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
-                    }}
-                    placeholder="10 digit mobile number"
-                    style={{
-                      ...inputStyle,
-                      borderColor: errors.phone ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                    }}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                  {errors.phone && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.phone}</div>}
-                </div>
-
-                <div className="row">
-                  {/* Password */}
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                      <i className="bi bi-lock me-2"></i>Password *
-                    </label>
-                    <div className="position-relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        className="form-control"
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-                        }}
-                        placeholder="Min 6 characters"
-                        style={{
-                          ...inputStyle,
-                          paddingRight: '45px',
-                          borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                        }}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'rgba(255,255,255,0.5)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
-                      </button>
-                    </div>
-                    {errors.password && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.password}</div>}
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                      <i className="bi bi-lock-fill me-2"></i>Confirm *
-                    </label>
-                    <div className="position-relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        className="form-control"
-                        value={confirmPassword}
-                        onChange={(e) => {
-                          setConfirmPassword(e.target.value);
-                          if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' }));
-                        }}
-                        placeholder="Confirm password"
-                        style={{
-                          ...inputStyle,
-                          paddingRight: '45px',
-                          borderColor: errors.confirmPassword ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                        }}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'rgba(255,255,255,0.5)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
-                      </button>
-                    </div>
-                    {errors.confirmPassword && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.confirmPassword}</div>}
-                  </div>
-                </div>
-
-                {/* Account Type */}
                 <div className="mb-4">
-                  <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                    <i className="bi bi-person-gear me-2"></i>Account Type
-                  </label>
-                  <div className="d-flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRole('user')}
-                      style={{
-                        flex: 1,
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: role === 'user' ? '2px solid #C8A24A' : '1px solid rgba(255,255,255,0.1)',
-                        background: role === 'user' ? 'rgba(200,162,74,0.1)' : 'rgba(255,255,255,0.03)',
-                        color: role === 'user' ? '#C8A24A' : 'rgba(255,255,255,0.7)',
-                        fontWeight: '600',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <i className="bi bi-person me-2"></i>Regular User
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole('builder')}
-                      style={{
-                        flex: 1,
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: role === 'builder' ? '2px solid #C8A24A' : '1px solid rgba(255,255,255,0.1)',
-                        background: role === 'builder' ? 'rgba(200,162,74,0.1)' : 'rgba(255,255,255,0.03)',
-                        color: role === 'builder' ? '#C8A24A' : 'rgba(255,255,255,0.7)',
-                        fontWeight: '600',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <i className="bi bi-building me-2"></i>Builder/Owner
-                    </button>
-                  </div>
+                  <label className="form-label text-white-50 small">One Time Password (OTP)</label>
+                  <input
+                    type="text"
+                    className="form-control hover-effect"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit OTP"
+                    style={{ ...inputStyle, textAlign: 'center', letterSpacing: '5px', fontSize: '1.5rem' }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    maxLength={6}
+                    required
+                    autoFocus
+                  />
                 </div>
-
-                {/* OTP Input - Only show if showOtp is true */}
-                {showOtp && (
-                  <div className="mb-4 animate__animated animate__fadeIn">
-                    <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
-                      <i className="bi bi-shield-lock me-2"></i>Enter OTP sent to email
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter 6-digit OTP"
-                      style={{ ...inputStyle, textAlign: 'center', letterSpacing: '5px', fontSize: '1.2rem' }}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      maxLength={6}
-                      required={showOtp}
-                    />
-                  </div>
-                )}
-
-                {/* Submit Button */}
                 <button
                   type="submit"
+                  disabled={loading}
                   className="btn w-100"
+                  style={{
+                    background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+                    border: 'none',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    color: '#1E293B',
+                    fontWeight: '700',
+                    fontSize: '1rem',
+                    boxShadow: '0 4px 15px rgba(200, 162, 74, 0.3)',
+                  }}
+                >
+                  {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : null}
+                  Verify & Register
+                </button>
+              </form>
+            </motion.div>
+          ) : step === 1 ? (
+            <motion.div
+              key="step1"
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
+              }}
+              style={{ position: 'absolute', width: '100%' }}
+            >
+              <div className="row">
+                <div className="col-12 mb-3">
+                  <label className="form-label text-white-50 small">Username</label>
+                  <input
+                    type="text"
+                    name="username"
+                    className="form-control"
+                    value={formData.username}
+                    onChange={handleChange}
+                    style={{ ...inputStyle, borderColor: errors.username ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                  {errors.username && <div className="text-danger mt-1 small">{errors.username}</div>}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label text-white-50 small">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-control"
+                  value={formData.email}
+                  onChange={handleChange}
+                  style={{ ...inputStyle, borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+                {errors.email && <div className="text-danger mt-1 small">{errors.email}</div>}
+              </div>
+
+              <div className="row">
+                <div className="col-6 mb-3 position-relative">
+                  <label className="form-label text-white-50 small">Password</label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    className="form-control"
+                    value={formData.password}
+                    onChange={handleChange}
+                    style={{ ...inputStyle, paddingRight: '35px', borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '20px', top: '38px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
+                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  </button>
+                  {errors.password && <div className="text-danger mt-1 small">{errors.password}</div>}
+                </div>
+                <div className="col-6 mb-3 position-relative">
+                  <label className="form-label text-white-50 small">Confirm</label>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    className="form-control"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    style={{ ...inputStyle, paddingRight: '35px', borderColor: errors.confirmPassword ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                  {errors.confirmPassword && <div className="text-danger mt-1 small" style={{ fontSize: '0.7rem' }}>Mismatch</div>}
+                </div>
+              </div>
+
+              <button className="btn w-100 mt-2" onClick={nextStep}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#FFF',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                Next Step <i className="bi bi-arrow-right ms-2"></i>
+              </button>
+
+              <div className="text-center mt-3">
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Already have an account? </span>
+                <Link to="/login" style={{ color: '#C8A24A', textDecoration: 'none', fontWeight: '600' }}>Sign In</Link>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step2"
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
+              }}
+              style={{ position: 'absolute', width: '100%' }}
+            >
+              <div className="mb-3">
+                <label className="form-label text-white-50 small">Full Name</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  className="form-control"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  style={{ ...inputStyle, borderColor: errors.fullName ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+                {errors.fullName && <div className="text-danger mt-1 small">{errors.fullName}</div>}
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label text-white-50 small">Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  className="form-control"
+                  value={formData.phone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData(prev => ({ ...prev, phone: val }));
+                  }}
+                  style={{ ...inputStyle, borderColor: errors.phone ? '#EF4444' : 'rgba(255,255,255,0.1)' }}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
+                {errors.phone && <div className="text-danger mt-1 small">{errors.phone}</div>}
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label text-white-50 small">I want to...</label>
+                <div className="d-flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, role: 'user' }))}
+                    className="flex-fill"
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: formData.role === 'user' ? '2px solid #C8A24A' : '1px solid rgba(255,255,255,0.1)',
+                      background: formData.role === 'user' ? 'rgba(200,162,74,0.1)' : 'rgba(255,255,255,0.03)',
+                      color: formData.role === 'user' ? '#C8A24A' : 'rgba(255,255,255,0.7)',
+                      fontWeight: '600',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    Buy/Rent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, role: 'builder' }))}
+                    className="flex-fill"
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: formData.role === 'builder' ? '2px solid #C8A24A' : '1px solid rgba(255,255,255,0.1)',
+                      background: formData.role === 'builder' ? 'rgba(200,162,74,0.1)' : 'rgba(255,255,255,0.03)',
+                      color: formData.role === 'builder' ? '#C8A24A' : 'rgba(255,255,255,0.7)',
+                      fontWeight: '600',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    List Property
+                  </button>
+                </div>
+              </div>
+
+              <div className="d-flex gap-2">
+                <button className="btn flex-fill" onClick={prevStep}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#FFF',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Back
+                </button>
+                <button className="btn flex-fill" onClick={handleSubmit}
                   disabled={loading}
                   style={{
                     background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
                     border: 'none',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    color: 'var(--charcoal-slate)',
-                    fontWeight: '700',
-                    fontSize: '1rem',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 15px rgba(200,162,74,0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading) {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 8px 25px rgba(200,162,74,0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 15px rgba(200,162,74,0.3)';
-                  }}
-                >
-                  {loading ? (
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  ) : (
-                    <>
-                      {showOtp ? (
-                        <><i className="bi bi-check-circle me-2"></i>Verify & Register</>
-                      ) : (
-                        <><i className="bi bi-person-plus me-2"></i>Create Account</>
-                      )}
-                    </>
-                  )}
-                </button>
-              </form>
-
-
-              {/* Divider */}
-              <div className="d-flex align-items-center my-4">
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-                <span style={{ color: 'rgba(255,255,255,0.4)', padding: '0 16px', fontSize: '0.85rem' }}>or</span>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-              </div>
-
-              {/* Login Link */}
-              <div className="text-center">
-                <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '12px', fontSize: '0.95rem' }}>
-                  Already have an account?
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="btn w-100"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '12px',
                     padding: '12px',
-                    color: '#FFFFFF',
-                    fontWeight: '600',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(255,255,255,0.1)';
-                    e.target.style.borderColor = '#C8A24A';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255,255,255,0.05)';
-                    e.target.style.borderColor = 'rgba(255,255,255,0.2)';
+                    borderRadius: '12px',
+                    color: '#1E293B',
+                    fontWeight: '700',
+                    boxShadow: '0 4px 15px rgba(200, 162, 74, 0.3)',
                   }}
                 >
-                  Sign In Instead
+                  {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : null}
+                  Create Account
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        .form-control::placeholder {
-          color: rgba(255,255,255,0.3);
-        }
-      `}</style>
-    </div>
+    </AuthLayout>
   );
 };
 

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import AuthLayout from '../components/layout/AuthLayout';
+import { motion } from 'framer-motion';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -11,21 +13,17 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [errors, setErrors] = useState({});
 
   const handleLoginSuccess = (user) => {
-    // Check if there's a return URL in the location state
     if (location.state?.returnUrl) {
       navigate(location.state.returnUrl);
       return;
     }
-
     if (user.role === 'admin') navigate('/admin-dashboard');
     else if (user.role === 'builder') navigate('/builder-dashboard');
     else navigate('/user-dashboard');
   };
-
-
-  const [errors, setErrors] = useState({});
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,292 +58,148 @@ const Login = () => {
     }
   };
 
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    padding: '16px',
+    color: '#FFF',
+    fontSize: '1rem',
+    width: '100%',
+    transition: 'all 0.3s ease'
+  };
+
   return (
-    <div className="login-page animate__animated animate__fadeIn" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, var(--charcoal-slate) 0%, var(--card-bg) 50%, var(--charcoal-slate) 100%)',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Background decorations */}
-      <div style={{
-        position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: '300px',
-        height: '300px',
-        background: 'radial-gradient(circle, rgba(200,162,74,0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 6s ease-in-out infinite'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '10%',
-        right: '10%',
-        width: '400px',
-        height: '400px',
-        background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)',
-        borderRadius: '50%',
-        animation: 'float 8s ease-in-out infinite reverse'
-      }} />
-
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="col-md-5 col-lg-4">
-            <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              padding: '40px',
-              position: 'relative'
-            }}>
-              {/* Logo/Icon */}
-              <div className="text-center mb-4">
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 10px 30px rgba(200,162,74,0.3)'
-                }}>
-                  <i className="bi bi-building fs-1" style={{ color: 'var(--charcoal-slate)' }}></i>
-                </div>
-                <h2 className="fw-bold" style={{ color: '#FFFFFF', marginBottom: '8px' }}>Welcome Back</h2>
-                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem' }}>Sign in to your Buildex account</p>
-              </div>
-
-              {error && (
-                <div className="animate__animated animate__shakeX" style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: '12px',
-                  padding: '12px 16px',
-                  marginBottom: '20px',
-                  color: '#FCA5A5',
-                  fontSize: '0.9rem'
-                }}>
-                  <i className="bi bi-exclamation-circle me-2"></i>{error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit}>
-                {/* Email Field */}
-                <div className="mb-4">
-                  <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                    <i className="bi bi-envelope me-2"></i>Email Address
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                    }}
-                    placeholder="you@example.com"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '12px',
-                      padding: '14px 16px',
-                      color: 'var(--primary-text)',
-                      fontSize: '0.95rem',
-                      transition: 'all 0.3s ease',
-                      borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                    }}
-                    onFocus={(e) => {
-                      if (!errors.email) e.target.style.borderColor = '#C8A24A';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(200,162,74,0.1)';
-                    }}
-                    onBlur={(e) => {
-                      if (!errors.email) e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                    required
-                  />
-                  {errors.email && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.email}</div>}
-                </div>
-
-                {/* Password Field with Toggle */}
-                <div className="mb-4">
-                  <label className="form-label fw-semibold" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
-                    <i className="bi bi-lock me-2"></i>Password
-                  </label>
-                  <div className="position-relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="form-control"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-                      }}
-                      placeholder="Enter your password"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '12px',
-                        padding: '14px 50px 14px 16px',
-                        color: '#FFFFFF',
-                        fontSize: '0.95rem',
-                        transition: 'all 0.3s ease',
-                        borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
-                      }}
-                      onFocus={(e) => {
-                        if (!errors.password) e.target.style.borderColor = '#C8A24A';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(200,162,74,0.1)';
-                      }}
-                      onBlur={(e) => {
-                        if (!errors.password) e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'rgba(255,255,255,0.5)',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => e.target.style.color = '#C8A24A'}
-                      onMouseLeave={(e) => e.target.style.color = 'rgba(255,255,255,0.5)'}
-                    >
-                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'} fs-5`}></i>
-                    </button>
-                  </div>
-                  {errors.password && <div className="text-danger mt-1" style={{ fontSize: '0.8rem' }}>{errors.password}</div>}
-                </div>
-
-                {/* Forgot Password Link */}
-                <div className="text-end mb-4">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/forgot-password')}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#C8A24A',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer',
-                      padding: 0
-                    }}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  className="btn w-100"
-                  disabled={loading}
-                  style={{
-                    background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    color: 'var(--charcoal-slate)',
-                    fontWeight: '700',
-                    fontSize: '1rem',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 15px rgba(200,162,74,0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading) {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 8px 25px rgba(200,162,74,0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 15px rgba(200,162,74,0.3)';
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-box-arrow-in-right me-2"></i>Sign In
-                    </>
-                  )}
-                </button>
-              </form>
-
-
-              {/* Divider */}
-              <div className="d-flex align-items-center my-4">
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-                <span style={{ color: 'rgba(255,255,255,0.4)', padding: '0 16px', fontSize: '0.85rem' }}>or</span>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-              </div>
-
-              {/* Register Link */}
-              <div className="text-center">
-                <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '12px', fontSize: '0.95rem' }}>
-                  Don't have an account?
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/register')}
-                  className="btn w-100"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '12px',
-                    padding: '12px',
-                    color: '#FFFFFF',
-                    fontWeight: '600',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(255,255,255,0.1)';
-                    e.target.style.borderColor = '#C8A24A';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255,255,255,0.05)';
-                    e.target.style.borderColor = 'rgba(255,255,255,0.2)';
-                  }}
-                >
-                  Create Account
-                </button>
-              </div>
-            </div>
+    <AuthLayout
+      title="Welcome Back"
+      subtitle="Enter your details to sign in."
+      quote={{
+        text: "Design is not just what it looks like and feels like. Design is how it works.",
+        author: "Steve Jobs"
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center" role="alert" style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            color: '#FCA5A5',
+            borderRadius: '10px'
+          }}>
+            <i className="bi bi-exclamation-circle me-2"></i>
+            <div>{error}</div>
           </div>
-        </div>
-      </div>
+        )}
 
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        .form-control::placeholder {
-          color: rgba(255,255,255,0.3);
-        }
-      `}</style>
-    </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <input
+              type="email"
+              placeholder="Email Address"
+              className="form-control hover-effect"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+              }}
+              style={{
+                ...inputStyle,
+                borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#C8A24A';
+                e.target.style.background = 'rgba(255,255,255,0.08)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                e.target.style.background = 'rgba(255,255,255,0.05)';
+              }}
+            />
+            {errors.email && <div className="text-danger mt-1 small">{errors.email}</div>}
+          </div>
+
+          <div className="mb-4 position-relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              className="form-control hover-effect"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+              }}
+              style={{
+                ...inputStyle,
+                borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#C8A24A';
+                e.target.style.background = 'rgba(255,255,255,0.08)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                e.target.style.background = 'rgba(255,255,255,0.05)';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '15px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.5)',
+                cursor: 'pointer'
+              }}
+            >
+              <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+            </button>
+            {errors.password && <div className="text-danger mt-1 small">{errors.password}</div>}
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mb-5">
+            <div className="form-check">
+              {/* Remember me could go here */}
+            </div>
+            <Link to="/forgot-password" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: '0.9rem' }}>Forgot password?</Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn w-100 mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+              border: 'none',
+              padding: '16px',
+              borderRadius: '12px',
+              color: '#1E293B',
+              fontWeight: '700',
+              fontSize: '1rem',
+              boxShadow: '0 4px 15px rgba(200, 162, 74, 0.3)',
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+          >
+            {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : null}
+            Sign In
+          </button>
+
+          <div className="text-center">
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Don't have an account? </span>
+            <Link to="/register" style={{ color: '#C8A24A', textDecoration: 'none', fontWeight: '600' }}>Sign up for free</Link>
+          </div>
+        </form>
+      </motion.div>
+    </AuthLayout>
   );
 };
-
 export default Login;

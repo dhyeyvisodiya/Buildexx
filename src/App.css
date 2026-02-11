@@ -55,10 +55,15 @@ main {
 }
 
 .property-image {
-  height: 200px;
-  object-fit: cover;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+  transition: transform 0.5s ease;
+}
+
+.property-card:hover .property-image {
+  transform: scale(1.05);
+}
+
+.property-image-wrapper {
+  overflow: hidden;
 }
 
 .availability-badge {
@@ -415,6 +420,64 @@ strong {
   color: var(--construction-gold);
 }
 
-p {
-  color: var(--secondary-text);
+
+
+/* Custom Dropdown Styles */
+.custom-dropdown {
+  border-radius: 10px;
+  padding: 12px 16px;
+  background-color: var(--off-white);
+  color: var(--primary-text);
+  border: 1px solid transparent;
+  /* default border */
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23C8A24A' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 16px 12px;
+  appearance: none;
+  /* Remove default arrow */
+}
+
+.custom-dropdown:hover {
+  border-color: var(--construction-gold);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.custom-dropdown:focus {
+  border-color: var(--construction-gold);
+  box-shadow: 0 0 0 0.2rem rgba(200, 162, 74, 0.25);
+  outline: none;
+}
+
+.custom-dropdown:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Skeleton Loading Animation */
+.skeleton-box {
+  background: #2D3748;
+  background-image: linear-gradient(90deg,
+      #2D3748 0px,
+      #4A5568 40px,
+      #2D3748 80px);
+  background-size: 600px;
+  animation: skeleton-shimmer 1.6s infinite linear;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -100px;
+  }
+
+  100% {
+    background-position: 600px;
+  }
 }

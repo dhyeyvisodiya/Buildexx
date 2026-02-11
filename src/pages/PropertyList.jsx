@@ -2,13 +2,19 @@ import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
 import LocationSearch from '../components/LocationSearch';
+import { motion, AnimatePresence } from 'framer-motion';
+import PropertyCardSkeleton from '../components/PropertyCardSkeleton';
 // Lazy load PropertyMap
 const PropertyMap = lazy(() => import('../components/PropertyMap'));
-import { getProperties, getNearbyProperties } from '../../api/apiService';
+import { getProperties, getNearbyProperties, getCities } from '../../api/apiService';
 import { useGeolocation } from '../lib/useGeolocation';
 
+const CACHE_VERSION = '1.0';
+
 const PropertyList = ({ addToCompare, addToWishlist }) => {
-  const CACHE_VERSION = 'v4';
+  // ... (state definitions remain same up to cities) 
+  // We can keep state definitions as is, just updating useEffect
+
   const navigate = useNavigate();
   const location = useLocation();
   const [properties, setProperties] = useState(() => {
@@ -17,21 +23,20 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
-          // If we have data, verify it has coordinates (v2 schema)
           if (parsed.data && parsed.data.length > 0) {
             const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
             if (hasCoords) return parsed.data;
-            console.log('[PropertyList] Cached data lacks coordinates, ignoring');
           } else {
-            return []; // Empty list is fine to cache
+            return [];
           }
         }
       }
-    } catch (e) { console.warn('Cache load failed:', e); }
+    } catch (e) { }
     return [];
   });
 
   const [filteredProperties, setFilteredProperties] = useState(() => {
+    // ... same as before
     try {
       const cached = sessionStorage.getItem('propertiesCache');
       if (cached) {
@@ -50,6 +55,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   });
 
   const [loading, setLoading] = useState(() => {
+    // ... same as before
     try {
       const cached = sessionStorage.getItem('propertiesCache');
       if (cached) {
@@ -69,47 +75,54 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [cities, setCities] = useState([]);
   const [localities, setLocalities] = useState([]);
-  const [suggestions, setSuggestions] = useState([]); // OSM Suggestions
+  const [suggestions, setSuggestions] = useState([]);
 
-  // Caching refs to prevent repeated API calls
   const dataLoadedRef = useRef(false);
   const cachedPropertiesRef = useRef([]);
 
-  // View toggle: 'list' or 'map'
   const [viewMode, setViewMode] = useState('list');
-
-  // Map center state
   const [mapCenter, setMapCenter] = useState({ lat: 19.0760, lng: 72.8777 });
-
-  // Geolocation hook
   const { location: userLocation, loading: geoLoading, error: geoError, permissionDenied, requestLocation } = useGeolocation();
-
-  // Nearby mode
   const [nearbyMode, setNearbyMode] = useState(false);
 
   const [filters, setFilters] = useState({
     type: '',
-    purpose: location.state?.purpose || '',
+    purpose: location.state?.purpose ? (location.state.purpose.charAt(0).toUpperCase() + location.state.purpose.slice(1).toLowerCase()) : '',
     city: '',
     locality: '',
     search: ''
   });
 
-  // Fetch properties from database on mount (with caching)
+  // Fetch properties and cities on mount
   useEffect(() => {
-    // If we loaded from cache instantly, we don't need to do anything here
-    if (!loading && properties.length > 0) {
-      console.log('[PropertyList] Initialized from cache');
+    const loadData = async () => {
+      // 1. Fetch Cities
+      try {
+        const citiesData = await getCities();
+        if (citiesData && citiesData.length > 0) {
+          // Sort cities alphabetically
+          setCities(citiesData.sort((a, b) => a.localeCompare(b)));
+        }
+      } catch (err) {
+        console.error("Failed to load cities", err);
+      }
 
-      // Ensure cities/localities are populated
-      const uniqueCities = [...new Set(properties.map(p => p.city).filter(Boolean))];
-      setCities(uniqueCities);
-      return;
-    }
+      // 2. Fetch Properties (if not cached)
+      if (!loading && properties.length > 0) {
+        console.log('[PropertyList] Initialized from cache');
+        // If cities failed to load from API, extract from properties as fallback
+        if (cities.length === 0) {
+          const uniqueCities = [...new Set(properties.map(p => p.city).filter(Boolean))];
+          setCities(uniqueCities.sort((a, b) => a.localeCompare(b)));
+        }
+        return;
+      }
 
-    // Otherwise fetch
-    fetchProperties();
-  }, []);
+      await fetchProperties();
+    };
+
+    loadData();
+  }, []); // Run once on mount
 
   // Handle location from search or geolocation
   useEffect(() => {
@@ -130,7 +143,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         setProperties(result.data);
         setFilteredProperties(result.data);
 
-        // Cache the data in Ref and SessionStorage
+        // Cache the data 
         cachedPropertiesRef.current = result.data;
         dataLoadedRef.current = true;
         sessionStorage.setItem('propertiesCache', JSON.stringify({
@@ -139,9 +152,14 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           version: CACHE_VERSION
         }));
 
-        // Extract unique cities
-        const uniqueCities = [...new Set(result.data.map(p => p.city).filter(Boolean))];
-        setCities(uniqueCities);
+        // Fallback: If cities array is empty (API failed), extract from properties
+        setCities(prev => {
+          if (prev.length === 0) {
+            return [...new Set(result.data.map(p => p.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+          }
+          return prev;
+        });
+
       } else {
         console.error('[PropertyList] Failed to fetch properties:', result.error);
       }
@@ -240,32 +258,32 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     });
 
     if (filters.type) {
-      result = result.filter(property => property.type === filters.type);
+      result = result.filter(property => (property.type || '').toLowerCase() === filters.type.toLowerCase());
     }
 
     if (filters.purpose) {
-      result = result.filter(property => property.purpose === filters.purpose);
+      result = result.filter(property => (property.purpose || '').toLowerCase() === filters.purpose.toLowerCase());
     }
 
     if (filters.city) {
-      result = result.filter(property => property.city === filters.city);
+      result = result.filter(property => (property.city || '').toLowerCase() === filters.city.toLowerCase());
       // Update localities for selected city
       const cityLocalities = [...new Set(
-        properties.filter(p => p.city === filters.city).map(p => p.locality).filter(Boolean)
+        properties.filter(p => (p.city || '').toLowerCase() === filters.city.toLowerCase()).map(p => p.locality).filter(Boolean)
       )];
       setLocalities(cityLocalities);
     }
 
     if (filters.locality) {
-      result = result.filter(property => property.locality === filters.locality);
+      result = result.filter(property => (property.locality || '').toLowerCase() === filters.locality.toLowerCase());
     }
 
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       result = result.filter(property =>
-        property.name?.toLowerCase().includes(searchTerm) ||
-        property.city?.toLowerCase().includes(searchTerm) ||
-        property.locality?.toLowerCase().includes(searchTerm)
+        (property.name || '').toLowerCase().includes(searchTerm) ||
+        (property.city || '').toLowerCase().includes(searchTerm) ||
+        (property.locality || '').toLowerCase().includes(searchTerm)
       );
     }
 
@@ -532,19 +550,11 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             <div className="col-md-3">
               <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Type</label>
               <select
-                className="form-select"
+                className="form-select custom-dropdown"
                 name="type"
                 value={filters.type}
                 onChange={handleFilterChange}
                 disabled={isSearching || loading}
-                style={{
-                  borderRadius: '10px',
-                  padding: '12px 16px',
-                  background: 'var(--off-white)',
-                  color: 'var(--primary-text)',
-                  border: 'none',
-                  fontSize: '0.95rem'
-                }}
               >
                 <option value="">All Types</option>
                 <optgroup label="Residential">
@@ -570,19 +580,11 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             <div className="col-md-3">
               <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Purpose</label>
               <select
-                className="form-select"
+                className="form-select custom-dropdown"
                 name="purpose"
                 value={filters.purpose}
                 onChange={handleFilterChange}
                 disabled={isSearching || loading}
-                style={{
-                  borderRadius: '10px',
-                  padding: '12px 16px',
-                  background: 'var(--off-white)',
-                  color: 'var(--primary-text)',
-                  border: 'none',
-                  fontSize: '0.95rem'
-                }}
               >
                 <option value="">Both</option>
                 <option value="Buy">Buy</option>
@@ -593,19 +595,11 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             <div className="col-md-3">
               <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>City</label>
               <select
-                className="form-select"
+                className="form-select custom-dropdown"
                 name="city"
                 value={filters.city}
                 onChange={handleFilterChange}
                 disabled={isSearching || loading}
-                style={{
-                  borderRadius: '10px',
-                  padding: '12px 16px',
-                  background: 'var(--off-white)',
-                  color: 'var(--primary-text)',
-                  border: 'none',
-                  fontSize: '0.95rem'
-                }}
               >
                 <option value="">All Cities</option>
                 {cities.map(city => (
@@ -617,20 +611,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             <div className="col-md-3">
               <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Locality</label>
               <select
-                className="form-select"
+                className="form-select custom-dropdown"
                 name="locality"
                 value={filters.locality}
                 onChange={handleFilterChange}
                 disabled={!filters.city || isSearching || loading}
-                style={{
-                  borderRadius: '10px',
-                  padding: '12px 16px',
-                  background: 'var(--off-white)',
-                  color: 'var(--primary-text)',
-                  border: 'none',
-                  fontSize: '0.95rem',
-                  opacity: filters.city ? 1 : 0.6
-                }}
+                style={{ opacity: filters.city ? 1 : 0.6 }}
               >
                 <option value="">All Localities</option>
                 {localities.map(locality => (
@@ -693,13 +679,14 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading State with Skeleton */}
         {loading && (
-          <div className="text-center py-5">
-            <div className="spinner-border" style={{ color: '#C8A24A' }} role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-3" style={{ color: '#64748B' }}>Loading properties...</p>
+          <div className="row g-4">
+            {[1, 2, 3, 4, 5, 6].map(n => (
+              <div className="col-lg-4 col-md-6" key={n}>
+                <PropertyCardSkeleton />
+              </div>
+            ))}
           </div>
         )}
 
@@ -773,34 +760,44 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           </div>
         )}
 
-        {/* Property Cards */}
+        {/* Property Cards with Animation */}
         {!loading && viewMode === 'list' && filteredProperties.length > 0 ? (
-          <div className="row g-4">
-            {filteredProperties.map((property, index) => (
-              <div className="col-lg-4 col-md-6 animate__animated animate__fadeInUp" key={property.id} style={{ animationDelay: `${index * 0.1}s` }}>
-                <PropertyCard
-                  property={property}
-                  addToCompare={addToCompare}
-                  addToWishlist={addToWishlist}
-                />
-                {/* Show distance badge for nearby properties */}
-                {property.distance && (
-                  <div className="mt-2 text-center">
-                    <span style={{
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      color: '#10B981',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '0.85rem',
-                      fontWeight: '500'
-                    }}>
-                      <i className="bi bi-pin-map me-1"></i>
-                      {property.distance.toFixed(1)} km away
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="row g-4" component={motion.div} layout>
+            <AnimatePresence>
+              {filteredProperties.map((property, index) => (
+                <motion.div
+                  className="col-lg-4 col-md-6"
+                  key={property.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <PropertyCard
+                    property={property}
+                    addToCompare={addToCompare}
+                    addToWishlist={addToWishlist}
+                  />
+                  {/* Show distance badge for nearby properties */}
+                  {property.distance && (
+                    <div className="mt-2 text-center">
+                      <span style={{
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        color: '#10B981',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        fontWeight: '500'
+                      }}>
+                        <i className="bi bi-pin-map me-1"></i>
+                        {property.distance.toFixed(1)} km away
+                      </span>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         ) : !loading && viewMode === 'list' && (
           <div className="text-center py-5" style={{

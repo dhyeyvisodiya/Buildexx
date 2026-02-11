@@ -186,12 +186,12 @@ const Header = ({ compareCount, wishlistCount }) => {
                       style={{ color: 'rgba(255, 255, 255, 0.9)', padding: '4px 8px' }}
                     >
                       <i className="bi bi-person-circle me-1 fs-5"></i>
-                      <span className="ms-1 fw-semibold">{currentUser.username}</span>
+                      <span className="ms-1 fw-semibold">{currentUser.full_name || currentUser.fullName || currentUser.username}</span>
                     </button>
                     <ul className="dropdown-menu dropdown-menu-end animate__animated animate__fadeIn">
                       <li className="dropdown-header">
                         Signed in as<br />
-                        <strong>{currentUser.fullName || currentUser.username || currentUser.email}</strong>
+                        <strong>{currentUser.email}</strong>
                       </li>
                       <li>
                         <hr className="dropdown-divider" />

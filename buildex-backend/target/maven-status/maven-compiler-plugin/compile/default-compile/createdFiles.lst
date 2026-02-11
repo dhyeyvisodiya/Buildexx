@@ -19,6 +19,7 @@ com\buildex\service\impl\FileStorageService.class
 com\buildex\controller\HealthController.class
 com\buildex\controller\PropertyController.class
 com\buildex\controller\AuthController.class
+com\buildex\repository\ComplaintRepository.class
 com\buildex\dto\PropertySummaryDTO$PropertySummaryDTOBuilder.class
 com\buildex\service\PropertyService.class
 com\buildex\service\RentRequestService.class
