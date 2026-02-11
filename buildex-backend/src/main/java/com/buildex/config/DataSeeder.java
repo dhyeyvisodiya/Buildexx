@@ -68,7 +68,7 @@ public class DataSeeder implements CommandLineRunner {
                     "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80"));
 
             // Set Amenities
-            property.setAmenities(Arrays.asList("Gym", "Parking", "Security", "Pool"));
+            property.setAmenities(java.util.Set.of("Gym", "Parking", "Security", "Pool"));
 
             // Set 360 Images
             property.setPanoramaImages(Arrays.asList(

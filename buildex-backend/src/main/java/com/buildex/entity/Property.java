@@ -69,7 +69,7 @@ public class Property {
     @CollectionTable(name = "property_amenities", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "amenity")
     @org.hibernate.annotations.BatchSize(size = 50)
-    private List<String> amenities;
+    private java.util.Set<String> amenities;
 
     @Column(name = "possession_year")
     private Integer possessionYear;
@@ -100,6 +100,7 @@ public class Property {
     @ElementCollection
     @CollectionTable(name = "property_images", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "image_url", columnDefinition = "TEXT")
+    @OrderColumn(name = "image_order")
     @org.hibernate.annotations.BatchSize(size = 50)
     private List<String> imageUrls;
 
@@ -115,6 +116,7 @@ public class Property {
     @ElementCollection
     @CollectionTable(name = "property_panorama_images", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "panorama_image_url", columnDefinition = "TEXT")
+    @OrderColumn(name = "image_order")
     @org.hibernate.annotations.BatchSize(size = 50)
     private List<String> panoramaImages;
 
