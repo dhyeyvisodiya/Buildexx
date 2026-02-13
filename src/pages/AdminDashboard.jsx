@@ -40,7 +40,7 @@ const AdminDashboard = () => {
   const handleAvailabilityChange = async (propertyId, newStatus) => {
     try {
       setUpdatingId(propertyId);
-      const result = await updatePropertyAvailability(propertyId, newStatus);
+      const result = await updatePropertyAvailability(propertyId, newStatus.toUpperCase());
 
       if (result.success) {
         toast.success("Availability updated");
@@ -69,56 +69,87 @@ const AdminDashboard = () => {
   const [withdrawals, setWithdrawals] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
 
-  // Fetch data on mount
-  useEffect(() => {
-    fetchAdminData();
-  }, []);
-
-  const fetchAdminData = async () => {
-    // ... same content ...
+  // Fetch functions per tab
+  const fetchBuilders = async () => {
+    if (builders.length > 0) return; // Cache check
     setLoading(true);
     try {
-      // Fetch builders
-      const buildersResult = await getAllBuilders();
-      if (buildersResult.success) {
-        setBuilders(buildersResult.data);
-      }
-
-      // Fetch properties
-      const propertiesResult = await getAllProperties();
-      if (propertiesResult.success) {
-        setProperties(propertiesResult.data);
-      }
-
-      // Fetch complaints
-      const complaintsResult = await getAllComplaints();
-      if (complaintsResult.success) {
-        setComplaints(complaintsResult.data);
-      }
-
-      // Fetch admin payments
-      const paymentsResult = await getAdminPayments();
-      if (paymentsResult.success) {
-        setPayments(paymentsResult.data);
-      }
-
-      // Fetch withdrawals
-      const withdrawalsResult = await getAdminWithdrawals();
-      if (withdrawalsResult.success) {
-        setWithdrawals(withdrawalsResult.data);
-      }
-
-      // Fetch enquiries
-      const enquiriesResult = await getAdminEnquiries();
-      if (enquiriesResult.success) {
-        setEnquiries(enquiriesResult.data);
-      }
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-    } finally {
-      setLoading(false);
-    }
+      const result = await getAllBuilders();
+      if (result.success) setBuilders(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
+
+  const fetchProperties = async () => {
+    if (properties.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getAllProperties();
+      if (result.success) setProperties(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchEnquiries = async () => {
+    if (enquiries.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getAdminEnquiries();
+      if (result.success) setEnquiries(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchComplaints = async () => {
+    if (complaints.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getAllComplaints();
+      if (result.success) setComplaints(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchPayments = async () => {
+    if (payments.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getAdminPayments();
+      if (result.success) setPayments(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchWithdrawals = async () => {
+    if (withdrawals.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getAdminWithdrawals();
+      if (result.success) setWithdrawals(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  // Lazy load data based on active tab
+  useEffect(() => {
+    switch (activeTab) {
+      case 'overview':
+        // Overview needs minimal data from all, or dedicated stats endpoint. 
+        // For now, load everything to populate stats.
+        // In a real optimized app, you'd have getAdminStats()
+        if (builders.length === 0) fetchBuilders();
+        if (properties.length === 0) fetchProperties();
+        if (complaints.length === 0) fetchComplaints();
+        break;
+      case 'builders': fetchBuilders(); break;
+      case 'properties': fetchProperties(); break;
+      case 'enquiries': fetchEnquiries(); break;
+      case 'complaints': fetchComplaints(); break;
+      case 'payments': fetchPayments(); break;
+      case 'withdrawals': fetchWithdrawals(); break;
+    }
+  }, [activeTab]);
+
 
   // CRUD Operations...
 
@@ -242,30 +273,41 @@ const AdminDashboard = () => {
     }
   };
 
+  const [verifyingId, setVerifyingId] = useState(null);
+
   const handleVerifyProperty = async (id) => {
-    // ... same content ...
     try {
+      setVerifyingId(id);
       const result = await verifyProperty(id, true, currentUser.id);
       if (result.success) {
         setProperties(prev => prev.map(p => p.id === id ? { ...p, is_verified: true } : p));
+        toast.success("Property verified successfully");
       } else {
-        alert('Failed to verify property');
+        toast.error('Failed to verify property');
       }
     } catch (error) {
       console.error('Error verifying property:', error);
+      toast.error("An error occurred");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
   const handleUnverifyProperty = async (id) => {
     try {
+      setVerifyingId(id);
       const result = await verifyProperty(id, false, currentUser.id);
       if (result.success) {
         setProperties(prev => prev.map(p => p.id === id ? { ...p, is_verified: false } : p));
+        toast.success("Property unverified successfully");
       } else {
-        alert('Failed to unverify property');
+        toast.error('Failed to unverify property');
       }
     } catch (error) {
       console.error('Error un-verifying property:', error);
+      toast.error("An error occurred");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -587,7 +629,9 @@ const AdminDashboard = () => {
                     {properties.map(property => (
                       <tr key={property.id}>
                         <td style={{ color: '#0F172A', fontWeight: '500' }}>{property.name}</td>
-                        <td style={{ color: '#64748B' }}>{property.builder_name || '-'}</td>
+                        <td style={{ color: '#64748B' }}>
+                          {property.builder_name || property.builder?.companyName || property.builder?.fullName || '-'}
+                        </td>
                         <td style={{ color: '#64748B' }}>{property.type}</td>
                         <td style={{ color: '#64748B' }}>{property.city || '-'}</td>
                         <td style={{ color: '#64748B' }}>
@@ -642,16 +686,36 @@ const AdminDashboard = () => {
                                 className="btn btn-sm"
                                 style={{ background: '#10B981', color: 'white', borderRadius: '6px' }}
                                 onClick={() => handleVerifyProperty(property.id)}
+                                disabled={verifyingId === property.id}
                               >
-                                <i className="bi bi-check-circle me-1"></i>Verify
+                                {verifyingId === property.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Verifying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-check-circle me-1"></i>Verify
+                                  </>
+                                )}
                               </button>
                             ) : (
                               <button
                                 className="btn btn-sm"
                                 style={{ background: '#F59E0B', color: 'white', borderRadius: '6px' }}
                                 onClick={() => handleUnverifyProperty(property.id)}
+                                disabled={verifyingId === property.id}
                               >
-                                <i className="bi bi-x-circle me-1"></i>Unverify
+                                {verifyingId === property.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Unverifying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-x-circle me-1"></i>Unverify
+                                  </>
+                                )}
                               </button>
                             )}
                             <button
@@ -881,34 +945,50 @@ const AdminDashboard = () => {
                       </td>
                     </tr>
                   ) : (
-                    withdrawals.map(w => (
-                      <tr key={w.id}>
-                        <td style={{ color: '#0F172A' }}>{w.builder?.companyName} <br /><small className="text-muted">{w.builder?.email}</small></td>
-                        <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
-                        <td style={{ color: '#EF4444' }}>
-                          {w.status === 'approved' ? `₹${w.commissionAmount}` : '-'}
-                        </td>
-                        <td style={{ color: '#10B981' }}>
-                          {w.status === 'approved' ? `₹${w.payoutAmount}` : '-'}
-                        </td>
-                        <td>
-                          <span style={{
-                            padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
-                            background: w.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
-                            color: w.status === 'approved' ? '#059669' : '#D97706'
-                          }}>
-                            {w.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td>
-                          {w.status === 'pending' && (
-                            <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
-                              Approve Payout
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                    withdrawals.map(w => {
+                      // Calculate projected values for display if pending
+                      const displayCommission = w.status === 'approved'
+                        ? w.commissionAmount
+                        : (w.amount * 0.05).toFixed(2);
+
+                      const displayPayout = w.status === 'approved'
+                        ? w.payoutAmount
+                        : (w.amount * 0.95).toFixed(2);
+
+                      return (
+                        <tr key={w.id}>
+                          <td style={{ color: '#0F172A' }}>
+                            <span className="fw-bold">{w.builder?.companyName}</span>
+                            <span className="d-block small text-muted">{w.builder?.fullName}</span>
+                          </td>
+                          <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
+                          <td style={{ color: '#EF4444' }}>
+                            ₹{displayCommission}
+                            {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                          </td>
+                          <td style={{ color: '#10B981' }}>
+                            ₹{displayPayout}
+                            {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                              background: w.status === 'approved' || w.status === 'APPROVED' ? '#D1FAE5' : '#FEF3C7',
+                              color: w.status === 'approved' || w.status === 'APPROVED' ? '#059669' : '#D97706'
+                            }}>
+                              {w.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td>
+                            {(w.status === 'pending' || w.status === 'PENDING') && (
+                              <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
+                                Approve Payout
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

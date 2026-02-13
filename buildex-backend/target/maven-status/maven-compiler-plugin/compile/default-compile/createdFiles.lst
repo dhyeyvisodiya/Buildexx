@@ -3,7 +3,6 @@ com\buildex\repository\PaymentRepository.class
 com\buildex\entity\Complaint$ComplaintBuilder.class
 com\buildex\entity\Enquiry.class
 com\buildex\entity\User.class
-com\buildex\BuildexApplication.class
 com\buildex\controller\ImageController.class
 com\buildex\entity\Payment$PaymentType.class
 com\buildex\repository\UserRepository.class

@@ -1,5 +1,6 @@
 package com.buildex.controller;
 
+import com.buildex.dto.BuilderSummaryDTO;
 import com.buildex.entity.User;
 import com.buildex.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +21,8 @@ public class UserController {
     }
 
     @GetMapping("/builders")
-    public ResponseEntity<List<User>> getAllBuilders() {
-        return ResponseEntity.ok(userRepository.findAllByRole("builder"));
+    public ResponseEntity<List<BuilderSummaryDTO>> getAllBuilders() {
+        return ResponseEntity.ok(userRepository.findAllBuilderSummaries("builder"));
     }
 
     @PatchMapping("/{id}/status")

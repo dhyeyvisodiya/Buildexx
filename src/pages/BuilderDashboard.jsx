@@ -63,7 +63,7 @@ const BuilderDashboard = () => {
 
     try {
       setUpdatingId(propertyId);
-      const result = await updatePropertyAvailability(propertyId, newStatus);
+      const result = await updatePropertyAvailability(propertyId, newStatus.toUpperCase());
 
       if (result.success) {
         toast.success("Status updated successfully");
@@ -118,66 +118,115 @@ const BuilderDashboard = () => {
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
 
-  // Fetch data on mount
-  useEffect(() => {
-    if (currentUser?.id) {
-      fetchBuilderData();
-    }
-  }, [currentUser]);
-
-  const fetchBuilderData = async () => {
+  // Fetch functions per tab
+  const fetchProperties = async () => {
+    if (properties.length > 0) return;
     setLoading(true);
     try {
-      // Execute all fetches in parallel
-      const [propertiesResult, enquiriesResult, rentResult, paymentsResult, withdrawalsResult] = await Promise.all([
-        getPropertiesByBuilder(currentUser.id),
-        getBuilderEnquiries(currentUser.id),
-        getRentRequestsByBuilder(currentUser.id),
-        getBuilderPayments(currentUser.id),
-        getBuilderWithdrawals(currentUser.id)
+      const result = await getPropertiesByBuilder(currentUser.id);
+      if (result.success) setProperties(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchEnquiries = async () => {
+    if (buyEnquiries.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getBuilderEnquiries(currentUser.id);
+      if (result.success) setBuyEnquiries(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchRentRequests = async () => {
+    if (rentRequests.length > 0) return;
+    setLoading(true);
+    try {
+      const result = await getRentRequestsByBuilder(currentUser.id);
+      if (result.success) setRentRequests(result.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchPayments = async () => {
+    if (payments.length > 0) return;
+    setLoading(true);
+    try {
+      // apiService returns array
+      const result = await getBuilderPayments(currentUser.id);
+      const data = Array.isArray(result) ? result : (result.data || []);
+      setPayments(data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const fetchWithdrawals = async () => {
+    if (withdrawals.length > 0) return;
+    setLoading(true);
+    try {
+      // Need payments to calculate balance, so ensure they are fetched or passed
+      // Ideally, balance should come from backend, but sticking to current logic:
+      const [withdrawalsResult, paymentsResult] = await Promise.all([
+        getBuilderWithdrawals(currentUser.id),
+        payments.length > 0 ? Promise.resolve(payments) : getBuilderPayments(currentUser.id)
       ]);
 
-      // Handle properties
-      if (propertiesResult.success) {
-        setProperties(propertiesResult.data);
-      }
-
-      // Handle enquiries
-      if (enquiriesResult.success) {
-        setBuyEnquiries(enquiriesResult.data);
-      }
-
-      // Handle rent requests
-      if (rentResult.success) {
-        setRentRequests(rentResult.data);
-      }
-
-      // Handle payments
-      // apiService returns array
-      const paymentsData = Array.isArray(paymentsResult) ? paymentsResult : (paymentsResult.data || []);
-      setPayments(paymentsData);
-
-      // Handle withdrawals
       if (withdrawalsResult.success) {
         setWithdrawals(withdrawalsResult.data);
 
+        // Handle Payment Data resolution
+        let paymentsData = payments;
+        if (payments.length === 0) {
+          paymentsData = Array.isArray(paymentsResult) ? paymentsResult : (paymentsResult.data || []);
+          setPayments(paymentsData); // Cache payments too
+        }
+
         // Calculate Total Earned from SUCCESSFUL payments
         const totalEarned = paymentsData
-          .filter(p => p.status === 'SUCCESS')
+          .filter(p => p.status === 'SUCCESS' || p.status === 'success')
           .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+        // Calculate total withdrawn (including pending)
+        const totalWithdrawn = withdrawalsResult.data
+          .filter(w => w.status === 'approved' || w.status === 'pending')
+          .reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
+
+        const currentBalance = totalEarned - totalWithdrawn;
 
         setBalance({
           totalEarned: totalEarned.toFixed(2),
-          currentBalance: withdrawalsResult.balance || 0
+          currentBalance: currentBalance < 0 ? 0 : currentBalance.toFixed(2)
         });
       }
-
     } catch (error) {
       console.error('Error fetching builder data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Lazy load data based on activeTab
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    switch (activeTab) {
+      case 'overview':
+        // Load properties and enquiries for overview stats
+        if (properties.length === 0) fetchProperties();
+        if (buyEnquiries.length === 0) fetchEnquiries();
+        break;
+      case 'my-properties': case 'add-property':
+        fetchProperties();
+        break;
+      case 'enquiries': fetchEnquiries(); break;
+      case 'rent-requests': fetchRentRequests(); break;
+      case 'received-payments':
+      case 'transactions':
+        fetchPayments(); fetchWithdrawals(); break;
+    }
+  }, [activeTab, currentUser]);
+
 
   const handleWithdrawalRequest = async () => {
     const amount = parseFloat(withdrawalAmount);
@@ -1729,19 +1778,35 @@ const BuilderDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {withdrawals.map(w => (
-                        <tr key={w.id}>
-                          <td>{formatDate(w.createdAt)}</td>
-                          <td className="fw-bold">₹{w.amount}</td>
-                          <td className="text-danger">{w.status === 'approved' ? `₹${w.commissionAmount}` : '-'}</td>
-                          <td className="text-success">{w.status === 'approved' ? `₹${w.payoutAmount}` : '-'}</td>
-                          <td>
-                            <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
-                              {w.status.toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {withdrawals.map(w => {
+                        const displayCommission = w.status === 'approved'
+                          ? w.commissionAmount
+                          : (w.amount * 0.05).toFixed(2);
+
+                        const displayPayout = w.status === 'approved'
+                          ? w.payoutAmount
+                          : (w.amount * 0.95).toFixed(2);
+
+                        return (
+                          <tr key={w.id}>
+                            <td>{formatDate(w.createdAt)}</td>
+                            <td className="fw-bold">₹{w.amount}</td>
+                            <td className="text-danger">
+                              ₹{displayCommission}
+                              {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                            </td>
+                            <td className="text-success">
+                              ₹{displayPayout}
+                              {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                            </td>
+                            <td>
+                              <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
+                                {w.status.toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
