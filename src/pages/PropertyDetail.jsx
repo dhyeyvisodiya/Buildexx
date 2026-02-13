@@ -6,10 +6,11 @@ import NearbyPlaces from '../components/NearbyPlaces';
 import PanoramaViewer from '../components/PanoramaViewer';
 import PaymentButton from '../components/PaymentButton';
 import ReportListing from '../components/ReportListing';
-import { createEnquiry, createRentRequest, createComplaint, getPropertyById, reportProperty } from '../../api/apiService';
+import { createEnquiry, createRentRequest, createComplaint, getPropertyById, reportProperty } from '../api/apiService';
 import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getImageUrl, getImagesUrls } from '../utils/imageUtils';
 
 const PropertyDetail = ({ addToCompare, addToWishlist }) => {
   const { id } = useParams();
@@ -81,10 +82,14 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           // Cache the data
           cachedPropertyRef.current = result.data;
           loadedPropertyIdRef.current = id;
-          sessionStorage.setItem(`property_detail_${id}`, JSON.stringify({
-            data: result.data,
-            timestamp: Date.now()
-          }));
+          try {
+            sessionStorage.setItem(`property_detail_${id}`, JSON.stringify({
+              data: result.data,
+              timestamp: Date.now()
+            }));
+          } catch (e) {
+            console.warn('Session storage full, skipping cache for property:', id);
+          }
         }
       }
       setIsLoading(false);
@@ -235,7 +240,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           setComplaintForm({ issue: '' });
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: 'Failed to report complaint.' });
+        setMessage({ type: 'error', text: result.error || 'Failed to report complaint.' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred.' });
@@ -278,7 +283,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           setVisitForm({ fullName: '', email: '', phone: '', visitDate: '', message: '' });
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: result.message || 'Failed to schedule visit' });
+        setMessage({ type: 'error', text: result.error || 'Failed to schedule visit' });
       }
     } catch (error) {
       console.error(error);
@@ -306,7 +311,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           setEnquiryForm({ fullName: '', email: '', phone: '', message: '' });
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: 'Failed to send enquiry.' });
+        setMessage({ type: 'error', text: result.error || 'Failed to send enquiry.' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred.' });
@@ -354,7 +359,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           setRentForm({ fullName: '', email: '', phone: '', moveInDate: '', message: '' });
         }, 2000);
       } else {
-        setMessage({ type: 'error', text: 'Failed to send request.' });
+        setMessage({ type: 'error', text: result.error || 'Failed to send request.' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred.' });
@@ -513,7 +518,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             {property.images && property.images.length > 0 ? (
               <>
                 <img
-                  src={property.images[currentImageIndex]}
+                  src={getImageUrl(property.images[currentImageIndex])}
                   className="property-gallery w-100"
                   alt={property.name}
                   style={{ borderRadius: '12px', height: '400px', objectFit: 'cover' }}
@@ -634,7 +639,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                       availability_status: property.purpose === 'Rent' ? 'rented' : 'booked'
                     }));
                     // Also invalidate cache
-                    import('../../api/apiService').then(module => {
+                    import('../api/apiService').then(module => {
                       // Note: We can't easily import cacheInvalidate here if it's not exported, 
                       // but since we updated local state, the UI reflects it.
                       // Ideally we should assume the backend update is done.
@@ -832,26 +837,8 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 360° Virtual Tour
               </h3>
               <PanoramaViewer
-                imageUrl={
-                  property.panorama_image_path
-                    ? (property.panorama_image_path.startsWith('http')
-                      ? property.panorama_image_path
-                      : `http://localhost:8081${property.panorama_image_path.startsWith('/') ? '' : '/'}${property.panorama_image_path}`)
-                    : (property.virtual_tour_link || null)
-                }
-                imageUrls={
-                  property.panorama_images && property.panorama_images.length > 0
-                    ? property.panorama_images.map(img =>
-                      img.startsWith('http')
-                        ? img
-                        : `http://localhost:8081${img.startsWith('/') ? '' : '/'}${img}`
-                    )
-                    : (property.panorama_image_path
-                      ? [(property.panorama_image_path.startsWith('http')
-                        ? property.panorama_image_path
-                        : `http://localhost:8081${property.panorama_image_path.startsWith('/') ? '' : '/'}${property.panorama_image_path}`)]
-                      : [])
-                }
+                imageUrl={getImageUrl(property.panorama_image_path || property.virtual_tour_link)}
+                imageUrls={getImagesUrls(property.panoramaImages || (property.panorama_image_path ? [property.panorama_image_path] : []))}
                 title={`360° View - ${property.name}`}
                 height="450px"
               />
@@ -951,6 +938,47 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                               </div>
                               <textarea className="form-control mb-2" placeholder="Message" name="message" value={rentForm.message} onChange={handleRentChange} required rows="3" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
                               <button type="submit" className="btn btn-primary w-100" style={{ background: 'linear-gradient(90deg, #C8A24A, #9E7C2F)', border: 'none', color: '#0B1220' }} disabled={submitting}>Submit Request</button>
+                            </form>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <button
+                        className="btn w-100 mb-2"
+                        onClick={() => toggleForm('visit')}
+                        style={{
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          padding: '12px',
+                          transition: 'all 0.3s ease',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid #334155',
+                          color: '#F8FAFC'
+                        }}
+                      >
+                        <i className="bi bi-calendar-check me-2"></i>
+                        {showVisitForm ? 'Cancel Visit' : 'Schedule a Visit'}
+                      </button>
+                      <AnimatePresence>
+                        {showVisitForm && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <form onSubmit={handleVisitSubmit} className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--section-divider)' }}>
+                              {message.text && (
+                                <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-danger'} py-2`}>
+                                  {message.text}
+                                </div>
+                              )}
+                              <input className="form-control mb-2" placeholder="Full Name" name="fullName" value={visitForm.fullName} onChange={(e) => setVisitForm({ ...visitForm, fullName: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
+                              <input className="form-control mb-2" placeholder="Email" name="email" value={visitForm.email} onChange={(e) => setVisitForm({ ...visitForm, email: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
+                              <input className="form-control mb-2" placeholder="Phone" name="phone" value={visitForm.phone} onChange={(e) => setVisitForm({ ...visitForm, phone: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
+                              <input type="datetime-local" className="form-control mb-2" placeholder="Visit Date & Time" name="visitDate" value={visitForm.visitDate} onChange={(e) => setVisitForm({ ...visitForm, visitDate: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
+                              <textarea className="form-control mb-2" placeholder="Message (Optional)" name="message" value={visitForm.message} onChange={(e) => setVisitForm({ ...visitForm, message: e.target.value })} rows="2" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
+                              <button type="submit" className="btn btn-primary w-100" style={{ background: 'linear-gradient(90deg, #3B82F6, #2563EB)', border: 'none', color: '#FFFFFF' }} disabled={submitting}>Confirm Visit</button>
                             </form>
                           </motion.div>
                         )}

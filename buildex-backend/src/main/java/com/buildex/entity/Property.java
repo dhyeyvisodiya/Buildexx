@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -26,7 +27,7 @@ import java.util.List;
 @Data // Restored
 @NoArgsConstructor
 @AllArgsConstructor
-@lombok.Builder
+@Builder
 public class Property {
 
     @Id
@@ -80,12 +81,14 @@ public class Property {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "availability_status")
+    @Builder.Default
     private AvailabilityStatus availabilityStatus = AvailabilityStatus.AVAILABLE;
 
     @Column(name = "city", nullable = false)
     private String city;
 
     @Column(name = "area", nullable = false)
+    @JsonIgnore // Prevent direct mapping from "area" JSON key (which is SqFt in frontend)
     private String area;
 
     @Column(name = "google_map_link", columnDefinition = "TEXT")
@@ -108,6 +111,7 @@ public class Property {
     private String legalDocumentPath;
 
     @Column(name = "is_verified")
+    @Builder.Default
     private Boolean isVerified = false;
 
     @Column(name = "panorama_image_path", columnDefinition = "TEXT")
@@ -118,6 +122,7 @@ public class Property {
     @Column(name = "panorama_image_url", columnDefinition = "TEXT")
     @OrderColumn(name = "image_order")
     @org.hibernate.annotations.BatchSize(size = 50)
+    @JsonProperty("panorama_images")
     private List<String> panoramaImages;
 
     @Column(name = "latitude")
@@ -172,6 +177,12 @@ public class Property {
     // =============================================
     // JSON ALIAS GETTERS FOR FRONTEND COMPATIBILITY
     // =============================================
+
+    @JsonProperty("status")
+    public String getStatus() {
+        if (isVerified == null) return "pending";
+        return isVerified ? "approved" : "pending";
+    }
 
     @JsonProperty("name")
     public String getName() {
@@ -261,6 +272,60 @@ public class Property {
     // Add explicit getter for panoramaImages for serialization if needed,
     // but @Data usually handles field-based serialization if not hidden.
     // However, we want to ensure it's available.
+    // =============================================
+    // JSON ALIAS SETTERS FOR FRONTEND COMPATIBILITY
+    // =============================================
+
+    @JsonProperty("area")
+    public void setAreaSqftAlias(Integer areaSqft) {
+        this.areaSqft = areaSqft;
+    }
+
+    @JsonProperty("locality")
+    public void setLocalityAlias(String locality) {
+        this.area = locality;
+    }
+
+    @JsonProperty("possession")
+    public void setPossessionAlias(Integer possessionYear) {
+        this.possessionYear = possessionYear;
+    }
+
+    @JsonProperty("rent_amount")
+    public void setRentAmountAlias(BigDecimal rentAmount) {
+        this.rentAmount = rentAmount;
+    }
+
+    @JsonProperty("construction_status")
+    public void setConstructionStatusAlias(ConstructionStatus constructionStatus) {
+        this.constructionStatus = constructionStatus;
+    }
+
+    @JsonProperty("brochure_url")
+    public void setBrochureUrlAlias(String brochureUrl) {
+        this.brochureUrl = brochureUrl;
+    }
+
+    @JsonProperty("google_map_link")
+    public void setGoogleMapLinkAlias(String googleMapLink) {
+        this.googleMapLink = googleMapLink;
+    }
+
+    @JsonProperty("virtual_tour_link")
+    public void setVirtualTourLinkAlias(String virtualTourLink) {
+        this.virtualTourLink = virtualTourLink;
+    }
+
+    @JsonProperty("panorama_image_path")
+    public void setPanoramaImagePathAlias(String panoramaImagePath) {
+        this.panoramaImagePath = panoramaImagePath;
+    }
+
+    @JsonProperty("images")
+    public void setImagesAlias(List<String> images) {
+        this.imageUrls = images;
+    }
+
     public List<String> getPanoramaImages() {
         return panoramaImages;
     }

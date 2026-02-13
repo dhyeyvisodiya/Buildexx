@@ -14,8 +14,10 @@ import {
   verifyProperty,
   getAdminPayments,
   getAdminWithdrawals,
-  updateWithdrawalStatus
-} from '../../api/apiService';
+  updateWithdrawalStatus,
+  getAdminEnquiries,
+  updateEnquiryStatus
+} from '../api/apiService';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getApiUrl } from '../config';
 import '../DashboardStyles.css';
@@ -65,6 +67,7 @@ const AdminDashboard = () => {
   const [complaints, setComplaints] = useState([]);
   const [payments, setPayments] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -104,6 +107,12 @@ const AdminDashboard = () => {
       if (withdrawalsResult.success) {
         setWithdrawals(withdrawalsResult.data);
       }
+
+      // Fetch enquiries
+      const enquiriesResult = await getAdminEnquiries();
+      if (enquiriesResult.success) {
+        setEnquiries(enquiriesResult.data);
+      }
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -124,7 +133,7 @@ const AdminDashboard = () => {
       try {
         const result = await updateWithdrawalStatus(id, 'approved', commission, payout);
         if (result.success) {
-          setWithdrawals(prev => prev.map(w => w.id === id ? { ...w, status: 'approved', commission_amount: commission, payout_amount: payout } : w));
+          setWithdrawals(prev => prev.map(w => w.id === id ? { ...w, status: 'approved', commissionAmount: commission, payoutAmount: payout } : w));
         }
       } catch (error) {
         console.error('Error approving withdrawal:', error);
@@ -208,14 +217,28 @@ const AdminDashboard = () => {
   };
 
   const handleResolveComplaint = async (id) => {
-    // ... same content ...
     try {
-      const result = await updateComplaintStatus(id, 'resolved');
+      const result = await updateComplaintStatus(id, 'RESOLVED');
       if (result.success) {
-        setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: 'resolved' } : c));
+        setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: 'RESOLVED' } : c));
+        toast.success("Complaint resolved");
       }
     } catch (error) {
       console.error('Error resolving complaint:', error);
+      toast.error("Failed to resolve complaint");
+    }
+  };
+
+  const handleUpdateEnquiryStatus = async (id, status) => {
+    try {
+      const result = await updateEnquiryStatus(id, status);
+      if (result.success) {
+        setEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: status.toUpperCase() } : e));
+        toast.success(`Enquiry ${status}`);
+      }
+    } catch (error) {
+      console.error('Error updating enquiry status:', error);
+      toast.error("Failed to update enquiry");
     }
   };
 
@@ -242,9 +265,10 @@ const AdminDashboard = () => {
         alert('Failed to unverify property');
       }
     } catch (error) {
-      console.error('Error unverifying property:', error);
+      console.error('Error un-verifying property:', error);
     }
   };
+
 
   const stats = {
     // ... same content ...
@@ -252,8 +276,9 @@ const AdminDashboard = () => {
     pendingVerifications: builders.filter(b => b.status === 'pending' || b.status === 'pending_verification').length,
     totalProperties: properties.length,
     pendingProperties: properties.filter(p => !p.is_verified).length,
-    openComplaints: complaints.filter(c => c.status === 'open' || !c.status).length,
-    totalRevenue: withdrawals.filter(w => w.status === 'approved').reduce((sum, w) => sum + parseFloat(w.commission_amount || 0), 0)
+    openComplaints: complaints.filter(c => c.status === 'open' || !c.status || c.status === 'PENDING').length,
+    pendingEnquiries: enquiries.filter(e => e.status === 'PENDING' || !e.status).length,
+    totalRevenue: withdrawals.filter(w => w.status === 'approved').reduce((sum, w) => sum + parseFloat(w.commissionAmount || 0), 0)
   };
 
   const tabs = [
@@ -261,13 +286,17 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview', icon: 'bi-grid' },
     { id: 'builders', label: 'Builders', icon: 'bi-people' },
     { id: 'properties', label: 'Properties', icon: 'bi-building' },
+    { id: 'enquiries', label: 'Enquiries', icon: 'bi-chat-left-text' },
     { id: 'complaints', label: 'Complaints', icon: 'bi-exclamation-triangle' },
     { id: 'payments', label: 'All Payments', icon: 'bi-cash' },
     { id: 'withdrawals', label: 'Withdrawals', icon: 'bi-wallet2' }
   ];
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    if (!dateString) return 'Pending';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -643,6 +672,60 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Enquiries Tab */}
+        {!loading && activeTab === 'enquiries' && (
+          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
+              <i className="bi bi-chat-left-text me-2" style={{ color: '#3B82F6' }}></i>
+              Platform Enquiries ({enquiries.length})
+            </h5>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th style={{ color: '#0F172A' }}>Property</th>
+                    <th style={{ color: '#0F172A' }}>Customer</th>
+                    <th style={{ color: '#0F172A' }}>Type</th>
+                    <th style={{ color: '#0F172A' }}>Date</th>
+                    <th style={{ color: '#0F172A' }}>Status</th>
+                    <th style={{ color: '#0F172A' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {enquiries.map(e => (
+                    <tr key={e.id}>
+                      <td style={{ color: '#0F172A' }}>{e.property?.title || 'Deleted Property'}</td>
+                      <td style={{ color: '#64748B' }}>
+                        {e.name}<br />
+                        <small>{e.email}</small>
+                      </td>
+                      <td style={{ color: '#64748B' }}>{e.enquiryType}</td>
+                      <td style={{ color: '#64748B' }}>{formatDate(e.createdAt)}</td>
+                      <td>
+                        <span style={{
+                          padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                          background: e.status === 'APPROVED' ? '#D1FAE5' : e.status === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+                          color: e.status === 'APPROVED' ? '#059669' : e.status === 'REJECTED' ? '#DC2626' : '#D97706'
+                        }}>
+                          {e.status || 'PENDING'}
+                        </span>
+                      </td>
+                      <td>
+                        {(e.status === 'PENDING' || !e.status) && (
+                          <div className="d-flex gap-2">
+                            <button className="btn btn-sm btn-success" onClick={() => handleUpdateEnquiryStatus(e.id, 'APPROVED')}>Approve</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleUpdateEnquiryStatus(e.id, 'REJECTED')}>Reject</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Complaints Tab */}
         {!loading && activeTab === 'complaints' && (
           <div style={{
@@ -691,24 +774,24 @@ const AdminDashboard = () => {
                   <tbody>
                     {complaints.map(complaint => (
                       <tr key={complaint.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{complaint.property_name || '-'}</td>
-                        <td style={{ color: '#64748B' }}>{complaint.complainant_name || '-'}</td>
-                        <td style={{ color: '#64748B', maxWidth: '200px' }}>{complaint.issue}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(complaint.created_at)}</td>
+                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{complaint.property?.title || '-'}</td>
+                        <td style={{ color: '#64748B' }}>{complaint.user?.fullName || '-'}</td>
+                        <td style={{ color: '#64748B', maxWidth: '200px' }}>{complaint.description}</td>
+                        <td style={{ color: '#64748B' }}>{formatDate(complaint.createdAt)}</td>
                         <td>
                           <span style={{
                             padding: '4px 12px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
                             fontWeight: '600',
-                            background: complaint.status === 'resolved' ? '#D1FAE5' : '#FEF3C7',
-                            color: complaint.status === 'resolved' ? '#059669' : '#D97706'
+                            background: (complaint.status === 'RESOLVED' || complaint.status === 'resolved') ? '#D1FAE5' : '#FEF3C7',
+                            color: (complaint.status === 'RESOLVED' || complaint.status === 'resolved') ? '#059669' : '#D97706'
                           }}>
-                            {complaint.status ? complaint.status.charAt(0).toUpperCase() + complaint.status.slice(1) : 'Open'}
+                            {complaint.status ? complaint.status.toUpperCase() : 'PENDING'}
                           </span>
                         </td>
                         <td>
-                          {complaint.status === 'open' && (
+                          {(!complaint.status || complaint.status === 'PENDING' || complaint.status === 'pending' || complaint.status === 'OPEN' || complaint.status === 'open') && (
                             <button
                               className="btn btn-sm"
                               style={{ background: '#10B981', color: 'white', borderRadius: '6px' }}
@@ -748,15 +831,23 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.map(p => (
-                    <tr key={p.id}>
-                      <td style={{ color: '#0F172A' }}>{p.property_name || '-'}</td>
-                      <td style={{ color: '#64748B' }}>{p.user_name || '-'}</td>
-                      <td style={{ color: '#64748B' }}>{p.builder_name || '-'}</td>
-                      <td style={{ color: '#10B981', fontWeight: 'bold' }}>₹{p.amount}</td>
-                      <td style={{ color: '#64748B' }}>{formatDate(p.created_at)}</td>
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-4" style={{ color: '#64748B' }}>
+                        No payments recorded yet.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    payments.map(p => (
+                      <tr key={p.id}>
+                        <td style={{ color: '#0F172A' }}>{p.property?.title || '-'}</td>
+                        <td style={{ color: '#64748B' }}>{p.user?.fullName || '-'}</td>
+                        <td style={{ color: '#64748B' }}>{p.builder?.companyName || '-'}</td>
+                        <td style={{ color: '#10B981', fontWeight: 'bold' }}>₹{p.amount}</td>
+                        <td style={{ color: '#64748B' }}>{formatDate(p.createdAt)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -783,34 +874,42 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {withdrawals.map(w => (
-                    <tr key={w.id}>
-                      <td style={{ color: '#0F172A' }}>{w.builder_name} <br /><small className="text-muted">{w.builder_email}</small></td>
-                      <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
-                      <td style={{ color: '#EF4444' }}>
-                        {w.status === 'approved' ? `₹${w.commission_amount}` : '-'}
-                      </td>
-                      <td style={{ color: '#10B981' }}>
-                        {w.status === 'approved' ? `₹${w.payout_amount}` : '-'}
-                      </td>
-                      <td>
-                        <span style={{
-                          padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
-                          background: w.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
-                          color: w.status === 'approved' ? '#059669' : '#D97706'
-                        }}>
-                          {w.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>
-                        {w.status === 'pending' && (
-                          <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
-                            Approve Payout
-                          </button>
-                        )}
+                  {withdrawals.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="text-center py-4" style={{ color: '#64748B' }}>
+                        No withdrawal requests found.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    withdrawals.map(w => (
+                      <tr key={w.id}>
+                        <td style={{ color: '#0F172A' }}>{w.builder?.companyName} <br /><small className="text-muted">{w.builder?.email}</small></td>
+                        <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
+                        <td style={{ color: '#EF4444' }}>
+                          {w.status === 'approved' ? `₹${w.commissionAmount}` : '-'}
+                        </td>
+                        <td style={{ color: '#10B981' }}>
+                          {w.status === 'approved' ? `₹${w.payoutAmount}` : '-'}
+                        </td>
+                        <td>
+                          <span style={{
+                            padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
+                            background: w.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
+                            color: w.status === 'approved' ? '#059669' : '#D97706'
+                          }}>
+                            {w.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          {w.status === 'pending' && (
+                            <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
+                              Approve Payout
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

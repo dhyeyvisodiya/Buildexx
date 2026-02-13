@@ -7,7 +7,6 @@ import Footer from './components/Footer'
 import BackToTop from './components/BackToTop'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { initializeDatabase } from '../api/db'
 import { Toaster } from 'react-hot-toast'
 
 // Lazy Load Pages
@@ -252,8 +251,7 @@ function AppContent() {
 
 function App() {
   useEffect(() => {
-    // Run database migrations/initialization on app start
-    initializeDatabase().catch(console.error);
+    // Database initialization removed as we moved to Java backend
   }, []);
 
   return (

@@ -13,4 +13,6 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("DELETE FROM Complaint c WHERE c.property.id = :propertyId")
     void deleteByPropertyId(Long propertyId);
+
+    List<Complaint> findByStatus(String status);
 }

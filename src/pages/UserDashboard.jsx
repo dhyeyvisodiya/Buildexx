@@ -12,7 +12,7 @@ import {
   getUserPayments,
   fetchUserRentSubscriptions,
   payRent
-} from '../../api/apiService';
+} from '../api/apiService';
 import '../DashboardStyles.css';
 
 const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemoveFromWishlist }) => {
@@ -83,7 +83,9 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
     setLoading(true);
     try {
       const paymentsResult = await getUserPayments(currentUser.id);
-      setPayments(Array.isArray(paymentsResult) ? paymentsResult : []);
+      if (paymentsResult.success) {
+        setPayments(Array.isArray(paymentsResult.data) ? paymentsResult.data : []);
+      }
     } catch (err) {
       console.error("Error fetching payments", err);
     } finally {
@@ -540,9 +542,9 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                   <tbody>
                     {enquiries.map(enquiry => (
                       <tr key={enquiry.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{enquiry.property_name}</td>
-                        <td style={{ color: '#64748B' }}>{enquiry.city}, {enquiry.locality}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(enquiry.created_at)}</td>
+                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{enquiry.property?.title || 'Deleted Property'}</td>
+                        <td style={{ color: '#64748B' }}>{enquiry.property?.city}, {enquiry.property?.locality}</td>
+                        <td style={{ color: '#64748B' }}>{formatDate(enquiry.createdAt)}</td>
                         <td>
                           <span style={{
                             padding: '4px 12px',
@@ -671,9 +673,9 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                   <tbody>
                     {rentHistory.map(rent => (
                       <tr key={rent.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{rent.property_name}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(rent.created_at)}</td>
-                        <td style={{ color: '#C8A24A', fontWeight: '600' }}>{rent.rent_amount || '-'}</td>
+                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{rent.property?.title || 'Deleted Property'}</td>
+                        <td style={{ color: '#64748B' }}>{formatDate(rent.createdAt)}</td>
+                        <td style={{ color: '#C8A24A', fontWeight: '600' }}>{rent.monthlyRent || '-'}</td>
                         <td>
                           <span style={{
                             padding: '4px 12px',

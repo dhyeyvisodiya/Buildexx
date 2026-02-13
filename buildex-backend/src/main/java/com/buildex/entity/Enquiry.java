@@ -1,5 +1,6 @@
 package com.buildex.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -8,40 +9,44 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "enquiries")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Enquiry {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
     private Property property;
-    
+
     @Column(nullable = false)
     private String name;
-    
+
     @Column(nullable = false)
     private String phone;
-    
+
     @Column(nullable = false)
     private String email;
-    
+
     @Column(length = 1000)
     private String message;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "enquiry_type")
     private EnquiryType enquiryType;
-    
+
+    @Column(name = "status")
+    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     public enum EnquiryType {
-        BUY, RENT
+        BUY, RENT, VISIT
     }
-    
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -105,5 +110,13 @@ public class Enquiry {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../utils/imageUtils';
 
 const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
         <div className="property-image-wrapper" style={{ height: '250px', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
           {property.images && property.images.length > 0 ? (
             <img
-              src={property.images[0]}
+              src={getImageUrl(property.images[0])}
               className="property-image card-img-top"
               alt={property.name}
               style={{ height: '100%', width: '100%', objectFit: 'cover' }}

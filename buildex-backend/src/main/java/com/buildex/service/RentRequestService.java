@@ -27,7 +27,7 @@ public class RentRequestService {
         RentRequest savedRequest = rentRequestRepository.save(rentRequest);
 
         // Send email to builder
-        propertyRepository.findById(rentRequest.getPropertyId()).ifPresent(property -> {
+        propertyRepository.findById(rentRequest.getProperty().getId()).ifPresent(property -> {
             if (property.getBuilder() != null) {
                 com.buildex.entity.User builder = property.getBuilder();
                 // Note: RentRequest doesn't store a 'message' field in database based on entity
@@ -46,13 +46,15 @@ public class RentRequestService {
                         rentRequest.getEmail(),
                         rentRequest.getPhone(),
                         property.getName(),
-                        // No moveInDate in entity? Wait, let me check entity again.
-                        // Entity has no moveInDate. It has monthlyRent, deposit.
-                        // Frontend sends moveInDate.
-                        // It seems the entity definition doesn't match frontend exactly.
-                        // I will verify entity content below.
                         "ASAP",
                         message);
+                
+                // Send confirmation to applicant
+                emailService.sendEnquiryConfirmationEmail(
+                        rentRequest.getEmail(),
+                        rentRequest.getApplicantName(),
+                        property.getName()
+                );
             }
         });
 

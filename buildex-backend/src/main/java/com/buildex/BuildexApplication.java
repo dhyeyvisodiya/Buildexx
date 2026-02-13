@@ -3,10 +3,12 @@ package com.buildex;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootApplication
+@EnableAsync
 public class BuildexApplication {
     public static void main(String[] args) {
         SpringApplication.run(BuildexApplication.class, args);

@@ -209,6 +209,7 @@ public class EmailService {
         /**
          * 3. Enquiry Received (To Builder)
          */
+        @Async
         public void sendEnquiryReceivedEmail(String builderEmail, String builderName, String customerName,
                         String customerEmail, String customerPhone, String propertyName, String message) {
                 String content = "<p>Dear " + builderName + ",</p>" +
@@ -234,8 +235,9 @@ public class EmailService {
         }
 
         /**
-         * 4. Payment Success (To User)
+         * 4. Payment Success Receipt (To User)
          */
+        @Async
         public void sendPaymentSuccessEmail(String userEmail, String userName, String propertyName, String amount,
                         String transactionId) {
                 String content = "<p>Dear " + userName + ",</p>" +
@@ -264,6 +266,7 @@ public class EmailService {
         /**
          * 5. Payment Received (To Builder)
          */
+        @Async
         public void sendPaymentReceivedEmail(String builderEmail, String builderName, String propertyName,
                         String amount, String customerName) {
                 String content = "<p>Dear " + builderName + ",</p>" +
@@ -289,6 +292,7 @@ public class EmailService {
         /**
          * 6. Rent Request (To Builder)
          */
+        @Async
         public void sendRentRequestEmail(String builderEmail, String builderName, String customerName,
                         String email, String phone, String propertyName, String moveInDate, String message) {
                 String content = "<p>Dear " + builderName + ",</p>" +
@@ -348,5 +352,91 @@ public class EmailService {
                 String html = wrapHtmlContent("Password Changed Successfully", content, "#047857", "Login Now",
                                 "https://buildexx.app/login");
                 sendResendEmail(SENDER_SECURITY, toEmail, "Your password was changed – Buildex", html);
+        }
+
+        /**
+         * 9. Enquiry Confirmation (To User)
+         */
+        @Async
+        public void sendEnquiryConfirmationEmail(String userEmail, String userName, String propertyName) {
+                String content = "<p>Dear <strong>" + userName + "</strong>,</p>" +
+                                "<p>We've received your enquiry for <strong>" + propertyName + "</strong>.</p>" +
+                                "<p>The builder has been notified and will get in touch with you shortly via your provided contact details.</p>"
+                                +
+                                "<div class=\"highlight-box\">" +
+                                "  <p style=\"margin:0\">Thank you for choosing Buildex for your property search.</p>" +
+                                "</div>";
+
+                String html = wrapHtmlContent("Enquiry Received", content, "#3182ce", "Browse More Properties",
+                                "https://buildexx.app/properties");
+                sendResendEmail(SENDER_NOTIFICATIONS, userEmail, "Confirmation: Enquiry for " + propertyName, html);
+        }
+
+    /**
+     * 10. Visit Scheduled (To Builder)
+     */
+    @Async
+        public void sendVisitScheduledEmail(String builderEmail, String builderName, String customerName,
+                        String customerEmail, String customerPhone, String propertyName, String visitDate, String message) {
+                String content = "<p>Dear " + builderName + ",</p>" +
+                                "<p>A site visit has been scheduled for <strong>" + propertyName + "</strong>.</p>" +
+                                "<table class=\"data-table\">" +
+                                "  <tr><td class=\"data-cell label-cell\">Visitor</td><td class=\"data-cell value-cell\">"
+                                + customerName + "</td></tr>" +
+                                "  <tr><td class=\"data-cell label-cell\">Visit Date</td><td class=\"data-cell value-cell\"><strong>"
+                                + visitDate + "</strong></td></tr>" +
+                                "  <tr><td class=\"data-cell label-cell\">Contact</td><td class=\"data-cell value-cell\">"
+                                + customerPhone + "</td></tr>" +
+                                "</table>" +
+                                "<div style=\"background: #fff; padding: 15px; border-left: 4px solid #3182ce; background-color:#ebf8ff; font-style: italic; margin: 20px 0;\">"
+                                +
+                                "  \"" + message + "\"" +
+                                "</div>" +
+                                "<p>Please ensure someone is available at the site to assist the visitor.</p>";
+
+                String html = wrapHtmlContent("Site Visit Scheduled! 🗓️", content, "#3182ce", "View Details",
+                                "https://buildexx.app/builder-dashboard");
+                sendResendEmail(SENDER_NOTIFICATIONS, builderEmail, "Site Visit for " + propertyName + " – Buildex", html);
+        }
+
+        /**
+         * 11. Visit Confirmation (To User)
+         */
+        @Async
+        public void sendVisitConfirmationEmail(String userEmail, String userName, String propertyName, String visitDate) {
+                String content = "<p>Dear <strong>" + userName + "</strong>,</p>" +
+                                "<p>Your site visit for <strong>" + propertyName + "</strong> is scheduled for <strong>" + visitDate
+                                + "</strong>.</p>" +
+                                "<p>The builder has been notified. If there are any changes, they will contact you directly.</p>" +
+                                "<div class=\"highlight-box\">" +
+                                "  <p style=\"margin:0\">Location details and builder contact info are available in your dashboard.</p>"
+                                +
+                                "</div>";
+
+                String html = wrapHtmlContent("Site Visit Confirmed", content, "#3182ce", "My Appointments",
+                                "https://buildexx.app/user-dashboard");
+                sendResendEmail(SENDER_NOTIFICATIONS, userEmail, "Confirmed: Site Visit for " + propertyName, html);
+        }
+
+    /**
+     * 12. Complaint/Report Notification (To Admin/Builder)
+     */
+    @Async
+        public void sendComplaintNotificationEmail(String recipientEmail, String recipientName, String propertyName,
+                        String issueType, String description) {
+                String content = "<p>Dear " + recipientName + ",</p>" +
+                                "<p>A new report/complaint has been filed for <strong>" + propertyName + "</strong>.</p>" +
+                                "<div class=\"highlight-box\" style=\"border-left-color: #e53e3e;\">" +
+                                "  <p style=\"margin:0\"><strong>Issue:</strong> " + issueType + "</p>" +
+                                "</div>" +
+                                "<p><strong>Description:</strong></p>" +
+                                "<div style=\"background: #fff5f5; padding: 15px; border-radius:8px; border:1px solid #feb2b2; margin-top:10px;\">"
+                                +
+                                description +
+                                "</div>";
+
+                String html = wrapHtmlContent("Property Report Filed", content, "#e53e3e", "Review Report",
+                                "https://buildexx.app/admin/complaints");
+                sendResendEmail(SENDER_ADMIN, recipientEmail, "Report for " + propertyName + " – Buildex", html);
         }
 }

@@ -17,10 +17,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .setCachePeriod(86400);
     }
 
-    @Override
-    public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
-        registry.addMapping("/uploads/**")
-                .allowedOrigins("*")
-                .allowedMethods("GET");
-    }
+    // CORS is handled in SecurityConfig and via @CrossOrigin on controllers
 }

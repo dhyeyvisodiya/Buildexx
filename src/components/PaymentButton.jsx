@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { createPaymentOrder, verifyPayment, checkBookingStatus } from '../../api/apiService'; // Updated imports
+import { createPaymentOrder, verifyPayment, checkBookingStatus } from '../api/apiService'; // Updated imports
 
 /**
  * PaymentButton Component
@@ -206,7 +206,6 @@ const PaymentButton = ({
                 description: paymentType === 'RENT'
                     ? `Booking Request for Rent: ${property.name || property.title}`
                     : `Booking Token for Buy: ${property.name || property.title}`,
-                image: '/logo.png',
                 order_id: razorpayOrderId.startsWith('order_') ? null : razorpayOrderId, // Use real order ID if valid, else null for test
                 prefill: {
                     name: currentUser.full_name || currentUser.username,
@@ -220,21 +219,28 @@ const PaymentButton = ({
                 },
                 theme: { color: '#C8A24A' },
                 handler: async function (response) {
-                    // Verify on Backend
-                    const verifyRes = await verifyPayment({
-                        razorpay_order_id: razorpayOrderId,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature || 'dummy_sig'
-                    });
+                    try {
+                        // Verify on Backend
+                        const verifyRes = await verifyPayment({
+                            razorpay_order_id: razorpayOrderId,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature || 'dummy_sig'
+                        });
 
-                    if (verifyRes.error) {
-                        setError(verifyRes.error);
-                        onFailure({ message: verifyRes.error });
-                    } else {
-                        setIsBooked(true); // Disable button immediately
-                        onSuccess(verifyRes);
+                        if (verifyRes.error) {
+                            setError(verifyRes.error);
+                            onFailure({ message: verifyRes.error });
+                        } else {
+                            setIsBooked(true); // Disable button immediately
+                            onSuccess(verifyRes);
+                        }
+                    } catch (err) {
+                        console.error('Verification error:', err);
+                        setError(err.message);
+                        onFailure(err);
+                    } finally {
+                        setLoading(false);
                     }
-                    setLoading(false);
                 }
             };
 

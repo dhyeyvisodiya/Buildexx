@@ -15,6 +15,14 @@ import java.util.List;
 public interface PropertyRepository extends JpaRepository<Property, Long> {
        List<Property> findByBuilder_Id(Long builderId);
 
+       @Query(value = "SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE p.isVerified = true", countQuery = "SELECT COUNT(p) FROM Property p WHERE p.isVerified = true")
+       org.springframework.data.domain.Page<Property> findByIsVerifiedTrue(
+                     org.springframework.data.domain.Pageable pageable);
+
+       @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder" })
+       @Query("SELECT p FROM Property p")
+       List<Property> findAllWithBuilder();
+
        List<Property> findByPurpose(Purpose purpose);
 
        List<Property> findByPropertyType(PropertyType propertyType);
@@ -25,16 +33,13 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 
        List<Property> findByAvailabilityStatus(AvailabilityStatus availabilityStatus);
 
-       @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder", "amenities", "imageUrls",
-                     "panoramaImages" })
-       java.util.Optional<Property> findById(Long id);
-
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
                      "(:city IS NULL OR p.city = :city) AND " +
                      "(:area IS NULL OR p.area = :area) AND " +
-                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus)")
+                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
+                     "(p.isVerified = true)")
        List<Property> findByFilters(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,
@@ -46,7 +51,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
                      "(:city IS NULL OR p.city = :city) AND " +
                      "(:area IS NULL OR p.area = :area) AND " +
-                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus)")
+                     "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
+                     "(p.isVerified = true)")
        org.springframework.data.domain.Page<Property> findByFiltersPaginated(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,

@@ -12,11 +12,11 @@ import java.util.List;
 public interface RentRequestRepository extends JpaRepository<RentRequest, Long> {
     List<RentRequest> findByPropertyId(Long propertyId);
 
-    @Query("SELECT rr FROM RentRequest rr WHERE rr.propertyId IN " +
+    @Query("SELECT rr FROM RentRequest rr WHERE rr.property.id IN " +
             "(SELECT p.id FROM Property p WHERE p.builder.id = :builderId)")
     List<RentRequest> findByBuilderId(@Param("builderId") Long builderId);
 
     @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("DELETE FROM RentRequest r WHERE r.propertyId = :propertyId")
+    @org.springframework.data.jpa.repository.Query("DELETE FROM RentRequest r WHERE r.property.id = :propertyId")
     void deleteByPropertyId(@Param("propertyId") Long propertyId);
 }

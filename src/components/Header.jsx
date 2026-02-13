@@ -58,6 +58,7 @@ const Header = ({ compareCount, wishlistCount }) => {
               data-bs-target="#navbarNav"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               style={{ borderColor: 'rgba(255, 255, 255, 0.5)' }}
+              onBlur={() => setTimeout(() => setIsMenuOpen(false), 200)}
             >
               <span className="navbar-toggler-icon" style={{
                 backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e\")"
@@ -249,6 +250,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                           fontWeight: '600',
                           height: '40px',
                           display: 'flex',
+                          width: '100%',
                           alignItems: 'center',
                           justifyContent: 'center',
                           transition: 'all 0.3s ease'
@@ -265,7 +267,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                         }}
                       >
                         Login
-                      </button>
+                      </button><br />
                     </li>
                     <li className="nav-item">
                       <button
@@ -279,6 +281,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                           height: '40px',
                           fontWeight: '600',
                           display: 'flex',
+                          width: '100%',
                           alignItems: 'center',
                           justifyContent: 'center',
                           transition: 'all 0.3s ease'

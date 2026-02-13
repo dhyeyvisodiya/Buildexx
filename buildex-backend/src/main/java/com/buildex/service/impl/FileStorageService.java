@@ -89,11 +89,26 @@ public class FileStorageService {
     }
 
     public String[] storeMultipleFiles(MultipartFile[] files) throws IOException {
-        String[] fileUrls = new String[files.length];
-        for (int i = 0; i < files.length; i++) {
-            fileUrls[i] = storeFile(files[i]);
+        java.util.List<java.util.concurrent.CompletableFuture<String>> futures = java.util.Arrays.stream(files)
+                .map(file -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return storeFile(file);
+                    } catch (IOException e) {
+                        throw new java.util.concurrent.CompletionException(e);
+                    }
+                }))
+                .collect(java.util.stream.Collectors.toList());
+
+        try {
+            return futures.stream()
+                    .map(java.util.concurrent.CompletableFuture::join)
+                    .toArray(String[]::new);
+        } catch (java.util.concurrent.CompletionException e) {
+            if (e.getCause() instanceof IOException) {
+                throw (IOException) e.getCause();
+            }
+            throw e;
         }
-        return fileUrls;
     }
 
     public String storePrivateFile(MultipartFile file) throws IOException {
@@ -146,11 +161,12 @@ public class FileStorageService {
                 // Or just throw.
                 throw new IllegalArgumentException("Invalid image file: Unable to read image data");
             }
-            // Allow small tolerance? No, 2:1 is standard for equirectangular.
-            if (image.getWidth() != 2 * image.getHeight()) {
+            // Relaxed tolerance (Allow 1.5 - 2.5) to match frontend validation
+            double ratio = (double) image.getWidth() / image.getHeight();
+            if (Math.abs(ratio - 2.0) > 0.5) {
                 throw new IllegalArgumentException(
-                        "Invalid 360 Image: Aspect ratio must be exactly 2:1 (Width = 2 * Height). Uploaded dimensions: "
-                                + image.getWidth() + "x" + image.getHeight());
+                        "Invalid 360 Image: Aspect ratio must be approximately 2:1 (Uploaded: "
+                                + String.format("%.2f", ratio) + "). Recommended dimensions: 6000x3000 or 4000x2000.");
             }
         }
         // Use raw store to avoid resizing 360 images (quality loss) and OOM

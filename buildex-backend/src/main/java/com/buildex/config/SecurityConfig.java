@@ -32,12 +32,11 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        // Allow all origins for dev/debug
-        configuration.setAllowedOrigins(java.util.Collections.singletonList("*"));
+        configuration.setAllowedOrigins(java.util.Collections.singletonList("http://localhost:5173"));
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(java.util.Arrays.asList("*"));
-        // Allow credentials must be false if origins is "*"
-        configuration.setAllowCredentials(false);
+        configuration.setAllowedHeaders(
+                java.util.Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        configuration.setAllowCredentials(true);
 
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

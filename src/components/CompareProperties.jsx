@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { getImageUrl } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -189,7 +190,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                                 }}>
                                                     {property.images && property.images[0] ? (
                                                         <img
-                                                            src={property.images[0]}
+                                                            src={getImageUrl(property.images[0])}
                                                             alt={property.name}
                                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         />

@@ -1,5 +1,6 @@
 package com.buildex.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Payment {
 
     @Id
@@ -62,6 +64,7 @@ public class Payment {
     private PaymentType paymentType; // BUY, RENT (from Property Purpose)
 
     @Column(name = "currency")
+    @Builder.Default
     private String currency = "INR";
 
     @CreationTimestamp

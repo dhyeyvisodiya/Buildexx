@@ -4,10 +4,12 @@ import PropertyCard from '../components/PropertyCard';
 import LocationSearch from '../components/LocationSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropertyCardSkeleton from '../components/PropertyCardSkeleton';
+import { getProperties, getNearbyProperties, getCities } from '../api/apiService';
+
+import { useGeolocation } from '../lib/useGeolocation';
+
 // Lazy load PropertyMap
 const PropertyMap = lazy(() => import('../components/PropertyMap'));
-import { getProperties, getNearbyProperties, getCities } from '../../api/apiService';
-import { useGeolocation } from '../lib/useGeolocation';
 
 const CACHE_VERSION = '1.0';
 
@@ -146,11 +148,15 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         // Cache the data 
         cachedPropertiesRef.current = result.data;
         dataLoadedRef.current = true;
-        sessionStorage.setItem('propertiesCache', JSON.stringify({
-          data: result.data,
-          timestamp: Date.now(),
-          version: CACHE_VERSION
-        }));
+        try {
+          sessionStorage.setItem('propertiesCache', JSON.stringify({
+            data: result.data,
+            timestamp: Date.now(),
+            version: CACHE_VERSION
+          }));
+        } catch (e) {
+          console.warn('Session storage full, skipping properties cache');
+        }
 
         // Fallback: If cities array is empty (API failed), extract from properties
         setCities(prev => {
@@ -753,7 +759,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
               </div>
             )
             }
-            < p className="text-center mt-2" style={{ color: '#64748B', fontSize: '0.85rem' }}>
+            <p className="text-center mt-2" style={{ color: '#64748B', fontSize: '0.85rem' }}>
               <i className="bi bi-info-circle me-1"></i>
               Click on any property pin to view details
             </p>
@@ -762,7 +768,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
 
         {/* Property Cards with Animation */}
         {!loading && viewMode === 'list' && filteredProperties.length > 0 ? (
-          <div className="row g-4" component={motion.div} layout>
+          <motion.div className="row g-4" layout>
             <AnimatePresence>
               {filteredProperties.map((property, index) => (
                 <motion.div
@@ -798,7 +804,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                 </motion.div>
               ))}
             </AnimatePresence>
-          </div>
+          </motion.div>
         ) : !loading && viewMode === 'list' && (
           <div className="text-center py-5" style={{
             background: '#0F1E33',

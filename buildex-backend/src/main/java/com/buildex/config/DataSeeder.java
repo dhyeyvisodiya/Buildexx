@@ -8,7 +8,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -22,6 +26,7 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void run(String... args) throws Exception {
         // Seed Properties if none exist
         if (propertyRepository.count() == 0) {
@@ -60,24 +65,52 @@ public class DataSeeder implements CommandLineRunner {
             property.setArea("Bandra");
             property.setConstructionStatus(Property.ConstructionStatus.READY);
             property.setAvailabilityStatus(Property.AvailabilityStatus.AVAILABLE);
+            property.setIsVerified(true); // Ensure seeded property appears in listings
             property.setBuilder(builder); // Link to builder
 
-            // Set Images (Using Arrays.asList directly as Entity expects List)
-            property.setImageUrls(Arrays.asList(
+            // Set Images
+            property.setImageUrls(new ArrayList<>(Arrays.asList(
                     "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80",
-                    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80"));
+                    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80")));
 
             // Set Amenities
-            property.setAmenities(java.util.Set.of("Gym", "Parking", "Security", "Pool"));
+            property.setAmenities(new HashSet<>(Arrays.asList("Gym", "Parking", "Security", "Pool")));
 
             // Set 360 Images
-            property.setPanoramaImages(Arrays.asList(
-                    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Stonehenge_360_degree_panorama.jpg/1280px-Stonehenge_360_degree_panorama.jpg"));
+            property.setPanoramaImages(new ArrayList<>(Arrays.asList(
+                    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Stonehenge_360_degree_panorama.jpg/1280px-Stonehenge_360_degree_panorama.jpg")));
 
             propertyRepository.save(property);
             System.out.println("Sample Property created: " + property.getTitle());
         } else {
-            System.out.println("Properties already exist. Skipping seed.");
+            System.out.println("Properties already exist. Ensuring verification and sample data...");
+            propertyRepository.findAll().forEach(p -> {
+                boolean modified = false;
+                if (p.getIsVerified() == null || !p.getIsVerified()) {
+                    p.setIsVerified(true);
+                    modified = true;
+                    System.out.println("Auto-verified: " + p.getTitle());
+                }
+
+                // Ensure sample images if empty for testing
+                if (p.getImageUrls() == null || p.getImageUrls().isEmpty()) {
+                    p.setImageUrls(new ArrayList<>(Arrays.asList(
+                            "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80",
+                            "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80")));
+                    modified = true;
+                }
+
+                // Ensure panorama if empty for testing
+                if (p.getPanoramaImages() == null || p.getPanoramaImages().isEmpty()) {
+                    p.setPanoramaImages(new ArrayList<>(Arrays.asList(
+                            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Stonehenge_360_degree_panorama.jpg/1280px-Stonehenge_360_degree_panorama.jpg")));
+                    modified = true;
+                }
+
+                if (modified) {
+                    propertyRepository.save(p);
+                }
+            });
         }
     }
 }

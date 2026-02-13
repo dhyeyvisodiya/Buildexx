@@ -1,97 +1,138 @@
-import { getApiUrl } from '../config';
+import { API_BASE_URL } from '../config';
 
-const API_URL = getApiUrl();
+const handleResponse = async (response) => {
+    const text = await response.text();
+    if (!response.ok) {
+        let errorMessage = `API Error: ${response.status}`;
+        if (text) {
+            try {
+                const errorJson = JSON.parse(text);
+                errorMessage = errorJson.message || errorJson.error || (Array.isArray(errorJson) ? errorJson[0] : text);
+                if (typeof errorMessage !== 'string') errorMessage = JSON.stringify(errorMessage);
+            } catch (e) {
+                errorMessage = text;
+            }
+        }
+        throw new Error(errorMessage);
+    }
 
-const getHeaders = () => {
-    const token = localStorage.getItem('token');
+    if (!text) return null;
+
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return text;
+    }
+};
+
+// Normalize backend property data to frontend field names
+const normalizeProperty = (p) => {
+    if (!p) return p;
     return {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
+        ...p,
+        // Map backend camelCase to frontend expected names
+        name: p.title || p.name,
+        title: p.title || p.name,
+        locality: p.area || p.locality,
+        images: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
+        imageUrls: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
+        thumbnail: p.thumbnail || (p.imageUrls && p.imageUrls[0]) || (p.images && p.images[0]) || '',
+        builder_name: p.builderName || (p.builder && (p.builder.companyName || p.builder.username)) || p.builder_name || '',
+        builder_id: p.builderId || (p.builder && p.builder.id) || p.builder_id,
+        type: p.propertyType || p.type,
+        propertyType: p.propertyType || p.type,
+        availability_status: p.availabilityStatus || p.availability_status || p.availability,
+        availability: p.availabilityStatus || p.availability_status || p.availability,
+        construction_status: p.constructionStatus || p.construction_status,
+        possession: p.possessionYear || p.possession,
+        rent_amount: p.rentAmount || p.rent_amount || p.rent,
+        rent: p.rentAmount || p.rent_amount || p.rent,
+        area_sqft: p.areaSqft || p.area_sqft,
+        areaSqft: p.areaSqft || p.area_sqft,
+        brochure_url: p.brochureUrl || p.brochure_url,
+        google_map_link: p.googleMapLink || p.google_map_link,
+        legal_document_path: p.legalDocumentPath || p.legal_document_path,
+        panorama_image_path: p.panoramaImagePath || p.panorama_image_path,
+        panoramaImages: p.panoramaImages || p.panorama_images || [],
+        is_verified: p.isVerified ?? p.is_verified,
+        isVerified: p.isVerified ?? p.is_verified,
+        created_at: p.createdAt || p.created_at,
+        deposit_amount: p.depositAmount || p.deposit_amount,
+        virtual_tour_link: p.virtualTourLink || p.virtual_tour_link,
     };
 };
 
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
-
-// Generic helper for responses
-const handleResponse = async (response) => {
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed with status ${response.status}`);
-    }
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-        return await response.json();
-    } else {
-        // If response is text (like "Property Deleted Successfully")
-        const text = await response.text();
-        return { success: true, message: text };
-    }
-};
-
-// --- Properties ---
+// --- Property APIs ---
 
 export const getProperties = async () => {
     try {
-        const response = await fetch(`${API_URL}/properties`);
+        const response = await fetch(`${API_BASE_URL}/api/properties`);
         const data = await handleResponse(response);
-        return { success: true, data: data.content || data }; // Handle Page or List
+        let properties = [];
+        if (Array.isArray(data)) {
+            properties = data;
+        } else if (data && data.content) {
+            properties = data.content;
+        } else if (data && data.data) {
+            properties = data.data;
+        }
+        return { success: true, data: properties.map(normalizeProperty) };
     } catch (error) {
         console.error("Error fetching properties:", error);
         return { success: false, error: error.message };
     }
 };
 
+export const getNearbyProperties = async () => {
+    return getProperties(); // Fallback
+};
+
+export const getCities = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/properties/cities`);
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Error fetching cities:", error);
+        return [];
+    }
+};
+
 export const getPropertyById = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/properties/${id}`, {
-            headers: getAuthHeaders()
-        });
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}`);
         const data = await handleResponse(response);
-        return { success: true, data };
+        return { success: true, data: normalizeProperty(data) };
     } catch (error) {
+        console.error(`Error fetching property ${id}:`, error);
         return { success: false, error: error.message };
     }
 };
 
-
-export const getPropertiesByBuilder = async (builderId) => {
+export const createProperty = async (data) => {
     try {
-        const response = await fetch(`${API_URL}/properties/builder/${builderId}`, {
-            headers: getAuthHeaders()
-        });
-        const data = await handleResponse(response);
-        return { success: true, data };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-};
-
-export const createProperty = async (propertyData) => {
-    try {
-        const response = await fetch(`${API_URL}/properties`, {
+        console.log('[apiService] Creating property with payload:', JSON.stringify(data, null, 2));
+        const response = await fetch(`${API_BASE_URL}/api/properties/builder/${data.builderId}`, {
             method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(propertyData)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
-        const data = await handleResponse(response);
-        return { success: true, data };
+        const result = await handleResponse(response);
+        return { success: true, data: result };
     } catch (error) {
+        console.error('[apiService] Error creating property:', error);
         return { success: false, error: error.message };
     }
 };
 
-export const updateProperty = async (id, propertyData) => {
+export const updateProperty = async (id, data) => {
     try {
-        const response = await fetch(`${API_URL}/properties/${id}`, {
-            method: 'PUT', // or PATCH
-            headers: getHeaders(),
-            body: JSON.stringify(propertyData)
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
-        const data = await handleResponse(response);
-        return { success: true, data };
+        const result = await handleResponse(response);
+        return { success: true, data: result };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -99,12 +140,11 @@ export const updateProperty = async (id, propertyData) => {
 
 export const deleteProperty = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/properties/${id}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}`, {
+            method: 'DELETE'
         });
-        await handleResponse(response); // Ensure we catch errors
-        return { success: true };
+        if (response.ok) return { success: true };
+        throw new Error('Failed to delete');
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -112,10 +152,99 @@ export const deleteProperty = async (id) => {
 
 export const updatePropertyAvailability = async (id, status) => {
     try {
-        const response = await fetch(`${API_URL}/properties/${id}/availability?status=${status}`, {
-            method: 'PUT',
-            headers: getAuthHeaders()
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}/availability?status=${status}`, {
+            method: 'PATCH'
         });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const uploadPropertyImages = async (files) => {
+    try {
+        const formData = new FormData();
+        Array.from(files).forEach(file => {
+            formData.append('files', file);
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/properties/upload-images`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error uploading images:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const uploadLegalDocument = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE_URL}/api/properties/upload-legal-doc`, {
+            method: 'POST',
+            body: formData
+        });
+
+        // The backend returns the filename as a plain string, not JSON
+        if (response.ok) {
+            const fileName = await response.text();
+            return { success: true, data: fileName };
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Error uploading document:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const uploadPanoramaImages = async (files) => {
+    try {
+        const formData = new FormData();
+        const fileArray = Array.isArray(files) ? files : Array.from(files);
+        fileArray.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const response = await fetch(`${API_BASE_URL}/api/properties/upload-panorama`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error uploading panorama images:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// --- User/Builder/Admin Specific ---
+
+export const scheduleVisit = async (data) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/enquiries`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, enquiryType: 'VISIT' })
+        });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getUserWishlist = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}/wishlist`);
         const data = await handleResponse(response);
         return { success: true, data };
     } catch (error) {
@@ -123,21 +252,20 @@ export const updatePropertyAvailability = async (id, status) => {
     }
 };
 
-export const getCities = async () => {
+export const removeFromWishlist = async (userId, propertyId) => {
     try {
-        const response = await fetch(`${API_URL}/properties/cities`);
-        const data = await handleResponse(response);
-        return data; // Returns array directly usually
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}/wishlist/${propertyId}`, {
+            method: 'DELETE'
+        });
+        return { success: true };
     } catch (error) {
-        console.error("Error fetching cities", error);
-        return [];
+        return { success: false, error: error.message };
     }
 };
 
-
-export const getNearbyProperties = async (lat, lng, radius) => {
+export const getUserEnquiries = async (userId) => {
     try {
-        const response = await fetch(`${API_URL}/properties/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+        const response = await fetch(`${API_BASE_URL}/api/enquiries/user/${userId}`);
         const data = await handleResponse(response);
         return { success: true, data };
     } catch (error) {
@@ -145,16 +273,55 @@ export const getNearbyProperties = async (lat, lng, radius) => {
     }
 };
 
+export const getUserRentHistory = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rent-requests/user/${userId}`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
 
-// --- Enquiries ---
+export const getUserPayments = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/user/${userId}`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const fetchUserRentSubscriptions = async (userId) => {
+    // Mock
+    return { success: true, data: [] };
+};
+
+export const payRent = async (subscriptionId, amount) => {
+    // Mock
+    return { success: true };
+};
+
+// Builder APIs
+
+export const getPropertiesByBuilder = async (builderId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/properties/builder/${builderId}`);
+        const data = await handleResponse(response);
+        const properties = Array.isArray(data) ? data : (data.data || data.content || []);
+        return { success: true, data: properties.map(normalizeProperty) };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
 
 export const getBuilderEnquiries = async (builderId) => {
     try {
-        const response = await fetch(`${API_URL}/enquiries/builder/${builderId}`, {
-            headers: getAuthHeaders()
-        });
+        const response = await fetch(`${API_BASE_URL}/api/enquiries/builder/${builderId}`);
         const data = await handleResponse(response);
-        return { success: true, data };
+        const enquiries = Array.isArray(data) ? data : (data.data || data.content || []);
+        return { success: true, data: enquiries };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -162,27 +329,21 @@ export const getBuilderEnquiries = async (builderId) => {
 
 export const updateEnquiryStatus = async (id, status) => {
     try {
-        const response = await fetch(`${API_URL}/enquiries/${id}/status?status=${status}`, {
-            method: 'PUT',
-            headers: getAuthHeaders()
+        const response = await fetch(`${API_BASE_URL}/api/enquiries/${id}/status?status=${status}`, {
+            method: 'PATCH'
         });
-        const data = await handleResponse(response);
-        return { success: true, data };
+        return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
     }
 };
 
-// --- Rent Requests ---
-
 export const getRentRequestsByBuilder = async (builderId) => {
     try {
-        // Assuming endpoint exists
-        const response = await fetch(`${API_URL}/rent-requests/builder/${builderId}`, {
-            headers: getAuthHeaders()
-        });
+        const response = await fetch(`${API_BASE_URL}/api/rent-requests/builder/${builderId}`);
         const data = await handleResponse(response);
-        return { success: true, data };
+        const requests = Array.isArray(data) ? data : (data.data || data.content || []);
+        return { success: true, data: requests };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -190,36 +351,18 @@ export const getRentRequestsByBuilder = async (builderId) => {
 
 export const updateRentRequestStatus = async (id, status) => {
     try {
-        const response = await fetch(`${API_URL}/rent-requests/${id}/status?status=${status}`, {
-            method: 'PUT',
-            headers: getAuthHeaders()
+        const response = await fetch(`${API_BASE_URL}/api/rent-requests/${id}/status?status=${status}`, {
+            method: 'PATCH'
         });
-        const data = await handleResponse(response);
-        return { success: true, data };
+        return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
     }
 };
-
-// --- Payments / Withdrawals ---
 
 export const getBuilderPayments = async (builderId) => {
     try {
-        const response = await fetch(`${API_URL}/payments/builder/${builderId}`, {
-            headers: getAuthHeaders()
-        });
-        const data = await handleResponse(response);
-        return { success: true, data }; // might be pure array or object
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-};
-
-export const getBuilderWithdrawals = async (builderId) => {
-    try {
-        const response = await fetch(`${API_URL}/withdrawals/builder/${builderId}`, {
-            headers: getAuthHeaders()
-        });
+        const response = await fetch(`${API_BASE_URL}/api/payments/builder/${builderId}`);
         const data = await handleResponse(response);
         return { success: true, data };
     } catch (error) {
@@ -229,9 +372,9 @@ export const getBuilderWithdrawals = async (builderId) => {
 
 export const createWithdrawalRequest = async (builderId, amount) => {
     try {
-        const response = await fetch(`${API_URL}/withdrawals`, {
+        const response = await fetch(`${API_BASE_URL}/api/withdrawals`, {
             method: 'POST',
-            headers: getHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ builderId, amount })
         });
         const data = await handleResponse(response);
@@ -241,39 +384,227 @@ export const createWithdrawalRequest = async (builderId, amount) => {
     }
 };
 
-
-// --- Uploads ---
-
-export const uploadLegalDocument = async (file) => {
+export const getBuilderWithdrawals = async (builderId) => {
     try {
-        const formData = new FormData();
-        formData.append('file', file);
+        const response = await fetch(`${API_BASE_URL}/api/withdrawals/builder/${builderId}`);
+        const data = await handleResponse(response);
+        // Calculate balance from data if needed, or assume backend does it (Controller returns List<Withdrawal>)
+        // BuilderDashboard expects success, data, plus totalEarned/balance
+        const totalEarned = data.filter(w => w.status === 'approved').reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
+        const payout = data.filter(w => w.status === 'approved').reduce((sum, w) => sum + (parseFloat(w.payoutAmount) || 0), 0);
 
-        const response = await fetch(`${API_URL}/properties/upload/document`, {
-            method: 'POST',
-            headers: getAuthHeaders(), // No Content-Type for FormData
-            body: formData
-        });
-        const data = await response.text(); // Returns URL string
+        return {
+            success: true,
+            data,
+            totalEarned,
+            balance: totalEarned // This is a simplification, ideally backend tracks this
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// Admin APIs
+
+export const getAllBuilders = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/users/builders`);
+        const data = await handleResponse(response);
         return { success: true, data };
     } catch (error) {
         return { success: false, error: error.message };
     }
 };
 
-export const uploadPanoramaImages = async (files) => {
+export const updateBuilderStatus = async (id, status) => {
     try {
-        const formData = new FormData();
-        files.forEach(file => formData.append('files', file));
-
-        const response = await fetch(`${API_URL}/properties/upload/panorama`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: formData
+        const response = await fetch(`${API_BASE_URL}/api/users/${id}/status?status=${status}`, {
+            method: 'PATCH'
         });
-        const data = await handleResponse(response);
-        return { success: true, data }; // Returns List of URLs
+        return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
+    }
+};
+
+export const getAllProperties = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/properties/all`);
+        const data = await handleResponse(response);
+        let properties = [];
+        if (Array.isArray(data)) {
+            properties = data;
+        } else if (data && data.content) {
+            properties = data.content;
+        }
+        return { success: true, data: properties.map(normalizeProperty) };
+    } catch (error) {
+        console.error("Error fetching all properties (admin):", error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const updatePropertyStatus = async (id, status) => {
+    // Mock or implement actual endpoint
+    return updatePropertyAvailability(id, status);
+};
+
+export const getAllComplaints = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/complaints`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const updateComplaintStatus = async (id, status) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/complaints/${id}/status?status=${status}`, {
+            method: 'PATCH'
+        });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const verifyProperty = async (id, isVerified, userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}/verify?isVerified=${isVerified}&userId=${userId || 1}`, {
+            method: 'PATCH'
+        });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAdminEnquiries = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/enquiries/all`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAdminPayments = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/all`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const getAdminWithdrawals = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/withdrawals/all`);
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const updateWithdrawalStatus = async (id, status, commission, payout) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/withdrawals/${id}/status?status=${status}&commission=${commission || 0}&payout=${payout || 0}`, {
+            method: 'PATCH'
+        });
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+// Forms
+export const createEnquiry = async (data) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/enquiries`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const createRentRequest = async (data) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rent-requests`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const createComplaint = async (data) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/complaints`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await handleResponse(response);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const reportProperty = async (data) => {
+    return createComplaint(data);
+};
+
+// Payment & Booking APIs
+export const createPaymentOrder = async (userId, propertyId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/create-order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, propertyId })
+        });
+        return handleResponse(response);
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const verifyPayment = async (data) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/verify-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return handleResponse(response);
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const checkBookingStatus = async (userId, propertyId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/check-booking?userId=${userId}&propertyId=${propertyId}`);
+        const result = await handleResponse(response);
+        return result; // Backend returns { isBooked: boolean }
+    } catch (error) {
+        console.error("Error checking booking status:", error);
+        return { isBooked: false };
     }
 };

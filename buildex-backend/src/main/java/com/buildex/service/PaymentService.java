@@ -47,6 +47,8 @@ public class PaymentService {
         this.emailService = emailService;
     }
 
+    private static final BigDecimal MAX_BOOKING_AMOUNT = new BigDecimal("25000");
+
     public BigDecimal calculateBookingAmount(Property property) {
         BigDecimal totalAmount = property.getPurpose() == Property.Purpose.RENT
                 ? property.getRentAmount()
@@ -55,8 +57,9 @@ public class PaymentService {
         if (totalAmount == null)
             return BigDecimal.ZERO;
 
-        // Booking amount is 15% of the total price/rent
-        return totalAmount.multiply(new BigDecimal("0.15"));
+        // Booking amount is 15% of the total price/rent, capped at MAX_BOOKING_AMOUNT
+        BigDecimal calculatedAmount = totalAmount.multiply(new BigDecimal("0.15"));
+        return calculatedAmount.compareTo(MAX_BOOKING_AMOUNT) > 0 ? MAX_BOOKING_AMOUNT : calculatedAmount;
     }
 
     @Transactional
@@ -122,28 +125,7 @@ public class PaymentService {
             property.setAvailabilityStatus(Property.AvailabilityStatus.BOOKED);
             propertyRepository.save(property);
 
-            // Send Email to User
-            if (payment.getUser() != null) {
-                User user = payment.getUser();
-                emailService.sendPaymentSuccessEmail(
-                        user.getEmail(),
-                        user.getFullName(), // Assuming User has getFullName() or getName()
-                        property.getTitle(),
-                        payment.getAmount().toString(),
-                        paymentId);
-            }
-
-            // Send Email to Builder
-            if (property.getBuilder() != null) {
-                User builder = property.getBuilder();
-                String payerName = (payment.getUser() != null) ? payment.getUser().getFullName() : "Customer";
-                emailService.sendPaymentReceivedEmail(
-                        builder.getEmail(),
-                        builder.getCompanyName(), // Using company name, or owner name
-                        property.getTitle(),
-                        payment.getAmount().toString(),
-                        payerName);
-            }
+            propertyRepository.save(property);
         }
 
         return paymentRepository.save(payment);
@@ -155,6 +137,10 @@ public class PaymentService {
 
     public List<Payment> getBuilderPayments(Long builderId) {
         return paymentRepository.findByBuilderId(builderId);
+    }
+
+    public List<Payment> getAllPayments() {
+        return paymentRepository.findAll();
     }
 
     public boolean hasUserBookedProperty(Long userId, Long propertyId) {

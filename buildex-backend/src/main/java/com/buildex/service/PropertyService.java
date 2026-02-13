@@ -56,15 +56,40 @@ public class PropertyService {
         return propertyRepository.findById(id);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Optional<Property> getPropertyByIdEager(Long id) {
+        Optional<Property> propertyOpt = propertyRepository.findById(id);
+        // Force-initialize lazy collections within the transaction
+        propertyOpt.ifPresent(property -> {
+            if (property.getImageUrls() != null)
+                property.getImageUrls().size();
+            if (property.getAmenities() != null)
+                property.getAmenities().size();
+            if (property.getPanoramaImages() != null)
+                property.getPanoramaImages().size();
+            if (property.getBuilder() != null)
+                property.getBuilder().getCompanyName();
+        });
+        return propertyOpt;
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<PropertySummaryDTO> getAllPropertiesForAdmin() {
+        return propertyRepository.findAllWithBuilder().stream()
+                .map(this::convertToSummaryDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public List<Property> getAllProperties() {
-        // Default to fetching latest 20 properties for performance
-        return propertyRepository.findAll(org.springframework.data.domain.PageRequest.of(0, 20,
+        // Default to fetching latest 20 properties for performance - ONLY VERIFIED
+        return propertyRepository.findByIsVerifiedTrue(org.springframework.data.domain.PageRequest.of(0, 20,
                 org.springframework.data.domain.Sort.by("createdAt").descending())).getContent();
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public org.springframework.data.domain.Page<PropertySummaryDTO> getAllPropertiesSummaries(int page,
             int size) {
-        return propertyRepository.findAll(org.springframework.data.domain.PageRequest.of(page, size,
+        return propertyRepository.findByIsVerifiedTrue(org.springframework.data.domain.PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by("createdAt").descending()))
                 .map(this::convertToSummaryDTO);
     }
@@ -86,6 +111,7 @@ public class PropertyService {
                 .areaSqft(property.getAreaSqft())
                 .builderName(property.getBuilderName())
                 .isVerified(property.getIsVerified())
+                .status(property.getStatus())
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
                 .build();
@@ -103,7 +129,7 @@ public class PropertyService {
     }
 
     public org.springframework.data.domain.Page<Property> getAllProperties(int page, int size) {
-        return propertyRepository.findAll(org.springframework.data.domain.PageRequest.of(page, size,
+        return propertyRepository.findByIsVerifiedTrue(org.springframework.data.domain.PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by("createdAt").descending()));
     }
 
@@ -112,15 +138,47 @@ public class PropertyService {
     }
 
     public Optional<Property> updateProperty(Long id, Property updatedProperty) {
-        if (propertyRepository.existsById(id)) {
-            updatedProperty.setId(id);
-            // Ensure we don't nullify existing relationships if not provided in update
-            // But since this is a PUT/PATCH, ideally we fetch, map fields, and save.
-            // For now, let's stick to simple save but rely on frontend sending full object
-            // or handle partials carefully.
-            return Optional.of(propertyRepository.save(updatedProperty));
-        }
-        return Optional.empty();
+        return propertyRepository.findById(id).map(existingProperty -> {
+            // Update basic fields
+            existingProperty.setTitle(updatedProperty.getTitle());
+            existingProperty.setDescription(updatedProperty.getDescription());
+            existingProperty.setPropertyType(updatedProperty.getPropertyType());
+            existingProperty.setPurpose(updatedProperty.getPurpose());
+            existingProperty.setPrice(updatedProperty.getPrice());
+            existingProperty.setRentAmount(updatedProperty.getRentAmount());
+            existingProperty.setDepositAmount(updatedProperty.getDepositAmount());
+            existingProperty.setAreaSqft(updatedProperty.getAreaSqft());
+            existingProperty.setBedrooms(updatedProperty.getBedrooms());
+            existingProperty.setBathrooms(updatedProperty.getBathrooms());
+            existingProperty.setPossessionYear(updatedProperty.getPossessionYear());
+            existingProperty.setConstructionStatus(updatedProperty.getConstructionStatus());
+            existingProperty.setAvailabilityStatus(updatedProperty.getAvailabilityStatus());
+            existingProperty.setCity(updatedProperty.getCity());
+            existingProperty.setArea(updatedProperty.getArea());
+            existingProperty.setGoogleMapLink(updatedProperty.getGoogleMapLink());
+            existingProperty.setBrochureUrl(updatedProperty.getBrochureUrl());
+            existingProperty.setVirtualTourLink(updatedProperty.getVirtualTourLink());
+            existingProperty.setLegalDocumentPath(updatedProperty.getLegalDocumentPath());
+            existingProperty.setLatitude(updatedProperty.getLatitude());
+            existingProperty.setLongitude(updatedProperty.getLongitude());
+
+            // Update collections (Selective replacement/merge if needed)
+            if (updatedProperty.getAmenities() != null) {
+                existingProperty.setAmenities(updatedProperty.getAmenities());
+            }
+            if (updatedProperty.getImageUrls() != null) {
+                existingProperty.setImageUrls(updatedProperty.getImageUrls());
+            }
+            if (updatedProperty.getPanoramaImages() != null) {
+                existingProperty.setPanoramaImages(updatedProperty.getPanoramaImages());
+            }
+
+            // IMPORTANT: Never overwrite complaints, enquiries, payments, or the builder
+            // Those relationships are managed by their respective entities or specific
+            // flows
+
+            return propertyRepository.save(existingProperty);
+        });
     }
 
     public Optional<Property> updateAvailabilityStatus(Long id, Property.AvailabilityStatus status) {

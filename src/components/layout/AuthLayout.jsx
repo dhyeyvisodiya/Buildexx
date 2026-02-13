@@ -160,11 +160,21 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
-                    padding: '40px 60px',
+                    padding: '40px 20px', // Reduced side padding for mobile default
                     maxWidth: '600px',
                     width: '100%',
-                    margin: '0 auto'
-                }}>
+                    margin: '0 auto',
+                    marginTop: '40px' // Check if this helps on mobile
+                }}
+                    className="auth-form-container"
+                >
+                    <style>{`
+                        @media (min-width: 768px) {
+                            .auth-form-container {
+                                padding: 40px 60px !important;
+                            }
+                        }
+                    `}</style>
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

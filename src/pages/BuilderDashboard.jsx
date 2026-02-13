@@ -16,12 +16,14 @@ import {
   updateRentRequestStatus,
   updatePropertyAvailability,
   uploadLegalDocument,
+  uploadPropertyImages,
   uploadPanoramaImages,
   getBuilderPayments,
   createWithdrawalRequest,
   getBuilderWithdrawals
-} from '../../api/apiService';
+} from '../api/apiService';
 import { getApiUrl } from '../config';
+import { getImageUrl } from '../utils/imageUtils';
 import '../DashboardStyles.css';
 
 const BuilderDashboard = () => {
@@ -32,6 +34,9 @@ const BuilderDashboard = () => {
     localStorage.setItem('builderActiveTab', activeTab);
   }, [activeTab]);
   const [loading, setLoading] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingPanorama, setUploadingPanorama] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
@@ -149,13 +154,20 @@ const BuilderDashboard = () => {
 
       // Handle payments
       // apiService returns array
-      setPayments(Array.isArray(paymentsResult) ? paymentsResult : (paymentsResult.data || []));
+      const paymentsData = Array.isArray(paymentsResult) ? paymentsResult : (paymentsResult.data || []);
+      setPayments(paymentsData);
 
       // Handle withdrawals
       if (withdrawalsResult.success) {
         setWithdrawals(withdrawalsResult.data);
+
+        // Calculate Total Earned from SUCCESSFUL payments
+        const totalEarned = paymentsData
+          .filter(p => p.status === 'SUCCESS')
+          .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
         setBalance({
-          totalEarned: withdrawalsResult.totalEarned || 0,
+          totalEarned: totalEarned.toFixed(2),
           currentBalance: withdrawalsResult.balance || 0
         });
       }
@@ -196,38 +208,53 @@ const BuilderDashboard = () => {
     setPropertyForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
-    Promise.all(files.map(file => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    })).then(base64Images => {
-      setPropertyForm(prev => {
-        const currentImages = Array.isArray(prev.images) ? prev.images : [];
-        return { ...prev, images: [...currentImages, ...base64Images] };
-      });
-    }).catch(err => console.error('Image upload failed', err));
+    if (files.length === 0) return;
+
+    setUploadingImages(true);
+    try {
+      const result = await uploadPropertyImages(files);
+      if (result.success) {
+        setPropertyForm(prev => {
+          const currentImages = Array.isArray(prev.images) ? prev.images : [];
+          // Ensure result.data is an array (backend returns String[])
+          const newImages = Array.isArray(result.data) ? result.data : [result.data];
+          return { ...prev, images: [...currentImages, ...newImages] };
+        });
+        toast.success(`${files.length} image(s) uploaded successfully`);
+      } else {
+        console.error('Upload failed:', result.error);
+        toast.error('Failed to upload images: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error('An error occurred while uploading imges');
+    } finally {
+      setUploadingImages(false);
+      e.target.value = null; // Reset input
+    }
   };
 
   const validatePanoramaDimensions = (file) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        // Check for 2:1 aspect ratio with 5% tolerance
+        // Check for 2:1 aspect ratio with tolerance
         const ratio = img.width / img.height;
-        const isValid = Math.abs(ratio - 2) < 0.1; // Allow 1.9 - 2.1
-        if (!isValid) {
-          alert(`Skipped ${file.name}: Image dimensions ${img.width}x${img.height} do not match 2: 1 aspect ratio required for 360° view.`);
+        const isOptimal = Math.abs(ratio - 2) < 0.5; // Allow 1.5 - 2.5
+
+        if (!isOptimal) {
+          console.warn(`Image ${file.name} dimensions ${img.width}x${img.height} (Ratio: ${ratio.toFixed(2)}) may not look perfect in 360° viewer (Preferred 2:1).`);
+          // Optional: Alert user but still allow upload
+          // alert(`Note: ${file.name} may not look perfect in 360 view (Standard is 2:1). Uploading anyway.`);
         }
-        resolve(isValid ? file : null);
+
+        resolve(file); // Always resolve with file
         URL.revokeObjectURL(img.src);
       };
       img.onerror = () => {
-        alert(`Failed to load image: ${file.name} `);
+        alert(`Failed to load image: ${file.name}`);
         resolve(null);
       };
       img.src = URL.createObjectURL(file);
@@ -258,38 +285,85 @@ const BuilderDashboard = () => {
     }
 
     setLoading(true);
-    try {
-      if (editMode && editingPropertyId) {
-        // Update existing property
-        const result = await updateProperty(editingPropertyId, propertyForm);
-        if (result.success) {
-          setProperties(prev => prev.map(p => p.id === editingPropertyId ? result.data : p));
-          resetForm();
-          setFormMessage({ type: 'success', text: 'Property updated successfully!' });
-        } else {
-          setFormMessage({ type: 'error', text: result.error || 'Failed to update property' });
-        }
-      } else {
-        // Create new property
-        console.log('[BuilderDashboard] Creating property with:');
-        console.log('[BuilderDashboard] currentUser:', currentUser);
-        console.log('[BuilderDashboard] currentUser.id:', currentUser?.id);
-        console.log('[BuilderDashboard] Using builderId:', currentUser?.id);
+    setFormMessage({ type: 'info', text: 'Creating property...' });
 
-        const result = await createProperty({
-          builderId: currentUser.id,
-          ...propertyForm
-        });
-        if (result.success) {
-          setProperties(prev => [...prev, result.data]);
-          resetForm();
-          setFormMessage({ type: 'success', text: 'Property added successfully! Pending admin approval.' });
-        } else {
-          setFormMessage({ type: 'error', text: result.error || 'Failed to add property' });
+    try {
+      // Prepare Amenities: Split string by comma if it's a string
+      let amenitiesList = null;
+      if (propertyForm.amenities) {
+        if (typeof propertyForm.amenities === 'string') {
+          // Split by comma, trim whitespace, and filter empty strings
+          amenitiesList = propertyForm.amenities.split(',').map(item => item.trim()).filter(item => item.length > 0);
+        } else if (Array.isArray(propertyForm.amenities)) {
+          amenitiesList = propertyForm.amenities;
         }
       }
+
+      // 1. Create Property
+      const propertyPayload = {
+        ...propertyForm,
+        title: propertyForm.name, // Map frontend 'name' to backend 'title'
+
+        // Backend PropertyType only accepts [RESIDENTIAL, COMMERCIAL]
+        propertyType: ['Apartment', 'Villa', 'House', 'Plot', 'Farmhouse', 'Guest House'].includes(propertyForm.type)
+          ? 'RESIDENTIAL'
+          : 'COMMERCIAL',
+
+        // Backend ConstructionStatus only accepts [READY, UNDER_CONSTRUCTION]
+        constructionStatus: propertyForm.constructionStatus === 'Completed' ? 'READY' : 'UNDER_CONSTRUCTION',
+
+        availabilityStatus: propertyForm.availability ? propertyForm.availability.toUpperCase() : 'AVAILABLE',
+        purpose: propertyForm.purpose ? propertyForm.purpose.toUpperCase() : null,
+        amenities: amenitiesList
+      };
+
+      // Handle Images & Panoramas (Keep URLs, Remove Base64)
+      if (propertyForm.images && propertyForm.images.length > 0) {
+        const validImages = propertyForm.images.filter(img => !img.startsWith('data:'));
+        if (validImages.length > 0) propertyPayload.images = validImages;
+        else delete propertyPayload.images;
+      } else {
+        delete propertyPayload.images;
+      }
+
+      if (propertyForm.panoramaImages && propertyForm.panoramaImages.length > 0) {
+        const validPanos = propertyForm.panoramaImages.filter(img => !img.startsWith('data:'));
+        if (validPanos.length > 0) propertyPayload.panoramaImages = validPanos;
+        else delete propertyPayload.panoramaImages;
+      } else {
+        delete propertyPayload.panoramaImages;
+      }
+
+      console.log('[BuilderDashboard] Submitting property payload:', propertyPayload);
+
+      let propertyId;
+
+      if (editMode && editingPropertyId) {
+        const result = await updateProperty(editingPropertyId, propertyPayload);
+        if (!result.success) throw new Error(result.error);
+        propertyId = editingPropertyId;
+      } else {
+        const result = await createProperty({
+          builderId: currentUser.id,
+          ...propertyPayload
+        });
+        if (!result.success) throw new Error(result.error);
+        propertyId = result.data.id;
+      }
+
+      console.log('[BuilderDashboard] Property created/updated. ID:', propertyId);
+
+      // Success!
+      setFormMessage({ type: 'success', text: 'Property and files saved successfully!' });
+
+      // Refresh properties list
+      const refreshedProps = await getPropertiesByBuilder(currentUser.id);
+      if (refreshedProps.success) setProperties(refreshedProps.data);
+
+      resetForm();
     } catch (error) {
-      setFormMessage({ type: 'error', text: 'Failed to save property' });
+      console.error('Submission failed:', error);
+      setFormMessage({ type: 'error', text: 'Failed to save property: ' + error.message });
     } finally {
       setLoading(false);
       setTimeout(() => setFormMessage({ type: '', text: '' }), 5000);
@@ -372,9 +446,10 @@ const BuilderDashboard = () => {
 
   const handleApproveEnquiry = async (id) => {
     try {
-      const result = await updateEnquiryStatus(id, 'approved');
+      const result = await updateEnquiryStatus(id, 'APPROVED');
       if (result.success) {
-        setBuyEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: 'approved' } : e));
+        setBuyEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: 'APPROVED' } : e));
+        toast.success("Enquiry approved");
       }
     } catch (error) {
       console.error('Error approving enquiry:', error);
@@ -383,9 +458,10 @@ const BuilderDashboard = () => {
 
   const handleRejectEnquiry = async (id) => {
     try {
-      const result = await updateEnquiryStatus(id, 'rejected');
+      const result = await updateEnquiryStatus(id, 'REJECTED');
       if (result.success) {
-        setBuyEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: 'rejected' } : e));
+        setBuyEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: 'REJECTED' } : e));
+        toast.success("Enquiry rejected");
       }
     } catch (error) {
       console.error('Error rejecting enquiry:', error);
@@ -432,7 +508,10 @@ const BuilderDashboard = () => {
   ];
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    if (!dateString) return 'Pending';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return as is if not parseable
+    return date.toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -995,7 +1074,13 @@ const BuilderDashboard = () => {
                             className="form-control"
                             style={inputStyle}
                           />
-                          {propertyForm.legalDocumentPath && (
+                          {uploadingDoc && (
+                            <div className="d-flex align-items-center gap-2 mt-1">
+                              <div className="spinner-border spinner-border-sm text-success" role="status"></div>
+                              <span className="text-success small">Uploading...</span>
+                            </div>
+                          )}
+                          {propertyForm.legalDocumentPath && !uploadingDoc && (
                             <div className="text-success small">
                               <i className="bi bi-check-circle-fill me-1"></i>
                               Document Uploaded
@@ -1047,7 +1132,7 @@ const BuilderDashboard = () => {
                                     }));
                                     alert(`${validFiles.length} panorama image(s) uploaded successfully!`);
                                   } else {
-                                    alert('Failed to upload panorama images');
+                                    alert('Failed to upload panorama images: ' + (result.error || 'Unknown error'));
                                   }
                                   // Reset input
                                   e.target.value = null;
@@ -1060,9 +1145,14 @@ const BuilderDashboard = () => {
                               type="button"
                               className="btn btn-outline-primary"
                               onClick={() => document.getElementById('panorama-upload').click()}
+                              disabled={uploadingPanorama}
                               style={{ border: '1px dashed #3B82F6', color: '#3B82F6', borderRadius: '10px' }}
                             >
-                              <i className="bi bi-cloud-upload me-2"></i> Upload 360° Images
+                              {uploadingPanorama ? (
+                                <><div className="spinner-border spinner-border-sm me-2" role="status"></div>Uploading...</>
+                              ) : (
+                                <><i className="bi bi-cloud-upload me-2"></i> Upload 360° Images</>
+                              )}
                             </button>
                           </div>
                           <div className="d-flex flex-column">
@@ -1079,10 +1169,13 @@ const BuilderDashboard = () => {
                               {propertyForm.panoramaImages.map((imgUrl, index) => (
                                 <div key={index} className="position-relative" style={{ width: '100px', height: '60px' }}>
                                   <img
-                                    src={imgUrl.startsWith('http') ? imgUrl : `http://localhost:8081${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`}
+                                    src={getImageUrl(imgUrl)}
                                     alt={`Panorama ${index + 1}`}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #334155' }}
-                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/100x60?text=Error'; }}
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iNjAiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzMzQxNTUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0YTNiOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkltYWdlIEVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                                    }}
                                   />
                                   < button
                                     type="button"
@@ -1183,11 +1276,17 @@ const BuilderDashboard = () => {
                             className="form-control mb-2"
                             style={{ background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
                           />
+                          {uploadingImages && (
+                            <div className="d-flex align-items-center gap-2 mt-1">
+                              <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+                              <span className="text-primary small">Uploading images...</span>
+                            </div>
+                          )}
                         </div>
                         <input
                           style={{ borderRadius: '10px', padding: '12px 16px', background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
                           readOnly
-                          value={Array.isArray(propertyForm.images) ? `${propertyForm.images.length} images selected` : ''}
+                          value={Array.isArray(propertyForm.images) ? `${propertyForm.images.length} images uploaded` : ''}
                         />
                       </div >
                     </motion.div >
@@ -1428,23 +1527,23 @@ const BuilderDashboard = () => {
                     <tbody>
                       {buyEnquiries.map(enquiry => (
                         <tr key={enquiry.id}>
-                          <td style={{ color: 'var(--primary-text)' }}>{enquiry.property_name}</td>
-                          <td style={{ color: '#94A3B8' }}>{enquiry.customer_name || enquiry.full_name}</td>
-                          <td style={{ color: '#94A3B8' }}>{formatDate(enquiry.created_at)}</td>
+                          <td style={{ color: 'var(--primary-text)' }}>{enquiry.property?.title || 'Deleted Property'}</td>
+                          <td style={{ color: '#94A3B8' }}>{enquiry.name}</td>
+                          <td style={{ color: '#94A3B8' }}>{formatDate(enquiry.createdAt)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
                               borderRadius: '6px',
                               fontSize: '0.8rem',
                               fontWeight: '600',
-                              background: enquiry.status === 'approved' ? '#D1FAE5' : enquiry.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
-                              color: enquiry.status === 'approved' ? '#059669' : enquiry.status === 'rejected' ? '#DC2626' : '#D97706'
+                              background: enquiry.status === 'APPROVED' ? '#D1FAE5' : enquiry.status === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+                              color: enquiry.status === 'APPROVED' ? '#059669' : enquiry.status === 'REJECTED' ? '#DC2626' : '#D97706'
                             }}>
-                              {enquiry.status ? (enquiry.status.charAt(0).toUpperCase() + enquiry.status.slice(1)) : 'Pending'}
+                              {enquiry.status || 'PENDING'}
                             </span>
                           </td>
                           <td>
-                            {enquiry.status === 'pending' && (
+                            {(enquiry.status === 'PENDING' || !enquiry.status) && (
                               <>
                                 <button
                                   className="btn btn-sm me-2"
@@ -1522,9 +1621,9 @@ const BuilderDashboard = () => {
                     <tbody>
                       {rentRequests.map(request => (
                         <tr key={request.id}>
-                          <td style={{ color: 'var(--primary-text)' }}>{request.property_name}</td>
-                          <td style={{ color: '#94A3B8' }}>{request.customer_name}</td>
-                          <td style={{ color: '#94A3B8' }}>{formatDate(request.created_at)}</td>
+                          <td style={{ color: 'var(--primary-text)' }}>{request.property?.title || 'Deleted Property'}</td>
+                          <td style={{ color: '#94A3B8' }}>{request.applicantName}</td>
+                          <td style={{ color: '#94A3B8' }}>{formatDate(request.createdAt)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1632,10 +1731,10 @@ const BuilderDashboard = () => {
                     <tbody>
                       {withdrawals.map(w => (
                         <tr key={w.id}>
-                          <td>{formatDate(w.created_at)}</td>
+                          <td>{formatDate(w.createdAt)}</td>
                           <td className="fw-bold">₹{w.amount}</td>
-                          <td className="text-danger">{w.status === 'approved' ? `₹${w.commission_amount}` : '-'}</td>
-                          <td className="text-success">{w.status === 'approved' ? `₹${w.payout_amount}` : '-'}</td>
+                          <td className="text-danger">{w.status === 'approved' ? `₹${w.commissionAmount}` : '-'}</td>
+                          <td className="text-success">{w.status === 'approved' ? `₹${w.payoutAmount}` : '-'}</td>
                           <td>
                             <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
                               {w.status.toUpperCase()}
@@ -1676,19 +1775,27 @@ const BuilderDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.map(p => (
-                      <tr key={p.id}>
-                        <td>{formatDate(p.created_at)}</td>
-                        <td>
-                          <div className="fw-bold">{p.property_name || 'Deleted Property'}</div>
+                    {payments.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="text-center py-4" style={{ color: '#94A3B8' }}>
+                          No transactions found yet.
                         </td>
-                        <td>
-                          <div>{p.user_name || 'Unknown'}</div>
-                          <small className="text-muted">{p.user_email}</small>
-                        </td>
-                        <td className="text-success fw-bold">₹{p.amount}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      payments.map(p => (
+                        <tr key={p.id}>
+                          <td>{formatDate(p.createdAt)}</td>
+                          <td>
+                            <div className="fw-bold">{p.property?.title || 'Deleted Property'}</div>
+                          </td>
+                          <td>
+                            <div>{p.user?.fullName || 'Unknown'}</div>
+                            <small className="text-muted">{p.user?.email}</small>
+                          </td>
+                          <td className="text-success fw-bold">₹{p.amount}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

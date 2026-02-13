@@ -22,17 +22,48 @@ public class EnquiryService {
     public Enquiry createEnquiry(Enquiry enquiry) {
         Enquiry savedEnquiry = enquiryRepository.save(enquiry);
 
-        // Send email to builder
+        // Send emails if property and builder are present
         if (savedEnquiry.getProperty() != null && savedEnquiry.getProperty().getBuilder() != null) {
             com.buildex.entity.User builder = savedEnquiry.getProperty().getBuilder();
-            emailService.sendEnquiryReceivedEmail(
-                    builder.getEmail(),
-                    builder.getCompanyName(), // User now has getCompanyName
-                    savedEnquiry.getName(),
-                    savedEnquiry.getEmail(),
-                    savedEnquiry.getPhone(),
-                    savedEnquiry.getProperty().getName(),
-                    savedEnquiry.getMessage());
+            String propertyName = savedEnquiry.getProperty().getName();
+
+            if (savedEnquiry.getEnquiryType() == Enquiry.EnquiryType.VISIT) {
+                // Visit Notification to Builder
+                emailService.sendVisitScheduledEmail(
+                        builder.getEmail(),
+                        builder.getCompanyName(),
+                        savedEnquiry.getName(),
+                        savedEnquiry.getEmail(),
+                        savedEnquiry.getPhone(),
+                        propertyName,
+                        "Scheduled Date (Check Message)", // Frontend sends date in message
+                        savedEnquiry.getMessage()
+                );
+                // Visit Confirmation to User
+                emailService.sendVisitConfirmationEmail(
+                        savedEnquiry.getEmail(),
+                        savedEnquiry.getName(),
+                        propertyName,
+                        "Your scheduled slot"
+                );
+            } else {
+                // Enquiry Notification to Builder
+                emailService.sendEnquiryReceivedEmail(
+                        builder.getEmail(),
+                        builder.getCompanyName(),
+                        savedEnquiry.getName(),
+                        savedEnquiry.getEmail(),
+                        savedEnquiry.getPhone(),
+                        propertyName,
+                        savedEnquiry.getMessage());
+                
+                // Enquiry Confirmation to User
+                emailService.sendEnquiryConfirmationEmail(
+                        savedEnquiry.getEmail(),
+                        savedEnquiry.getName(),
+                        propertyName
+                );
+            }
         }
 
         return savedEnquiry;
@@ -52,5 +83,12 @@ public class EnquiryService {
 
     public List<Enquiry> getAllEnquiries() {
         return enquiryRepository.findAll();
+    }
+
+    public Enquiry updateEnquiryStatus(Long id, String status) {
+        Enquiry enquiry = enquiryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Enquiry not found"));
+        enquiry.setStatus(status.toUpperCase());
+        return enquiryRepository.save(enquiry);
     }
 }

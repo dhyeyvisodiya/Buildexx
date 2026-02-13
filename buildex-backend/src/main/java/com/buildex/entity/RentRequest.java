@@ -15,8 +15,10 @@ public class RentRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "property_id", nullable = false)
-    private Long propertyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "property_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "payments" })
+    private Property property;
     
     @Column(name = "applicant_name", nullable = false)
     private String applicantName;
@@ -54,12 +56,12 @@ public class RentRequest {
         this.id = id;
     }
 
-    public Long getPropertyId() {
-        return propertyId;
+    public Property getProperty() {
+        return property;
     }
 
-    public void setPropertyId(Long propertyId) {
-        this.propertyId = propertyId;
+    public void setProperty(Property property) {
+        this.property = property;
     }
 
     public String getApplicantName() {
