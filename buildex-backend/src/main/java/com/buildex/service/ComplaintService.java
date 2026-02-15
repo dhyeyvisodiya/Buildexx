@@ -44,7 +44,7 @@ public class ComplaintService {
         if (savedComplaint == null) {
             throw new RuntimeException("Failed to save complaint");
         }
-        
+
         // Notify builder via email
         if (property != null && property.getBuilder() != null && property.getBuilder().getEmail() != null) {
             emailService.sendComplaintNotificationEmail(
@@ -67,5 +67,12 @@ public class ComplaintService {
                 .orElseThrow(() -> new ResourceNotFoundException("Complaint not found with id: " + id));
         complaint.setStatus(status);
         complaintRepository.save(complaint);
+    }
+
+    public void deleteComplaint(Long id) {
+        if (!complaintRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Complaint not found with id: " + id);
+        }
+        complaintRepository.deleteById(id);
     }
 }

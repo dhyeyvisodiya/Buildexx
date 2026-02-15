@@ -28,16 +28,38 @@ const handleResponse = async (response) => {
 // Normalize backend property data to frontend field names
 const normalizeProperty = (p) => {
     if (!p) return p;
+    // console.log('Raw Property Data:', p); // Debugging
+    const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
+    console.log('Full Property Data:', p);
+    console.log('Building Extraction:', {
+        raw: p.builder,
+        name: p.builderName,
+        snake: p.builder_name,
+        extracted: (p.builderName || p.builder_name || (p.builder && (p.builder.companyName || p.builder.name || p.builder.username)))
+    });
+
+    // Smart Locality Extraction: Ignore numeric values (often area sqft)
+    let rawLocality = p.locality || p.area || (p.address && p.address.area);
+    if (isNumeric(rawLocality)) {
+        // If 'area' is a number, it's likely sqft, not location name. Try finding another field or default to empty.
+        // Check if there is a specific 'location' string field
+        rawLocality = (p.address && p.address.city) ? '' : ''; // Fallback
+    }
+
+    // Builder Extraction
+    const builderName = p.builderName || p.builder_name ||
+        (p.builder && (p.builder.companyName || p.builder.name || p.builder.username)) || '';
+
     return {
         ...p,
         // Map backend camelCase to frontend expected names
         name: p.title || p.name,
         title: p.title || p.name,
-        locality: p.area || p.locality,
+        locality: (rawLocality && !isNumeric(rawLocality)) ? rawLocality : '',
         images: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
         imageUrls: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
         thumbnail: p.thumbnail || (p.imageUrls && p.imageUrls[0]) || (p.images && p.images[0]) || '',
-        builder_name: p.builderName || (p.builder && (p.builder.companyName || p.builder.username)) || p.builder_name || '',
+        builder_name: builderName,
         builder_id: p.builderId || (p.builder && p.builder.id) || p.builder_id,
         type: p.propertyType || p.type,
         propertyType: p.propertyType || p.type,
@@ -143,8 +165,57 @@ export const deleteProperty = async (id) => {
         const response = await fetch(`${API_BASE_URL}/api/properties/${id}`, {
             method: 'DELETE'
         });
-        if (response.ok) return { success: true };
-        throw new Error('Failed to delete');
+        if (response.ok) {
+            return { success: true };
+        } else {
+            const error = await handleResponse(response);
+            return { success: false, error: error.message || 'Failed to delete' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteComplaint = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/complaints/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            return { success: true };
+        } else {
+            return { success: false, error: 'Failed to delete complaint' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteEnquiry = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/enquiries/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            return { success: true };
+        } else {
+            return { success: false, error: 'Failed to delete enquiry' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteRentRequest = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rent-requests/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            return { success: true };
+        } else {
+            return { success: false, error: 'Failed to delete rent request' };
+        }
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -351,9 +422,18 @@ export const getRentRequestsByBuilder = async (builderId) => {
 
 export const updateRentRequestStatus = async (id, status) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/rent-requests/${id}/status?status=${status}`, {
+        const endpoint = status.toLowerCase() === 'approved'
+            ? `${API_BASE_URL}/api/rent-requests/${id}/approve`
+            : `${API_BASE_URL}/api/rent-requests/${id}/reject`;
+
+        const response = await fetch(endpoint, {
             method: 'PATCH'
         });
+
+        if (!response.ok) {
+            throw new Error(`Failed to ${status} request`);
+        }
+
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };

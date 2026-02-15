@@ -8,6 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import java.util.List;
+
 @Entity
 @Table(name = "users")
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
@@ -33,6 +35,10 @@ public class User {
 
     private String role; // user, builder, admin
     private String status; // active, pending_verification
+
+    @OneToMany(mappedBy = "builder", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties("builder")
+    private List<Property> properties;
 
     // --- Builder Specific Fields ---
     @Column(name = "company_name")
@@ -173,4 +179,11 @@ public class User {
         this.verificationStatus = verificationStatus;
     }
 
+    public List<Property> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(List<Property> properties) {
+        this.properties = properties;
+    }
 }

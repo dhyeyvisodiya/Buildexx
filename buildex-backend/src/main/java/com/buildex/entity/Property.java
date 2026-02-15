@@ -180,7 +180,8 @@ public class Property {
 
     @JsonProperty("status")
     public String getStatus() {
-        if (isVerified == null) return "pending";
+        if (isVerified == null)
+            return "pending";
         return isVerified ? "approved" : "pending";
     }
 
@@ -261,7 +262,13 @@ public class Property {
 
     @JsonProperty("builder_name")
     public String getBuilderName() {
-        return builder != null ? builder.getCompanyName() : null;
+        if (builder == null)
+            return null;
+        if (builder.getCompanyName() != null && !builder.getCompanyName().isEmpty())
+            return builder.getCompanyName();
+        if (builder.getFullName() != null && !builder.getFullName().isEmpty())
+            return builder.getFullName();
+        return builder.getUsername();
     }
 
     @JsonProperty("virtualTours")

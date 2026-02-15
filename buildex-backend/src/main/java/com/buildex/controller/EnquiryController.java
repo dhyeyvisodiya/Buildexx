@@ -68,6 +68,12 @@ public class EnquiryController {
         return ResponseEntity.ok(updated);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteEnquiry(@PathVariable Long id) {
+        enquiryService.deleteEnquiry(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Data
     public static class EnquiryRequest {
         private Long propertyId;

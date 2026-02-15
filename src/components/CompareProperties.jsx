@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getImageUrl } from '../utils/imageUtils';
+import { getPropertyById } from '../api/apiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +10,54 @@ import { useNavigate } from 'react-router-dom';
  */
 const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
     const navigate = useNavigate();
+    const [enrichedProperties, setEnrichedProperties] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchDetails = async () => {
+            if (!properties || properties.length === 0) {
+                setEnrichedProperties([]);
+                return;
+            }
+
+            // If the modal is not open, strictly don't fetch to save bandwidth, 
+            // unless we want to pre-fetch. Let's fetch only when open or properties change.
+            if (!isOpen) return;
+
+            setLoading(true);
+            try {
+                // Fetch full details for each property
+                const commands = properties.map(async (p) => {
+                    // Slight optimization: if we think we already have full details (e.g. amenities is array), maybe skip?
+                    // But to be safe and solve the "NA" issue definitely, let's fetch.
+                    // Or check if p has a specific field that only full details have, like 'images' array with many items?
+                    // Actually, let's just fetch to be sure.
+                    try {
+                        const result = await getPropertyById(p.id);
+                        if (result.success) {
+                            return result.data;
+                        }
+                        return p; // Fallback to existing data
+                    } catch (e) {
+                        return p;
+                    }
+                });
+
+                const results = await Promise.all(commands);
+                setEnrichedProperties(results);
+            } catch (error) {
+                console.error("Error fetching comparison details:", error);
+                setEnrichedProperties(properties);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDetails();
+    }, [properties, isOpen]);
+
+    // Use enrichedProperties for display, or fallback to properties while loading (or show loader)
+    const displayProperties = loading ? properties : enrichedProperties;
 
     const formatCurrency = (value) => {
         if (!value) return 'N/A';
@@ -26,18 +75,18 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
     };
 
     const comparisonFields = [
-        { label: 'Price', getValue: (p) => (p.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(p.rent || p.rentAmount)}/mo` : formatCurrency(p.price)) },
-        { label: 'Price/Sq.ft', getValue: (p) => formatPricePerSqft(p.price, p.area || p.areaSqft) },
-        { label: 'Area', getValue: (p) => p.area || p.areaSqft ? `${p.area || p.areaSqft} sq.ft` : 'N/A' },
+        { label: 'Price', getValue: (p) => (p.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(p.rent || p.rentAmount || p.rent_amount)}/mo` : formatCurrency(p.price)) },
+        { label: 'Price/Sq.ft', getValue: (p) => formatPricePerSqft(p.price, p.area || p.areaSqft || p.area_sqft) },
+        { label: 'Area', getValue: (p) => p.area || p.areaSqft || p.area_sqft ? `${p.area || p.areaSqft || p.area_sqft} sq.ft` : 'N/A' },
         { label: 'Bedrooms', getValue: (p) => p.bedrooms || 'N/A' },
         { label: 'Bathrooms', getValue: (p) => p.bathrooms || 'N/A' },
-        { label: 'Type', getValue: (p) => p.type || 'N/A' },
+        { label: 'Type', getValue: (p) => p.type || p.property_type || 'N/A' },
         { label: 'Purpose', getValue: (p) => p.purpose || 'N/A' },
-        { label: 'Construction', getValue: (p) => p.constructionStatus || 'N/A' },
-        { label: 'Possession', getValue: (p) => p.possession || p.possessionYear || 'N/A' },
-        { label: 'Location', getValue: (p) => [p.locality, p.city].filter(Boolean).join(', ') || 'N/A' },
-        { label: 'Status', getValue: (p) => p.availability || 'Available' },
-        { label: 'Builder', getValue: (p) => p.builder_name || 'N/A' },
+        { label: 'Construction', getValue: (p) => p.constructionStatus || p.construction_status || p.status || 'N/A' },
+        { label: 'Possession', getValue: (p) => p.possession || p.possessionYear || p.possession_year || 'N/A' },
+        { label: 'Location', getValue: (p) => [p.locality || p.area, p.city].filter(Boolean).join(', ') || 'N/A' },
+        { label: 'Status', getValue: (p) => p.availability || p.availability_status || 'Available' },
+        { label: 'Builder', getValue: (p) => p.builderName || p.builder_name || (p.builder && (p.builder.companyName || p.builder.username || p.builder.name)) || 'N/A' },
         {
             label: 'Verified',
             getValue: (p) => p.is_verified || p.isVerified ? '✅ Yes' : '❌ No',
@@ -50,10 +99,24 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
         const allAmenities = new Set();
         properties.forEach(p => {
             const amenities = p.amenities || [];
-            const amenitiesArr = typeof amenities === 'string' ? amenities.split(',').map(a => a.trim()) : amenities;
+            // Parse string amenities if needed (e.g. "Gym, Pool")
+            // Also handle if backend sends it as JSON string
+            let amenitiesArr = [];
+            if (Array.isArray(amenities)) {
+                amenitiesArr = amenities;
+            } else if (typeof amenities === 'string') {
+                // Try parsing as JSON first, then split by comma
+                try {
+                    const parsed = JSON.parse(amenities);
+                    if (Array.isArray(parsed)) amenitiesArr = parsed;
+                    else amenitiesArr = amenities.split(',').map(a => a.trim());
+                } catch (e) {
+                    amenitiesArr = amenities.split(',').map(a => a.trim());
+                }
+            }
             amenitiesArr.forEach(a => allAmenities.add(a));
         });
-        return Array.from(allAmenities).filter(a => a);
+        return Array.from(allAmenities).filter(a => a && a !== "[]");
     };
 
     if (!isOpen || properties.length === 0) return null;
@@ -135,9 +198,8 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                         </button>
                     </div>
 
-                    {/* Content */}
                     <div style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 100px)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                             {/* Property Headers */}
                             <thead>
                                 <tr>
@@ -147,8 +209,10 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                         position: 'sticky',
                                         top: 0,
                                         zIndex: 10,
-                                        width: '180px',
-                                        borderRight: '1px solid rgba(200, 162, 74, 0.1)'
+                                        width: '180px', // Fixed label width
+                                        minWidth: '180px',
+                                        borderRight: '1px solid rgba(200, 162, 74, 0.1)',
+                                        boxSizing: 'border-box'
                                     }}></th>
                                     {properties.map((property, idx) => (
                                         <th key={property.id || idx} style={{
@@ -157,9 +221,13 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                             position: 'sticky',
                                             top: 0,
                                             zIndex: 10,
-                                            borderRight: idx < properties.length - 1 ? '1px solid rgba(200, 162, 74, 0.1)' : 'none'
+                                            width: `${100 / properties.length}%`, // Equal width distribution
+                                            minWidth: '250px',
+                                            borderRight: idx < properties.length - 1 ? '1px solid rgba(200, 162, 74, 0.1)' : 'none',
+                                            boxSizing: 'border-box',
+                                            verticalAlign: 'top'
                                         }}>
-                                            <div style={{ position: 'relative' }}>
+                                            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                                 {/* Remove button */}
                                                 <button
                                                     onClick={() => onRemove(property.id)}
@@ -170,35 +238,44 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                                         background: '#EF4444',
                                                         border: 'none',
                                                         borderRadius: '50%',
-                                                        width: '24px',
-                                                        height: '24px',
+                                                        width: '26px',
+                                                        height: '26px',
                                                         color: 'white',
                                                         cursor: 'pointer',
-                                                        fontSize: '0.75rem'
+                                                        zIndex: 20,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
                                                     }}
                                                 >
-                                                    <i className="bi bi-x"></i>
+                                                    <i className="bi bi-x" style={{ fontSize: '18px' }}></i>
                                                 </button>
 
                                                 {/* Property Image */}
                                                 <div style={{
                                                     width: '100%',
-                                                    height: '120px',
+                                                    height: '220px', // Fixed Height
                                                     borderRadius: '12px',
                                                     overflow: 'hidden',
-                                                    marginBottom: '12px'
+                                                    marginBottom: '16px',
+                                                    background: '#1E3A5F'
                                                 }}>
                                                     {property.images && property.images[0] ? (
                                                         <img
                                                             src={getImageUrl(property.images[0])}
                                                             alt={property.name}
-                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover',
+                                                                display: 'block'
+                                                            }}
                                                         />
                                                     ) : (
                                                         <div style={{
                                                             width: '100%',
                                                             height: '100%',
-                                                            background: '#1E3A5F',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center'
@@ -209,7 +286,16 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                                 </div>
 
                                                 {/* Property Name */}
-                                                <h5 style={{ color: '#FFFFFF', margin: '0 0 4px 0', fontSize: '1rem' }}>
+                                                <h5 style={{
+                                                    color: '#FFFFFF',
+                                                    margin: '0 0 12px 0',
+                                                    fontSize: '1.1rem',
+                                                    lineHeight: '1.4',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '100%'
+                                                }} title={property.name}>
                                                     {property.name || 'Untitled Property'}
                                                 </h5>
 
@@ -223,12 +309,13 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                                         background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
                                                         border: 'none',
                                                         borderRadius: '8px',
-                                                        padding: '8px 16px',
+                                                        padding: '10px 16px',
                                                         color: '#0F172A',
                                                         fontWeight: '600',
-                                                        fontSize: '0.85rem',
+                                                        fontSize: '0.9rem',
                                                         cursor: 'pointer',
-                                                        marginTop: '8px'
+                                                        width: '100%',
+                                                        marginTop: 'auto' // Pushes button to bottom if height varies
                                                     }}
                                                 >
                                                     View Details
@@ -241,90 +328,69 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
 
                             {/* Comparison Rows */}
                             <tbody>
-                                {comparisonFields.map((field, idx) => (
-                                    <tr key={field.label}>
+                                {comparisonFields.map((field) => (
+                                    <tr key={field.label} style={{ background: field.isHighlight ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
                                         <td style={{
-                                            padding: '16px 20px',
-                                            fontWeight: '600',
+                                            padding: '16px',
                                             color: '#94A3B8',
-                                            background: idx % 2 === 0 ? 'rgba(17, 42, 70, 0.5)' : 'transparent',
-                                            borderRight: '1px solid rgba(200, 162, 74, 0.1)'
+                                            fontSize: '0.9rem',
+                                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                            fontWeight: '500'
                                         }}>
                                             {field.label}
                                         </td>
-                                        {properties.map((property, pIdx) => {
-                                            const value = field.getValue(property);
-                                            // Highlight best value for certain fields
-                                            const isVerifiedField = field.label === 'Verified';
-
-                                            return (
-                                                <td key={property.id || pIdx} style={{
-                                                    padding: '16px 20px',
-                                                    color: isVerifiedField && value.includes('✅') ? '#10B981' : '#FFFFFF',
-                                                    background: idx % 2 === 0 ? 'rgba(17, 42, 70, 0.5)' : 'transparent',
-                                                    borderRight: pIdx < properties.length - 1 ? '1px solid rgba(200, 162, 74, 0.1)' : 'none',
-                                                    textAlign: 'center',
-                                                    fontWeight: field.label === 'Price' ? '700' : '500'
-                                                }}>
-                                                    {value}
-                                                </td>
-                                            );
-                                        })}
+                                        {displayProperties.map((property, idx) => (
+                                            <td key={property.id || idx} style={{
+                                                padding: '16px',
+                                                color: 'white',
+                                                fontSize: '1rem',
+                                                fontWeight: field.isHighlight ? '600' : '400',
+                                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                                textAlign: 'center'
+                                            }}>
+                                                {field.getValue(property)}
+                                            </td>
+                                        ))}
                                     </tr>
                                 ))}
-
-                                {/* Amenities Section */}
-                                {allAmenities.length > 0 && (
-                                    <>
-                                        <tr>
-                                            <td colSpan={properties.length + 1} style={{
-                                                padding: '16px 20px',
-                                                fontWeight: '700',
-                                                color: '#C8A24A',
-                                                background: '#112A46',
-                                                borderTop: '1px solid rgba(200, 162, 74, 0.2)'
-                                            }}>
-                                                <i className="bi bi-check2-circle me-2"></i>
-                                                Amenities Comparison
-                                            </td>
-                                        </tr>
-                                        {allAmenities.slice(0, 10).map((amenity, idx) => (
-                                            <tr key={amenity}>
-                                                <td style={{
-                                                    padding: '12px 20px',
-                                                    color: '#94A3B8',
-                                                    background: idx % 2 === 0 ? 'rgba(17, 42, 70, 0.5)' : 'transparent',
-                                                    borderRight: '1px solid rgba(200, 162, 74, 0.1)',
-                                                    fontSize: '0.9rem'
-                                                }}>
-                                                    {amenity}
-                                                </td>
-                                                {properties.map((property, pIdx) => {
-                                                    const amenities = property.amenities || [];
-                                                    const amenitiesArr = typeof amenities === 'string'
-                                                        ? amenities.split(',').map(a => a.trim().toLowerCase())
-                                                        : amenities.map(a => a.toLowerCase());
-                                                    const hasAmenity = amenitiesArr.includes(amenity.toLowerCase());
-
-                                                    return (
-                                                        <td key={property.id || pIdx} style={{
-                                                            padding: '12px 20px',
-                                                            textAlign: 'center',
-                                                            background: idx % 2 === 0 ? 'rgba(17, 42, 70, 0.5)' : 'transparent',
-                                                            borderRight: pIdx < properties.length - 1 ? '1px solid rgba(200, 162, 74, 0.1)' : 'none'
+                                {/* Amenities Row - Horizontal Scroll or List */}
+                                <tr>
+                                    <td style={{ padding: '16px', color: '#94A3B8', fontSize: '0.9rem', fontWeight: '500', verticalAlign: 'top' }}>
+                                        Amenities
+                                    </td>
+                                    {displayProperties.map((property, idx) => (
+                                        <td key={property.id || idx} style={{ padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+                                                {/* Use getAmenitiesList logic or just map property amenities */}
+                                                {(() => {
+                                                    const pAmenities = property.amenities || [];
+                                                    let list = [];
+                                                    if (Array.isArray(pAmenities)) {
+                                                        list = pAmenities;
+                                                    } else if (typeof pAmenities === 'string') {
+                                                        try {
+                                                            const parsed = JSON.parse(pAmenities);
+                                                            if (Array.isArray(parsed)) list = parsed;
+                                                            else list = pAmenities.split(',').map(a => a.trim());
+                                                        } catch (e) {
+                                                            list = pAmenities.split(',').map(a => a.trim());
+                                                        }
+                                                    }
+                                                    return list.filter(a => a && a !== "[]").map(am => (
+                                                        <span key={am} style={{
+                                                            fontSize: '0.75rem',
+                                                            background: 'rgba(255,255,255,0.1)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '12px'
                                                         }}>
-                                                            {hasAmenity ? (
-                                                                <i className="bi bi-check-circle-fill" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
-                                                            ) : (
-                                                                <i className="bi bi-x-circle" style={{ color: '#64748B', fontSize: '1.2rem' }}></i>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        ))}
-                                    </>
-                                )}
+                                                            {am}
+                                                        </span>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        </td>
+                                    ))}
+                                </tr>
                             </tbody>
                         </table>
                     </div>

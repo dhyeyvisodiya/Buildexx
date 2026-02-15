@@ -47,4 +47,10 @@ public class RentRequestController {
         return updatedRequest.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRentRequest(@PathVariable Long id) {
+        rentRequestService.deleteRentRequest(id);
+        return ResponseEntity.noContent().build();
+    }
 }

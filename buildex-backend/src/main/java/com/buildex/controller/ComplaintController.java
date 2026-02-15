@@ -37,6 +37,12 @@ public class ComplaintController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteComplaint(@PathVariable Long id) {
+        complaintService.deleteComplaint(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Data
     public static class ComplaintRequest {
         private Long propertyId;

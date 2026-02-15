@@ -12,6 +12,8 @@ import {
   getBuilderEnquiries,
   updateEnquiryStatus,
   getRentRequestsByBuilder,
+  deleteEnquiry,
+  deleteRentRequest,
 
   updateRentRequestStatus,
   updatePropertyAvailability,
@@ -40,6 +42,53 @@ const BuilderDashboard = () => {
   const [editMode, setEditMode] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  const handleSelectAll = (items) => {
+    if (selectedItems.length === items.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(items.map(item => item.id));
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter(item => item !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) return;
+
+    setLoading(true);
+    try {
+      if (activeTab === 'my-properties') {
+        await Promise.all(selectedItems.map(id => deleteProperty(id)));
+        setProperties(prev => prev.filter(p => !selectedItems.includes(p.id)));
+        toast.success('Properties deleted successfully');
+      } else if (activeTab === 'enquiries') {
+        await Promise.all(selectedItems.map(id => deleteEnquiry(id)));
+        setBuyEnquiries(prev => prev.filter(e => !selectedItems.includes(e.id)));
+        toast.success('Enquiries deleted successfully');
+      } else if (activeTab === 'rent-requests') {
+        await Promise.all(selectedItems.map(id => deleteRentRequest(id)));
+        setRentRequests(prev => prev.filter(r => !selectedItems.includes(r.id)));
+        toast.success('Rent requests deleted successfully');
+      }
+    } catch (error) {
+      console.error("Bulk delete error", error);
+      toast.error("Failed to delete some items");
+    } finally {
+      setSelectedItems([]);
+      setLoading(false);
+    }
+  };
 
   const getAllowedStatuses = (currentStatus, purpose) => {
     const p = (purpose || '').toLowerCase();
@@ -184,12 +233,12 @@ const BuilderDashboard = () => {
 
         // Calculate Total Earned from SUCCESSFUL payments
         const totalEarned = paymentsData
-          .filter(p => p.status === 'SUCCESS' || p.status === 'success')
+          .filter(p => (p.status || '').toUpperCase() === 'SUCCESS')
           .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
         // Calculate total withdrawn (including pending)
         const totalWithdrawn = withdrawalsResult.data
-          .filter(w => w.status === 'approved' || w.status === 'pending')
+          .filter(w => ['APPROVED', 'PENDING'].includes((w.status || '').toUpperCase()))
           .reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
 
         const currentBalance = totalEarned - totalWithdrawn;
@@ -1401,20 +1450,30 @@ const BuilderDashboard = () => {
                   <i className="bi bi-building me-2" style={{ color: '#C8A24A' }}></i>
                   My Properties ({properties.length})
                 </h5>
-                <button
-                  onClick={() => setActiveTab('add-property')}
-                  className="btn btn-sm"
-                  style={{
-                    background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                    color: '#0F172A',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    border: 'none'
-                  }}
-                >
-                  <i className="bi bi-plus me-1"></i>Add New
-                </button>
+                <div className="d-flex gap-2">
+                  {selectedItems.length > 0 && activeTab === 'my-properties' && (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={handleBulkDelete}
+                    >
+                      <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveTab('add-property')}
+                    className="btn btn-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+                      color: '#0F172A',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      border: 'none'
+                    }}
+                  >
+                    <i className="bi bi-plus me-1"></i>Add New
+                  </button>
+                </div>
               </div>
 
               {properties.length === 0 ? (
@@ -1455,6 +1514,14 @@ const BuilderDashboard = () => {
                   <table className="table table-hover">
                     <thead>
                       <tr>
+                        <th style={{ width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            onChange={() => handleSelectAll(properties)}
+                            checked={selectedItems.length === properties.length && properties.length > 0}
+                          />
+                        </th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Property</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Type</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Area</th>
@@ -1468,6 +1535,14 @@ const BuilderDashboard = () => {
                     <tbody>
                       {properties.map(property => (
                         <tr key={property.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={selectedItems.includes(property.id)}
+                              onChange={() => handleSelectItem(property.id)}
+                            />
+                          </td>
                           <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{property.name}</td>
                           <td style={{ color: '#94A3B8' }}>{property.type}</td>
                           <td style={{ color: '#94A3B8' }}>{property.locality || '-'}</td>
@@ -1500,6 +1575,16 @@ const BuilderDashboard = () => {
                             </span>
                           </td>
                           <td>
+                            <a
+                              href={`/property/${property.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm me-2"
+                              style={{ color: '#10B981', textDecoration: 'none' }}
+                              title="View Property"
+                            >
+                              <i className="bi bi-eye"></i>
+                            </a>
                             <button
                               className="btn btn-sm me-2"
                               style={{ color: '#3B82F6' }}
@@ -1537,10 +1622,20 @@ const BuilderDashboard = () => {
               border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>
-                <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
-                Buy Enquiries ({buyEnquiries.length})
-              </h5>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
+                  <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
+                  Buy Enquiries ({buyEnquiries.length})
+                </h5>
+                {selectedItems.length > 0 && activeTab === 'enquiries' && (
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={handleBulkDelete}
+                  >
+                    <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                  </button>
+                )}
+              </div>
 
               {buyEnquiries.length === 0 ? (
                 <div className="text-center py-5">
@@ -1566,6 +1661,14 @@ const BuilderDashboard = () => {
                   <table className="table table-hover">
                     <thead>
                       <tr>
+                        <th style={{ width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            onChange={() => handleSelectAll(buyEnquiries)}
+                            checked={selectedItems.length === buyEnquiries.length && buyEnquiries.length > 0}
+                          />
+                        </th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Customer</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
@@ -1576,6 +1679,14 @@ const BuilderDashboard = () => {
                     <tbody>
                       {buyEnquiries.map(enquiry => (
                         <tr key={enquiry.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={selectedItems.includes(enquiry.id)}
+                              onChange={() => handleSelectItem(enquiry.id)}
+                            />
+                          </td>
                           <td style={{ color: 'var(--primary-text)' }}>{enquiry.property?.title || 'Deleted Property'}</td>
                           <td style={{ color: '#94A3B8' }}>{enquiry.name}</td>
                           <td style={{ color: '#94A3B8' }}>{formatDate(enquiry.createdAt)}</td>
@@ -1631,10 +1742,20 @@ const BuilderDashboard = () => {
               border: '1px solid rgba(226, 232, 240, 0.1)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>
-                <i className="bi bi-key me-2" style={{ color: '#8B5CF6' }}></i>
-                Rent Requests ({rentRequests.length})
-              </h5>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h5 className="fw-bold mb-0" style={{ color: 'var(--primary-text)' }}>
+                  <i className="bi bi-key me-2" style={{ color: '#8B5CF6' }}></i>
+                  Rent Requests ({rentRequests.length})
+                </h5>
+                {selectedItems.length > 0 && activeTab === 'rent-requests' && (
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={handleBulkDelete}
+                  >
+                    <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                  </button>
+                )}
+              </div>
 
               {rentRequests.length === 0 ? (
                 <div className="text-center py-5">
@@ -1660,6 +1781,14 @@ const BuilderDashboard = () => {
                   <table className="table table-hover">
                     <thead>
                       <tr>
+                        <th style={{ width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            onChange={() => handleSelectAll(rentRequests)}
+                            checked={selectedItems.length === rentRequests.length && rentRequests.length > 0}
+                          />
+                        </th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Customer</th>
                         <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
@@ -1670,6 +1799,14 @@ const BuilderDashboard = () => {
                     <tbody>
                       {rentRequests.map(request => (
                         <tr key={request.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={selectedItems.includes(request.id)}
+                              onChange={() => handleSelectItem(request.id)}
+                            />
+                          </td>
                           <td style={{ color: 'var(--primary-text)' }}>{request.property?.title || 'Deleted Property'}</td>
                           <td style={{ color: '#94A3B8' }}>{request.applicantName}</td>
                           <td style={{ color: '#94A3B8' }}>{formatDate(request.createdAt)}</td>
@@ -1779,11 +1916,12 @@ const BuilderDashboard = () => {
                     </thead>
                     <tbody>
                       {withdrawals.map(w => {
-                        const displayCommission = w.status === 'approved'
+                        const status = (w.status || '').toLowerCase();
+                        const displayCommission = status === 'approved'
                           ? w.commissionAmount
                           : (w.amount * 0.05).toFixed(2);
 
-                        const displayPayout = w.status === 'approved'
+                        const displayPayout = status === 'approved'
                           ? w.payoutAmount
                           : (w.amount * 0.95).toFixed(2);
 
@@ -1793,14 +1931,14 @@ const BuilderDashboard = () => {
                             <td className="fw-bold">₹{w.amount}</td>
                             <td className="text-danger">
                               ₹{displayCommission}
-                              {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                              {status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
                             </td>
                             <td className="text-success">
                               ₹{displayPayout}
-                              {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                              {status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
                             </td>
                             <td>
-                              <span className={`badge ${w.status === 'approved' ? 'bg-success' : w.status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
+                              <span className={`badge ${status === 'approved' ? 'bg-success' : status === 'rejected' ? 'bg-danger' : 'bg-warning'}`}>
                                 {w.status.toUpperCase()}
                               </span>
                             </td>

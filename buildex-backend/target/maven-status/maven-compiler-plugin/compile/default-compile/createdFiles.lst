@@ -3,6 +3,7 @@ com\buildex\repository\PaymentRepository.class
 com\buildex\entity\Complaint$ComplaintBuilder.class
 com\buildex\entity\Enquiry.class
 com\buildex\entity\User.class
+com\buildex\BuildexApplication.class
 com\buildex\controller\ImageController.class
 com\buildex\entity\Payment$PaymentType.class
 com\buildex\repository\UserRepository.class
@@ -12,7 +13,9 @@ com\buildex\repository\EnquiryRepository.class
 com\buildex\service\OtpService.class
 com\buildex\controller\PaymentController.class
 com\buildex\entity\Property$PropertyBuilder.class
+com\buildex\dto\BuilderSummaryDTO.class
 com\buildex\config\WebConfig.class
+com\buildex\controller\ShareController.class
 com\buildex\entity\RentRequest.class
 com\buildex\config\SecurityConfig.class
 com\buildex\controller\UserController.class

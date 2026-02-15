@@ -13,9 +13,11 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\co
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\PaymentController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\PropertyController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\RentRequestController.java
+C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\ShareController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\TestEmailController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\UserController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\WithdrawalController.java
+C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\dto\BuilderSummaryDTO.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\dto\PropertySummaryDTO.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Complaint.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Enquiry.java

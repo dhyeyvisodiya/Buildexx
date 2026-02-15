@@ -44,60 +44,88 @@ const Home = () => {
   return (
     <div className="home-page">
       {/* Hero Section */}
-      <section className="hero-section animate__animated animate__fadeIn" style={{
-        background: `linear-gradient(to bottom, rgba(11, 28, 48, 0.85), rgba(11, 28, 48, 0.9)), url('https://images.unsplash.com/photo-1486325212027-8081e485255e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+      {/* Hero Section with Video Background */}
+      <section className="hero-section" style={{
         position: 'relative',
+        height: '90vh',
+        width: '100%',
         overflow: 'hidden',
-        minHeight: '85vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <div className="container text-center" style={{ position: 'relative', zIndex: 1, maxWidth: '800px' }}>
+        {/* Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            minWidth: '100%',
+            minHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            transform: 'translate(-50%, -50%)',
+            objectFit: 'cover',
+            zIndex: 0
+          }}
+        >
+          <source src="https://videos.pexels.com/video-files/3129957/3129957-uhd_2560_1440_25fps.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+
+        {/* Dark Overlay for Text Readability */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(to bottom, rgba(11, 28, 48, 0.7), rgba(11, 28, 48, 0.9))',
+          zIndex: 1
+        }}></div>
+
+        {/* Hero Content */}
+        <div className="container text-center" style={{ position: 'relative', zIndex: 2, maxWidth: '900px' }}>
           {/* Main Headline */}
-          <h1 className="display-3 fw-bold mb-5 animate__animated animate__fadeInUp" style={{
+          <h1 className="display-2 fw-bold mb-4 animate-fade-in-up" style={{
             color: '#FFFFFF',
             letterSpacing: '-1px',
-            lineHeight: 1.1
+            lineHeight: 1.1,
+            textShadow: '0 4px 20px rgba(0,0,0,0.5)'
           }}>
-            Find Your Perfect Property.
+            Find Your <span className="text-gradient-gold">Perfect Property</span>.
           </h1>
 
           {/* Search Label */}
-          <p className="mb-4 animate__animated animate__fadeInUp animate__delay-1s" style={{
-            color: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '1rem',
-            letterSpacing: '0.5px'
+          <p className="mb-5 animate-fade-in-up" style={{
+            color: 'rgba(255, 255, 255, 0.9)',
+            fontSize: '1.25rem',
+            letterSpacing: '0.5px',
+            animationDelay: '0.2s'
           }}>
-            Start your search with Buildex
+            Discover verified homes, connect with top builders, and make your dream a reality with Buildex.
           </p>
 
           {/* Explore Properties Button */}
           <button
             onClick={() => navigate('/property-list')}
-            className="animate__animated animate__fadeInUp animate__delay-2s"
+            className="btn-glow hover-lift animate-fade-in-up"
             style={{
               background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
               border: 'none',
               borderRadius: '50px',
-              padding: '16px 48px',
+              padding: '18px 56px',
               color: '#0F172A',
-              fontWeight: '600',
+              fontWeight: '700',
               fontSize: '1.1rem',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: '0 10px 40px rgba(200, 162, 74, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-3px) scale(1.02)';
-              e.target.style.boxShadow = '0 15px 50px rgba(200, 162, 74, 0.45)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0) scale(1)';
-              e.target.style.boxShadow = '0 10px 40px rgba(200, 162, 74, 0.3)';
+              boxShadow: '0 10px 40px rgba(200, 162, 74, 0.4)',
+              animationDelay: '0.4s'
             }}
           >
             <i className="bi bi-building me-2"></i>
@@ -249,23 +277,13 @@ const Home = () => {
               { icon: 'bi-graph-up-arrow', title: 'Smart Rent Management', desc: 'Efficiently manage your rental properties with our tools.', color: '#F59E0B' }
             ].map((feature, index) => (
               <div className="col-lg-3 col-md-6" key={index}>
-                <div className="feature-card text-center p-4 rounded h-100" style={{
+                <div className="feature-card text-center p-4 rounded h-100 hover-lift animate-fade-in-up" style={{
                   backgroundColor: 'var(--card-bg)',
                   boxShadow: 'var(--card-shadow)',
                   border: 'none',
-                  transition: 'all 0.3s ease',
-                  borderRadius: '16px'
-                }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-8px)';
-                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(15, 23, 42, 0.12)';
-                    e.currentTarget.style.borderColor = feature.color;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(15, 23, 42, 0.06)';
-                    e.currentTarget.style.borderColor = '#E2E8F0';
-                  }}>
+                  borderRadius: '16px',
+                  animationDelay: `${index * 0.15}s`
+                }}>
                   <div style={{
                     width: '70px',
                     height: '70px',
@@ -303,23 +321,15 @@ const Home = () => {
               { step: 3, icon: 'bi-check-circle', title: 'Close the Deal', desc: 'Complete your transaction with our secure and transparent process.' }
             ].map((item, index) => (
               <div className="col-md-4" key={index}>
-                <div className="step-card p-4 rounded text-center h-100" style={{
+                <div className="step-card p-4 rounded text-center h-100 hover-lift animate-fade-in-up" style={{
                   backgroundColor: 'var(--card-bg)',
                   boxShadow: 'var(--card-shadow)',
                   border: 'none',
-                  transition: 'all 0.3s ease',
                   borderRadius: '16px',
                   position: 'relative',
-                  overflow: 'hidden'
-                }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(15, 23, 42, 0.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(15, 23, 42, 0.06)';
-                  }}>
+                  overflow: 'hidden',
+                  animationDelay: `${0.5 + (index * 0.2)}s`
+                }}>
                   <div style={{
                     position: 'absolute',
                     top: '-20px',

@@ -2,8 +2,49 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
 
+import { useState, useEffect } from 'react';
+import { getPropertyById } from '../api/apiService';
+
 const CompareProperties = ({ compareList, removeFromCompare }) => {
   const navigate = useNavigate();
+  const [enrichedProperties, setEnrichedProperties] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      if (!compareList || compareList.length === 0) {
+        setEnrichedProperties([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const commands = compareList.map(async (p) => {
+          try {
+            // If we already have detailed fields like 'amenities' as array, maybe skip?
+            // But to be safe, fetch fresh.
+            const result = await getPropertyById(p.id);
+            if (result.success) return result.data;
+            return p;
+          } catch (e) {
+            return p;
+          }
+        });
+        const results = await Promise.all(commands);
+        setEnrichedProperties(results);
+      } catch (error) {
+        console.error("Error fetching compare details:", error);
+        setEnrichedProperties(compareList);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [compareList]);
+
+  // Use enriched properties for display
+  const displayList = loading ? compareList : enrichedProperties;
 
   const formatCurrency = (value) => {
     if (!value) return '';
@@ -176,7 +217,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                   }}>
                     Feature
                   </th>
-                  {compareList.map(property => (
+                  {displayList.map(property => (
                     <th key={property.id} className="text-center" style={{
                       minWidth: '220px',
                       padding: '24px',
@@ -208,14 +249,36 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
               </thead>
               <tbody>
                 {[
-                  { label: 'Price', key: 'price', format: (p) => p.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(p.rent || p.rent_amount)}/mo` : formatCurrency(p.price), highlight: true },
+                  { label: 'Price', key: 'price', format: (p) => p.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(p.rent || p.rentAmount || p.rent_amount)}/mo` : formatCurrency(p.price) },
                   { label: 'Type', key: 'type' },
                   { label: 'Purpose', key: 'purpose', badge: true },
-                  { label: 'Area', key: 'area' },
-                  { label: 'City', key: 'city' },
-                  { label: 'Locality', key: 'locality' },
-                  { label: 'Possession', key: 'possession' },
-                  { label: 'Amenities', key: 'amenities', format: (p) => p.amenities && p.amenities.join(', ') }
+                  { label: 'Area', key: 'area', format: (p) => p.area || p.areaSqft || p.area_sqft ? `${p.area || p.areaSqft || p.area_sqft} sq.ft` : 'N/A' },
+                  { label: 'City', key: 'city', format: (p) => p.city || 'N/A' },
+                  { label: 'Locality', key: 'locality', format: (p) => p.locality || (p.address && p.address.area) || 'N/A' },
+                  { label: 'Possession', key: 'possession', format: (p) => p.possession || p.possessionYear || p.possession_year || 'N/A' },
+                  {
+                    label: 'Builder',
+                    key: 'builder',
+                    format: (p) => {
+                      console.log('Render Builder:', p.builder_name, p.builder);
+                      return p.builder_name || p.builder?.companyName || p.builder?.name || (typeof p.builder === 'string' ? p.builder : 'N/A');
+                    }
+                  },
+                  {
+                    label: 'Amenities', key: 'amenities', format: (p) => {
+                      if (Array.isArray(p.amenities)) return p.amenities.filter(Boolean).join(', ');
+                      if (typeof p.amenities === 'string') {
+                        try {
+                          const parsed = JSON.parse(p.amenities);
+                          if (Array.isArray(parsed)) return parsed.filter(Boolean).join(', ');
+                        } catch (e) {
+                          return p.amenities.split(',').filter(Boolean).join(', ');
+                        }
+                        return p.amenities;
+                      }
+                      return 'N/A';
+                    }
+                  }
                 ].map((row, idx) => (
                   <tr key={row.key} className="compare-row" style={{ background: idx % 2 === 0 ? 'var(--card-bg)' : 'var(--charcoal-slate)' }}>
                     <th style={{
@@ -228,14 +291,18 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                     }}>
                       {row.label}
                     </th>
-                    {compareList.map(property => (
+                    {displayList.map(property => (
                       <td key={property.id} className="text-center" style={{
                         padding: '20px',
                         borderBottom: '1px solid var(--section-divider)',
                         verticalAlign: 'middle',
                         background: idx % 2 === 0 ? '#1E293B' : '#0F172A'
                       }}>
-                        {row.badge ? (
+                        {loading ? (
+                          <span className="placeholder-glow">
+                            <span className="placeholder col-6 rounded"></span>
+                          </span>
+                        ) : row.badge ? (
                           <span style={{
                             padding: '6px 14px',
                             borderRadius: '20px',
@@ -269,7 +336,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                   }}>
                     Actions
                   </th>
-                  {compareList.map(property => (
+                  {displayList.map(property => (
                     <td key={property.id} className="text-center" style={{ padding: '20px', background: '#1E293B' }}>
                       <button
                         className="btn"

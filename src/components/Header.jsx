@@ -177,7 +177,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                 </li>
               </ul>
 
-              <ul className="navbar-nav">
+              <ul className="navbar-nav gap-3 align-items-lg-center">
                 {currentUser ? (
                   // User is logged in
                   <li className="nav-item dropdown">
@@ -240,7 +240,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                   <>
                     <li className="nav-item">
                       <button
-                        className="btn btn-outline-primary me-2"
+                        className="btn btn-outline-primary"
                         onClick={() => navigate('/login')}
                         style={{
                           border: '1px solid #FFFFFF',
@@ -267,7 +267,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                         }}
                       >
                         Login
-                      </button><br />
+                      </button>
                     </li>
                     <li className="nav-item">
                       <button

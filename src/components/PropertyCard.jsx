@@ -87,7 +87,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
       <div className="card-body d-flex flex-column">
         <h5 className="card-title">{property.name}</h5>
         <p className="card-text small">
-          {[property.locality, property.city].filter(Boolean).join(', ') || property.city || 'Location N/A'}
+          {[property.locality, property.city].filter(Boolean).length > 0 ? [property.locality, property.city].filter(Boolean).join(', ') : 'Location N/A'}
           {/* Builder name with verified indicator */}
           {property.builder_name && (
             <span style={{ display: 'block', marginTop: '4px', color: '#64748B' }}>
@@ -187,6 +187,50 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
                 }}
               >
                 <i className="bi bi-heart"></i>
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Use Backend Share URL
+                  const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8081';
+                  const url = `${backendBase}/share/property/${property.id}`;
+
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `Check out ${property.name} on Buildex`,
+                      text: `Look at this property: ${property.name}`,
+                      url: url
+                    }).catch(console.error);
+                  } else {
+                    navigator.clipboard.writeText(url)
+                      .then(() => alert('Link copied to clipboard!'))
+                      .catch(() => alert('Failed to copy link'));
+                  }
+                }}
+                style={{
+                  border: '1px solid var(--construction-gold)',
+                  color: 'var(--construction-gold)',
+                  background: 'transparent',
+                  borderRadius: '6px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s ease',
+                  marginLeft: '10px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#F5F0E6';
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(200, 162, 74, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+                title="Share Property"
+              >
+                <i className="bi bi-share"></i>
               </button>
             </div>
           </div>

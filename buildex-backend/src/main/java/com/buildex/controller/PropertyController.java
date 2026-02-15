@@ -235,6 +235,39 @@ public class PropertyController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{propertyId}/brochure")
+    public ResponseEntity<Resource> getBrochure(@PathVariable Long propertyId) {
+        try {
+            Property property = propertyService.getPropertyById(propertyId)
+                    .orElseThrow(() -> new RuntimeException("Property not found"));
+
+            String brochureUrl = property.getBrochureUrl();
+            if (brochureUrl == null || brochureUrl.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Extract filename from URL/path
+            String fileName = brochureUrl.substring(brochureUrl.lastIndexOf("/") + 1);
+
+            // Try to load from uploads (public) first, then secure (if logic changes)
+            java.nio.file.Path filePath = java.nio.file.Paths.get(System.getProperty("user.dir")
+                    + java.io.File.separator + "uploads" + java.io.File.separator + fileName);
+            Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // =============================================
     // PROXY 360 IMAGE ENDPOINT
     // =============================================

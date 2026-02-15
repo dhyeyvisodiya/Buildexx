@@ -48,13 +48,12 @@ public class RentRequestService {
                         property.getName(),
                         "ASAP",
                         message);
-                
+
                 // Send confirmation to applicant
                 emailService.sendEnquiryConfirmationEmail(
                         rentRequest.getEmail(),
                         rentRequest.getApplicantName(),
-                        property.getName()
-                );
+                        property.getName());
             }
         });
 
@@ -81,5 +80,12 @@ public class RentRequestService {
 
     public List<RentRequest> getAllRentRequests() {
         return rentRequestRepository.findAll();
+    }
+
+    public void deleteRentRequest(Long id) {
+        if (!rentRequestRepository.existsById(id)) {
+            throw new RuntimeException("Rent request not found with id: " + id);
+        }
+        rentRequestRepository.deleteById(id);
     }
 }

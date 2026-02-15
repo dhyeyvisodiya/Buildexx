@@ -1,4 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
+import { getImageUrl } from './utils/imageUtils';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion';
 import './App.css'
@@ -23,7 +24,7 @@ const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 
 // ComparePropertiesModal is a component
-const ComparePropertiesModal = lazy(() => import('./components/CompareProperties'));
+
 
 // Loading Component
 const PageLoader = () => (
@@ -58,9 +59,35 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 function AppContent() {
-  const [compareList, setCompareList] = useState([])
-  const [wishlist, setWishlist] = useState([])
-  const [showCompareModal, setShowCompareModal] = useState(false)
+  // Load state from localStorage
+  const [compareList, setCompareList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('compareList');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem('wishlist');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+
+
+  // Persist state changes
+  useEffect(() => {
+    localStorage.setItem('compareList', JSON.stringify(compareList));
+  }, [compareList]);
+
+  useEffect(() => {
+    localStorage.setItem('wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
   const location = useLocation()
 
   // Helper for components that might still try to call navigateTo (backward compat or easy refactor)
@@ -158,38 +185,42 @@ function AppContent() {
         }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             {compareList.map((prop) => (
-              <div key={prop.id} style={{
-                width: '50px',
-                height: '50px',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                position: 'relative',
-                border: '2px solid rgba(200, 162, 74, 0.5)'
-              }}>
-                {prop.images && prop.images[0] ? (
-                  <img src={prop.images[0]} alt={prop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', background: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="bi bi-building" style={{ color: '#64748B' }}></i>
-                  </div>
-                )}
+              <div key={prop.id} style={{ position: 'relative' }}>
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  border: '2px solid rgba(200, 162, 74, 0.5)',
+                  marginRight: '8px' // Add spacing for the close button
+                }}>
+                  {prop.images && prop.images[0] ? (
+                    <img src={getImageUrl(prop.images[0])} alt={prop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="bi bi-building" style={{ color: '#64748B' }}></i>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => removeFromCompare(prop.id)}
                   style={{
                     position: 'absolute',
-                    top: '-6px',
-                    right: '-6px',
-                    width: '18px',
-                    height: '18px',
+                    top: '-8px',
+                    right: '-8px',
+                    width: '20px',
+                    height: '20px',
                     background: '#EF4444',
-                    border: 'none',
+                    border: '2px solid #0F1E33',
                     borderRadius: '50%',
                     color: 'white',
-                    fontSize: '10px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    zIndex: 10
                   }}
                 >
                   <i className="bi bi-x"></i>
@@ -212,7 +243,7 @@ function AppContent() {
             ))}
           </div>
           <button
-            onClick={() => setShowCompareModal(true)}
+            onClick={() => navigate('/compare')}
             disabled={compareList.length < 2}
             style={{
               background: compareList.length >= 2 ? 'linear-gradient(135deg, #C8A24A, #9E7C2F)' : '#374151',
@@ -231,20 +262,11 @@ function AppContent() {
             Compare ({compareList.length}/3)
           </button>
         </div>
-      )}
+      )
+      }
 
-      {/* Compare Properties Modal */}
-      <Suspense fallback={null}>
-        {showCompareModal && (
-          <ComparePropertiesModal
-            isOpen={showCompareModal}
-            properties={compareList}
-            onRemove={removeFromCompare}
-            onClose={() => setShowCompareModal(false)}
-          />
-        )}
-      </Suspense>
-    </div>
+
+    </div >
   )
 }
 

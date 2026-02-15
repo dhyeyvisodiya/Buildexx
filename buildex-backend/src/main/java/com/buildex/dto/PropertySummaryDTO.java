@@ -20,6 +20,7 @@ public class PropertySummaryDTO {
     private BigDecimal price;
     private BigDecimal rentAmount; // Include rent for rental properties
     private String city;
+    @com.fasterxml.jackson.annotation.JsonProperty("locality")
     private String area; // Locality
     private String thumbnail; // First image only
     private PropertyType type;
@@ -33,4 +34,5 @@ public class PropertySummaryDTO {
     private String status; // "approved", "pending", "rejected"
     private Double latitude;
     private Double longitude;
+    private String legalDocumentPath;
 }

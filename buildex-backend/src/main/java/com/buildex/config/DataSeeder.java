@@ -86,10 +86,9 @@ public class DataSeeder implements CommandLineRunner {
             System.out.println("Properties already exist. Ensuring verification and sample data...");
             propertyRepository.findAll().forEach(p -> {
                 boolean modified = false;
-                if (p.getIsVerified() == null || !p.getIsVerified()) {
-                    p.setIsVerified(true);
+                if (p.getIsVerified() == null) {
+                    p.setIsVerified(false); // Default to false if null, but don't auto-verify
                     modified = true;
-                    System.out.println("Auto-verified: " + p.getTitle());
                 }
 
                 // Ensure sample images if empty for testing

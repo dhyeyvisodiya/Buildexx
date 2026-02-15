@@ -37,15 +37,13 @@ public class EnquiryService {
                         savedEnquiry.getPhone(),
                         propertyName,
                         "Scheduled Date (Check Message)", // Frontend sends date in message
-                        savedEnquiry.getMessage()
-                );
+                        savedEnquiry.getMessage());
                 // Visit Confirmation to User
                 emailService.sendVisitConfirmationEmail(
                         savedEnquiry.getEmail(),
                         savedEnquiry.getName(),
                         propertyName,
-                        "Your scheduled slot"
-                );
+                        "Your scheduled slot");
             } else {
                 // Enquiry Notification to Builder
                 emailService.sendEnquiryReceivedEmail(
@@ -56,13 +54,12 @@ public class EnquiryService {
                         savedEnquiry.getPhone(),
                         propertyName,
                         savedEnquiry.getMessage());
-                
+
                 // Enquiry Confirmation to User
                 emailService.sendEnquiryConfirmationEmail(
                         savedEnquiry.getEmail(),
                         savedEnquiry.getName(),
-                        propertyName
-                );
+                        propertyName);
             }
         }
 
@@ -90,5 +87,12 @@ public class EnquiryService {
                 .orElseThrow(() -> new RuntimeException("Enquiry not found"));
         enquiry.setStatus(status.toUpperCase());
         return enquiryRepository.save(enquiry);
+    }
+
+    public void deleteEnquiry(Long id) {
+        if (!enquiryRepository.existsById(id)) {
+            throw new RuntimeException("Enquiry not found with id: " + id);
+        }
+        enquiryRepository.deleteById(id);
     }
 }

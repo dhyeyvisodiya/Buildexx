@@ -22,9 +22,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     java.util.List<User> findAllByRole(String role);
 
-    @Query("SELECT new com.buildex.dto.BuilderSummaryDTO(u.id, u.username, u.email, u.fullName, u.phone, u.companyName, u.verificationStatus, COUNT(p)) " +
-           "FROM User u LEFT JOIN u.properties p " +
-           "WHERE u.role = :role " +
-           "GROUP BY u.id, u.username, u.email, u.fullName, u.phone, u.companyName, u.verificationStatus")
+    @Query("SELECT new com.buildex.dto.BuilderSummaryDTO(u.id, u.username, u.email, u.fullName, u.phone, u.companyName, u.verificationStatus, u.status, COUNT(p)) "
+            +
+            "FROM User u LEFT JOIN u.properties p " +
+            "WHERE u.role = :role " +
+            "GROUP BY u.id, u.username, u.email, u.fullName, u.phone, u.companyName, u.verificationStatus, u.status")
     java.util.List<BuilderSummaryDTO> findAllBuilderSummaries(@Param("role") String role);
 }

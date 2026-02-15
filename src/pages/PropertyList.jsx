@@ -88,8 +88,10 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   const [nearbyMode, setNearbyMode] = useState(false);
 
   const [filters, setFilters] = useState({
-    type: '',
-    purpose: location.state?.purpose ? (location.state.purpose.charAt(0).toUpperCase() + location.state.purpose.slice(1).toLowerCase()) : '',
+    type: location.state?.type || '',
+    purpose: location.state?.purpose
+      ? (location.state.purpose.toLowerCase() === 'buy' ? 'Sale' : (location.state.purpose.charAt(0).toUpperCase() + location.state.purpose.slice(1).toLowerCase()))
+      : '',
     city: '',
     locality: '',
     search: ''
@@ -264,7 +266,32 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     });
 
     if (filters.type) {
-      result = result.filter(property => (property.type || '').toLowerCase() === filters.type.toLowerCase());
+      const fType = filters.type.toLowerCase();
+
+      // Define synonyms/keywords for each filter type
+      const keywordsMap = {
+        'apartment': ['apartment', 'flat', 'penthouse', 'studio', 'condo'],
+        'villa': ['villa', 'bungalow', 'duplex', 'triplex', 'independent'],
+        'house': ['house', 'home', 'residence'],
+        'farmhouse': ['farmhouse', 'farm'],
+        'commercial': ['commercial', 'shop', 'showroom', 'retail'],
+        'office': ['office', 'workspace'],
+        'industrial': ['industrial', 'factory', 'godown'],
+        'warehouse': ['warehouse', 'storage'],
+        'plot': ['plot', 'land']
+      };
+
+      const typeKeywords = keywordsMap[fType] || [fType];
+
+      result = result.filter(property => {
+        const pType = (property.type || property.property_type || '').toString().toLowerCase();
+        const pTitle = (property.title || property.name || '').toString().toLowerCase();
+
+        // Check if any keyword matches either type field or title
+        return typeKeywords.some(keyword =>
+          pType.includes(keyword) || pTitle.includes(keyword)
+        );
+      });
     }
 
     if (filters.purpose) {
@@ -272,16 +299,18 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     }
 
     if (filters.city) {
-      result = result.filter(property => (property.city || '').toLowerCase() === filters.city.toLowerCase());
+      const filterCity = filters.city.trim().toLowerCase();
+      result = result.filter(property => (property.city || '').trim().toLowerCase() === filterCity);
       // Update localities for selected city
       const cityLocalities = [...new Set(
-        properties.filter(p => (p.city || '').toLowerCase() === filters.city.toLowerCase()).map(p => p.locality).filter(Boolean)
+        properties.filter(p => (p.city || '').trim().toLowerCase() === filterCity).map(p => p.locality).filter(Boolean)
       )];
       setLocalities(cityLocalities);
     }
 
     if (filters.locality) {
-      result = result.filter(property => (property.locality || '').toLowerCase() === filters.locality.toLowerCase());
+      const filterLocality = filters.locality.trim().toLowerCase();
+      result = result.filter(property => (property.locality || '').trim().toLowerCase() === filterLocality);
     }
 
     if (filters.search) {
@@ -593,7 +622,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                 disabled={isSearching || loading}
               >
                 <option value="">Both</option>
-                <option value="Buy">Buy</option>
+                <option value="Sale">Buy</option>
                 <option value="Rent">Rent</option>
               </select>
             </div>

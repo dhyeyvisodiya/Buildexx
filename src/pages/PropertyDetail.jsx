@@ -368,24 +368,73 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
     }
   };
 
-  const handleShare = (platform) => {
-    const url = window.location.href;
+  const handleShare = async (platform) => {
+    // START: Use Backend Share URL for Rich Previews
+    // We assume backend is running on the API_BASE_URL domain
+    // If API_BASE_URL is 'http://localhost:8081/api', we need 'http://localhost:8081/share/property/{id}'
+    // Let's import API_BASE_URL or assume standard.
+    // Ideally import { API_BASE_URL } from '../config'; 
+    // But since we didn't import it, let's use a safe fallback or relative path if proxy is set.
+    // Determining backend URL:
+    const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8081';
+    const shareUrl = `${backendBase}/share/property/${property.id}`;
+
     const title = `Check out ${property?.name} on Buildex`;
+    const text = `Look at this amazing property I found on Buildex: ${property?.name}`;
+
+    // Handle Native Share (Mobile/Supported Browsers)
+    if (platform === 'native') {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: title,
+            text: text,
+            url: shareUrl // Use the backend URL
+          });
+          return;
+        } catch (error) {
+          console.log('Error sharing:', error);
+          // Fallback to copy link if native share fails/cancelled
+          if (error.name !== 'AbortError') {
+            platform = 'copy';
+          } else {
+            return;
+          }
+        }
+      } else {
+        // Fallback for desktop/unsupported -> Open modal or just copy/toast
+        // For simplicity, we'll act as Copy Link or just alert
+        platform = 'copy';
+        alert('Sharing not supported on this device/browser. Copied link to clipboard!');
+      }
+    }
 
     switch (platform) {
       case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, '_blank');
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' ' + shareUrl)}`, '_blank');
         break;
       case 'facebook':
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
         break;
       case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank');
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
         break;
       case 'copy':
-        navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+          // Fallback for older browsers?
+          const textArea = document.createElement("textarea");
+          textArea.value = shareUrl;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textArea);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
         break;
       default:
         break;
@@ -501,7 +550,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           <div className="col-md-8">
             <h1>{property.name}</h1>
             <p style={{ color: 'var(--secondary-text)' }}>
-              {property.locality}, {property.city} • <span className="badge bg-secondary">{property.builder_name || 'Builder/Owner'}</span>
+              {property.locality ? `${property.locality}, ` : ''}{property.city} • <span className="badge bg-secondary">{property.builder_name || 'Builder/Owner'}</span>
             </p>
           </div>
           <div className="col-md-4 text-md-end">
@@ -702,6 +751,31 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             >
               <i className="bi bi-heart me-1"></i> Add to Wishlist
             </button>
+            {/* NEW: Share Button in Top Bar */}
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => handleShare('native')}
+              style={{
+                borderRadius: '8px',
+                fontWeight: '600',
+                transition: 'all 0.3s ease',
+                border: '1px solid var(--construction-gold)',
+                color: 'var(--construction-gold)',
+                background: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#F5F0E6';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 4px 12px rgba(200, 162, 74, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              <i className="bi bi-share me-1"></i> Share
+            </button>
             {property.brochure_url && (
               <a
                 href={property.brochure_url}
@@ -738,7 +812,35 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           {/* Details Section */}
           <div className="col-lg-8">
             <div className="details-section mb-5 animate__animated animate__fadeInUp animate__delay-2s">
-              <h3>Property Details</h3>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3 className="mb-0">Property Details</h3>
+                {property.brochure_url && (
+                  <a
+                    href={`${getApiUrl()}/api/properties/${property.id}/brochure`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-primary"
+                    style={{
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      border: '1px solid var(--construction-gold)',
+                      color: 'var(--construction-gold)',
+                      background: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = '#F5F0E6';
+                      e.target.style.color = '#0B1220';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                      e.target.style.color = 'var(--construction-gold)';
+                    }}
+                  >
+                    <i className="bi bi-file-earmark-arrow-down me-2"></i>
+                    Download Brochure
+                  </a>
+                )}
+              </div>
               <div className="row g-3">
                 <div className="col-md-6">
                   <p><strong>Property Type:</strong> {property.type}</p>

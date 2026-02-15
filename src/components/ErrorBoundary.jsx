@@ -3,10 +3,10 @@ import React from 'react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
+    this.state = {
       hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     };
   }
 
@@ -23,10 +23,10 @@ class ErrorBoundary extends React.Component {
   }
 
   handleReset = () => {
-    this.setState({ 
+    this.setState({
       hasError: false,
       error: null,
-      errorInfo: null 
+      errorInfo: null
     });
     window.location.href = '/';
   };
@@ -34,7 +34,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ 
+        <div style={{
           minHeight: '100vh',
           background: 'linear-gradient(135deg, var(--charcoal-slate) 0%, #1E293B 100%)',
           display: 'flex',
@@ -45,7 +45,7 @@ class ErrorBoundary extends React.Component {
           <div className="container-fluid">
             <div className="row justify-content-center">
               <div className="col-md-8 col-lg-6">
-                <div className="card animate__animated animate__fadeIn" style={{ 
+                <div className="card animate__animated animate__fadeIn" style={{
                   borderRadius: '12px',
                   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
                   border: '1px solid var(--card-border)',
@@ -54,37 +54,37 @@ class ErrorBoundary extends React.Component {
                   <div className="card-body p-5 text-center">
                     {/* Error Icon */}
                     <div className="mb-4">
-                      <i className="bi bi-exclamation-triangle-fill" style={{ 
-                        fontSize: '5rem', 
+                      <i className="bi bi-exclamation-triangle-fill" style={{
+                        fontSize: '5rem',
                         color: '#EF4444',
                         filter: 'drop-shadow(0 4px 8px rgba(239, 68, 68, 0.3))'
                       }}></i>
                     </div>
 
                     {/* Error Message */}
-                    <h2 style={{ 
-                      color: 'var(--primary-text)', 
+                    <h2 style={{
+                      color: 'var(--primary-text)',
                       fontWeight: '700',
-                      marginBottom: '1rem' 
+                      marginBottom: '1rem'
                     }}>
                       Oops! Something went wrong
                     </h2>
-                    <p style={{ 
-                      color: 'var(--muted-text)', 
+                    <p style={{
+                      color: 'var(--muted-text)',
                       fontSize: '1rem',
                       marginBottom: '1.5rem',
                       lineHeight: '1.6'
                     }}>
-                      We're sorry for the inconvenience. An unexpected error has occurred. 
+                      We're sorry for the inconvenience. An unexpected error has occurred.
                       Our team has been notified and is working to fix the issue.
                     </p>
 
                     {/* Error Details (only in development) */}
                     {process.env.NODE_ENV === 'development' && this.state.error && (
-                      <div className="alert alert-danger text-start mb-4" style={{ 
+                      <div className="alert alert-danger text-start mb-4" style={{
                         borderRadius: '8px',
-                        backgroundColor: '#FEF2F2',
-                        border: '1px solid #FCA5A5',
+                        backgroundColor: '#92b1f3ff',
+                        border: '1px solid #92b1f3ff',
                         color: '#991B1B'
                       }}>
                         <h6 className="alert-heading" style={{ fontWeight: '600' }}>Error Details:</h6>
@@ -96,10 +96,10 @@ class ErrorBoundary extends React.Component {
                             <summary style={{ cursor: 'pointer', fontWeight: '600', marginBottom: '0.5rem' }}>
                               Stack Trace
                             </summary>
-                            <pre style={{ 
-                              whiteSpace: 'pre-wrap', 
+                            <pre style={{
+                              whiteSpace: 'pre-wrap',
                               fontSize: '0.75rem',
-                              backgroundColor: '#FEE2E2',
+                              backgroundColor: '#92b1f3ff',
                               padding: '10px',
                               borderRadius: '4px',
                               maxHeight: '200px',
@@ -114,7 +114,7 @@ class ErrorBoundary extends React.Component {
 
                     {/* Action Buttons */}
                     <div className="d-flex justify-content-center gap-3">
-                      <button 
+                      <button
                         className="btn btn-primary"
                         onClick={this.handleReset}
                         style={{
@@ -140,7 +140,7 @@ class ErrorBoundary extends React.Component {
                         <i className="bi bi-house-door-fill me-2"></i>
                         Go to Home
                       </button>
-                      <button 
+                      <button
                         className="btn btn-outline-secondary"
                         onClick={() => window.location.reload()}
                         style={{
@@ -170,15 +170,15 @@ class ErrorBoundary extends React.Component {
 
                     {/* Support Info */}
                     <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--card-border)' }}>
-                      <p style={{ 
-                        color: 'var(--muted-text)', 
+                      <p style={{
+                        color: 'var(--muted-text)',
                         fontSize: '0.85rem',
                         marginBottom: '0.5rem'
                       }}>
                         Need help? Contact our support team:
                       </p>
                       <div className="d-flex justify-content-center gap-3">
-                        <a href="mailto:support@buildex.com" className="text-decoration-none" style={{ 
+                        <a href="mailto:support@buildex.com" className="text-decoration-none" style={{
                           color: 'var(--construction-gold)',
                           fontSize: '0.9rem',
                           transition: 'all 0.3s ease'
@@ -187,10 +187,10 @@ class ErrorBoundary extends React.Component {
                           onMouseLeave={(e) => e.target.style.color = 'var(--construction-gold)'}
                         >
                           <i className="bi bi-envelope-fill me-1"></i>
-                          support@buildex.com
+                          visodiyadhyey@gmail.com
                         </a>
                         <span style={{ color: 'var(--section-divider)' }}>|</span>
-                        <a href="tel:+911800123567" className="text-decoration-none" style={{ 
+                        <a href="tel:+911800123567" className="text-decoration-none" style={{
                           color: 'var(--construction-gold)',
                           fontSize: '0.9rem',
                           transition: 'all 0.3s ease'
@@ -199,7 +199,7 @@ class ErrorBoundary extends React.Component {
                           onMouseLeave={(e) => e.target.style.color = 'var(--construction-gold)'}
                         >
                           <i className="bi bi-telephone-fill me-1"></i>
-                          1800-123-4567
+                          9913191735
                         </a>
                       </div>
                     </div>

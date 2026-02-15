@@ -16,7 +16,9 @@ import {
   getAdminWithdrawals,
   updateWithdrawalStatus,
   getAdminEnquiries,
-  updateEnquiryStatus
+  updateEnquiryStatus,
+  deleteComplaint,
+  deleteEnquiry
 } from '../api/apiService';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getApiUrl } from '../config';
@@ -36,6 +38,53 @@ const AdminDashboard = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false); // New state
+
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  const handleSelectAll = (items) => {
+    if (selectedItems.length === items.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(items.map(item => item.id));
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter(item => item !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) return;
+
+    setLoading(true);
+    try {
+      if (activeTab === 'properties') {
+        await Promise.all(selectedItems.map(id => deleteProperty(id)));
+        setProperties(prev => prev.filter(p => !selectedItems.includes(p.id)));
+        toast.success('Properties deleted successfully');
+      } else if (activeTab === 'complaints') {
+        await Promise.all(selectedItems.map(id => deleteComplaint(id)));
+        setComplaints(prev => prev.filter(c => !selectedItems.includes(c.id)));
+        toast.success('Complaints deleted successfully');
+      } else if (activeTab === 'enquiries') {
+        await Promise.all(selectedItems.map(id => deleteEnquiry(id)));
+        setEnquiries(prev => prev.filter(e => !selectedItems.includes(e.id)));
+        toast.success('Enquiries deleted successfully');
+      }
+    } catch (error) {
+      console.error("Bulk delete error", error);
+      toast.error("Failed to delete some items");
+    } finally {
+      setSelectedItems([]);
+      setLoading(false);
+    }
+  };
 
   const handleAvailabilityChange = async (propertyId, newStatus) => {
     try {
@@ -110,14 +159,16 @@ const AdminDashboard = () => {
     finally { setLoading(false); }
   };
 
+  const [isPaymentsLoading, setIsPaymentsLoading] = useState(false);
+
   const fetchPayments = async () => {
     if (payments.length > 0) return;
-    setLoading(true);
+    setIsPaymentsLoading(true);
     try {
       const result = await getAdminPayments();
       if (result.success) setPayments(result.data);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setIsPaymentsLoading(false); }
   };
 
   const fetchWithdrawals = async () => {
@@ -311,6 +362,44 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteEnquiry = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
+    try {
+      await deleteEnquiry(id);
+      setEnquiries(prev => prev.filter(e => e.id !== id));
+      toast.success("Enquiry deleted");
+    } catch (error) {
+      console.error("Error deleting enquiry:", error);
+      toast.error("Failed to delete enquiry");
+    }
+  };
+
+  const handleDeleteComplaint = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this complaint?")) return;
+    try {
+      await deleteComplaint(id);
+      setComplaints(prev => prev.filter(c => c.id !== id));
+      toast.success("Complaint deleted");
+    } catch (error) {
+      console.error("Error deleting complaint:", error);
+      toast.error("Failed to delete complaint");
+    }
+  };
+
+  const handleRejectWithdrawal = async (id) => {
+    if (!window.confirm("Reject this withdrawal request?")) return;
+    try {
+      const result = await updateWithdrawalStatus(id, 'rejected', 0, 0); // Assuming 0 commission/payout for rejection
+      if (result.success) {
+        setWithdrawals(prev => prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+        toast.success("Withdrawal rejected");
+      }
+    } catch (error) {
+      console.error('Error rejecting withdrawal:', error);
+      toast.error("Failed to reject withdrawal");
+    }
+  };
+
 
   const stats = {
     // ... same content ...
@@ -501,21 +590,21 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-hover" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Builder Name</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Email</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Phone</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Properties</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Builder Name</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Email</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Phone</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Properties</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Status</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {builders.map(builder => (
                       <tr key={builder.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{builder.full_name || builder.username}</td>
+                        <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{builder.full_name || builder.username}</td>
                         <td style={{ color: '#64748B' }}>{builder.email}</td>
                         <td style={{ color: '#64748B' }}>{builder.phone || '-'}</td>
                         <td style={{ color: '#64748B' }}>{builder.property_count || 0}</td>
@@ -581,15 +670,25 @@ const AdminDashboard = () => {
         {/* Properties Tab */}
         {!loading && activeTab === 'properties' && (
           <div style={{
-            background: '#0F1E33',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
             border: '1px solid #E2E8F0'
           }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-building me-2" style={{ color: '#3B82F6' }}></i>
-              Property Management ({properties.length})
-            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+                <i className="bi bi-building me-2" style={{ color: '#3B82F6' }}></i>
+                Property Management ({properties.length})
+              </h5>
+              {selectedItems.length > 0 && activeTab === 'properties' && (
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={handleBulkDelete}
+                >
+                  <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                </button>
+              )}
+            </div>
 
             {properties.length === 0 ? (
               <div className="text-center py-5">
@@ -612,23 +711,39 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-hover" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Builder</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Type</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>City</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Legal Doc</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Availability</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
+                      <th style={{ width: '40px' }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          onChange={() => handleSelectAll(properties)}
+                          checked={selectedItems.length === properties.length && properties.length > 0}
+                        />
+                      </th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Property</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Builder</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Type</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>City</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Legal Doc</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Availability</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Status</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {properties.map(property => (
                       <tr key={property.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{property.name}</td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={selectedItems.includes(property.id)}
+                            onChange={() => handleSelectItem(property.id)}
+                          />
+                        </td>
+                        <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{property.name}</td>
                         <td style={{ color: '#64748B' }}>
                           {property.builder_name || property.builder?.companyName || property.builder?.fullName || '-'}
                         </td>
@@ -681,6 +796,15 @@ const AdminDashboard = () => {
                         </td>
                         <td>
                           <div className="d-flex gap-2">
+                            <a
+                              href={`/property/${property.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm"
+                              style={{ background: '#3B82F6', color: 'white', borderRadius: '6px', textDecoration: 'none' }}
+                            >
+                              <i className="bi bi-eye me-1"></i>View
+                            </a>
                             {!property.is_verified ? (
                               <button
                                 className="btn btn-sm"
@@ -738,27 +862,53 @@ const AdminDashboard = () => {
 
         {/* Enquiries Tab */}
         {!loading && activeTab === 'enquiries' && (
-          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-chat-left-text me-2" style={{ color: '#3B82F6' }}></i>
-              Platform Enquiries ({enquiries.length})
-            </h5>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+                <i className="bi bi-chat-left-text me-2" style={{ color: '#3B82F6' }}></i>
+                Platform Enquiries ({enquiries.length})
+              </h5>
+              {selectedItems.length > 0 && activeTab === 'enquiries' && (
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={handleBulkDelete}
+                >
+                  <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                </button>
+              )}
+            </div>
             <div className="table-responsive">
-              <table className="table table-hover">
+              <table className="table table-hover" style={{ background: 'transparent' }}>
                 <thead>
                   <tr>
-                    <th style={{ color: '#0F172A' }}>Property</th>
-                    <th style={{ color: '#0F172A' }}>Customer</th>
-                    <th style={{ color: '#0F172A' }}>Type</th>
-                    <th style={{ color: '#0F172A' }}>Date</th>
-                    <th style={{ color: '#0F172A' }}>Status</th>
-                    <th style={{ color: '#0F172A' }}>Actions</th>
+                    <th style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        onChange={() => handleSelectAll(enquiries)}
+                        checked={selectedItems.length === enquiries.length && enquiries.length > 0}
+                      />
+                    </th>
+                    <th style={{ color: 'var(--primary-text)' }}>Property</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Customer</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Type</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Date</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Status</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {enquiries.map(e => (
                     <tr key={e.id}>
-                      <td style={{ color: '#0F172A' }}>{e.property?.title || 'Deleted Property'}</td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={selectedItems.includes(e.id)}
+                          onChange={() => handleSelectItem(e.id)}
+                        />
+                      </td>
+                      <td style={{ color: 'var(--primary-text)' }}>{e.property?.title || 'Deleted Property'}</td>
                       <td style={{ color: '#64748B' }}>
                         {e.name}<br />
                         <small>{e.email}</small>
@@ -777,9 +927,21 @@ const AdminDashboard = () => {
                       <td>
                         {(e.status === 'PENDING' || !e.status) && (
                           <div className="d-flex gap-2">
-                            <button className="btn btn-sm btn-success" onClick={() => handleUpdateEnquiryStatus(e.id, 'APPROVED')}>Approve</button>
-                            <button className="btn btn-sm btn-danger" onClick={() => handleUpdateEnquiryStatus(e.id, 'REJECTED')}>Reject</button>
+                            <button className="btn btn-sm btn-success" onClick={() => handleUpdateEnquiryStatus(e.id, 'APPROVED')}>
+                              <i className="bi bi-check-lg"></i>
+                            </button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleUpdateEnquiryStatus(e.id, 'REJECTED')}>
+                              <i className="bi bi-x-lg"></i>
+                            </button>
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteEnquiry(e.id)} title="Delete">
+                              <i className="bi bi-trash"></i>
+                            </button>
                           </div>
+                        )}
+                        {e.status !== 'PENDING' && e.status && (
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteEnquiry(e.id)} title="Delete">
+                            <i className="bi bi-trash"></i>
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -793,15 +955,25 @@ const AdminDashboard = () => {
         {/* Complaints Tab */}
         {!loading && activeTab === 'complaints' && (
           <div style={{
-            background: '#0F1E33',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
             border: '1px solid #E2E8F0'
           }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-exclamation-triangle me-2" style={{ color: '#EF4444' }}></i>
-              Complaints ({complaints.length})
-            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: '#0F172A' }}>
+                <i className="bi bi-exclamation-triangle me-2" style={{ color: '#EF4444' }}></i>
+                Complaints ({complaints.length})
+              </h5>
+              {selectedItems.length > 0 && activeTab === 'complaints' && (
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={handleBulkDelete}
+                >
+                  <i className="bi bi-trash me-1"></i> Delete Selected ({selectedItems.length})
+                </button>
+              )}
+            </div>
 
             {complaints.length === 0 ? (
               <div className="text-center py-5">
@@ -824,22 +996,40 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-hover" style={{ background: 'transparent' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Complainant</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Issue</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Actions</th>
+                      <th style={{ width: '40px' }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          onChange={() => handleSelectAll(complaints)}
+                          checked={selectedItems.length === complaints.length && complaints.length > 0}
+                        />
+                      </th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Property</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Complainant</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Issue</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Date</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Status</th>
+                      <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {complaints.map(complaint => (
                       <tr key={complaint.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{complaint.property?.title || '-'}</td>
-                        <td style={{ color: '#64748B' }}>{complaint.user?.fullName || '-'}</td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={selectedItems.includes(complaint.id)}
+                            onChange={() => handleSelectItem(complaint.id)}
+                          />
+                        </td>
+                        <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{complaint.property?.title || '-'}</td>
+                        <td style={{ color: '#64748B' }}>
+                          {complaint.user ? (complaint.user.fullName || complaint.user.username) : '-'}
+                        </td>
                         <td style={{ color: '#64748B', maxWidth: '200px' }}>{complaint.description}</td>
                         <td style={{ color: '#64748B' }}>{formatDate(complaint.createdAt)}</td>
                         <td>
@@ -856,16 +1046,34 @@ const AdminDashboard = () => {
                         </td>
                         <td>
                           {(!complaint.status || complaint.status === 'PENDING' || complaint.status === 'pending' || complaint.status === 'OPEN' || complaint.status === 'open') && (
-                            <button
-                              className="btn btn-sm"
-                              style={{ background: '#10B981', color: 'white', borderRadius: '6px' }}
-                              onClick={() => handleResolveComplaint(complaint.id)}
-                            >
-                              Resolve
-                            </button>
+                            <div className="d-flex gap-2">
+                              <button
+                                className="btn btn-sm"
+                                style={{ background: '#10B981', color: 'white', borderRadius: '6px' }}
+                                onClick={() => handleResolveComplaint(complaint.id)}
+                              >
+                                Resolve
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDeleteComplaint(complaint.id)}
+                                title="Delete"
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </div>
                           )}
-                          {complaint.status === 'resolved' && (
-                            <span style={{ color: '#64748B', fontSize: '0.9rem' }}>Closed</span>
+                          {(complaint.status === 'resolved' || complaint.status === 'RESOLVED') && (
+                            <div className="d-flex align-items-center gap-2">
+                              <span style={{ color: '#64748B', fontSize: '0.9rem' }}>Closed</span>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDeleteComplaint(complaint.id)}
+                                title="Delete"
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -877,21 +1085,22 @@ const AdminDashboard = () => {
           </div>
         )}
         {/* Payments Tab */}
-        {!loading && activeTab === 'payments' && (
-          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+        {activeTab === 'payments' && (
+          <div style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
             <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
               <i className="bi bi-cash me-2" style={{ color: '#10B981' }}></i>
               Received Payments ({payments.length})
+              {isPaymentsLoading && <div className="spinner-border spinner-border-sm ms-2 text-primary" role="status"></div>}
             </h5>
             <div className="table-responsive">
-              <table className="table table-hover">
+              <table className="table table-hover" style={{ background: 'transparent' }}>
                 <thead>
                   <tr>
-                    <th style={{ color: '#0F172A' }}>Property</th>
-                    <th style={{ color: '#0F172A' }}>User</th>
-                    <th style={{ color: '#0F172A' }}>Builder</th>
-                    <th style={{ color: '#0F172A' }}>Amount</th>
-                    <th style={{ color: '#0F172A' }}>Date</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Property</th>
+                    <th style={{ color: 'var(--primary-text)' }}>User</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Builder</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Amount</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -904,7 +1113,7 @@ const AdminDashboard = () => {
                   ) : (
                     payments.map(p => (
                       <tr key={p.id}>
-                        <td style={{ color: '#0F172A' }}>{p.property?.title || '-'}</td>
+                        <td style={{ color: 'var(--primary-text)' }}>{p.property?.title || '-'}</td>
                         <td style={{ color: '#64748B' }}>{p.user?.fullName || '-'}</td>
                         <td style={{ color: '#64748B' }}>{p.builder?.companyName || '-'}</td>
                         <td style={{ color: '#10B981', fontWeight: 'bold' }}>₹{p.amount}</td>
@@ -920,27 +1129,27 @@ const AdminDashboard = () => {
 
         {/* Withdrawals Tab */}
         {!loading && activeTab === 'withdrawals' && (
-          <div style={{ background: '#0F1E33', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0' }}>
             <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
               <i className="bi bi-wallet2 me-2" style={{ color: '#F59E0B' }}></i>
               Withdrawal Requests ({withdrawals.length})
             </h5>
             <div className="table-responsive">
-              <table className="table table-hover">
+              <table className="table table-hover" style={{ background: 'transparent' }}>
                 <thead>
                   <tr>
-                    <th style={{ color: '#0F172A' }}>Builder</th>
-                    <th style={{ color: '#0F172A' }}>Requested Amount</th>
-                    <th style={{ color: '#0F172A' }}>Commission (System)</th>
-                    <th style={{ color: '#0F172A' }}>Payout</th>
-                    <th style={{ color: '#0F172A' }}>Status</th>
-                    <th style={{ color: '#0F172A' }}>Actions</th>
+                    <th style={{ color: '#FFFFFF' }}>Builder</th>
+                    <th style={{ color: '#FFFFFF' }}>Requested Amount</th>
+                    <th style={{ color: '#FFFFFF' }}>Commission (System)</th>
+                    <th style={{ color: '#FFFFFF' }}>Payout</th>
+                    <th style={{ color: '#FFFFFF' }}>Status</th>
+                    <th style={{ color: '#FFFFFF' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {withdrawals.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-4" style={{ color: '#64748B' }}>
+                      <td colSpan="6" className="text-center py-4" style={{ color: '#FFFFFF' }}>
                         No withdrawal requests found.
                       </td>
                     </tr>
@@ -957,34 +1166,47 @@ const AdminDashboard = () => {
 
                       return (
                         <tr key={w.id}>
-                          <td style={{ color: '#0F172A' }}>
-                            <span className="fw-bold">{w.builder?.companyName}</span>
-                            <span className="d-block small text-muted">{w.builder?.fullName}</span>
+                          <td style={{ color: '#FFFFFF' }}>
+                            <span style={{ color: '#FFFFFF' }} className="fw-bold">{w.builder?.companyName}</span>
+                            <span className="d-block small" style={{ color: '#FFFFFF' }}>{w.builder?.fullName}</span>
                           </td>
-                          <td style={{ color: '#0F172A', fontWeight: 'bold' }}>₹{w.amount}</td>
+                          <td style={{ color: '#FFFFFF', fontWeight: 'bold' }}>₹{w.amount}</td>
                           <td style={{ color: '#EF4444' }}>
                             ₹{displayCommission}
-                            {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                            {w.status?.toLowerCase() === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
                           </td>
                           <td style={{ color: '#10B981' }}>
                             ₹{displayPayout}
-                            {w.status === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
+                            {w.status?.toLowerCase() === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}
                           </td>
                           <td>
                             <span style={{
                               padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600',
-                              background: w.status === 'approved' || w.status === 'APPROVED' ? '#D1FAE5' : '#FEF3C7',
-                              color: w.status === 'approved' || w.status === 'APPROVED' ? '#059669' : '#D97706'
+                              background: ['approved', 'resolved'].includes(w.status?.toLowerCase()) ? '#D1FAE5' : '#FEF3C7',
+                              color: ['approved', 'resolved'].includes(w.status?.toLowerCase()) ? '#059669' : '#D97706'
                             }}>
-                              {w.status.toUpperCase()}
+                              {w.status ? w.status.toUpperCase() : 'PENDING'}
                             </span>
                           </td>
                           <td>
-                            {(w.status === 'pending' || w.status === 'PENDING') && (
-                              <button className="btn btn-sm btn-primary" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
-                                Approve Payout
-                              </button>
-                            )}
+                            {(() => {
+                              console.log('Withdrawal Status:', w.id, w.status); // Debugging
+                              const status = (w.status || '').toLowerCase();
+                              return (status === 'pending' || status === 'requested' || !w.status) ? (
+                                <div className="d-flex gap-2">
+                                  <button className="btn btn-sm btn-success" onClick={() => handleApproveWithdrawal(w.id, w.amount)}>
+                                    Approve
+                                  </button>
+                                  <button className="btn btn-sm btn-danger" onClick={() => handleRejectWithdrawal(w.id)}>
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-muted small">
+                                  {status === 'approved' ? 'Processed' : 'Rejected'}
+                                </span>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );

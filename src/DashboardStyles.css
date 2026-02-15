@@ -545,7 +545,9 @@ button.dashboard-tab.active i {
 
 /* Table Dark Theme Override */
 .builder-dashboard-page .table,
-.builder-dashboard-page table {
+.builder-dashboard-page table,
+.admin-dashboard-page .table,
+.admin-dashboard-page table {
   background: transparent !important;
   --bs-table-bg: transparent !important;
   --bs-table-color: var(--primary-text) !important;
@@ -553,7 +555,9 @@ button.dashboard-tab.active i {
 }
 
 .builder-dashboard-page .table thead th,
-.builder-dashboard-page table thead th {
+.builder-dashboard-page table thead th,
+.admin-dashboard-page .table thead th,
+.admin-dashboard-page table thead th {
   background: rgba(17, 42, 70, 0.5) !important;
   color: var(--primary-text) !important;
   border-color: rgba(226, 232, 240, 0.1) !important;
@@ -561,21 +565,27 @@ button.dashboard-tab.active i {
 }
 
 .builder-dashboard-page .table tbody tr,
-.builder-dashboard-page table tbody tr {
+.builder-dashboard-page table tbody tr,
+.admin-dashboard-page .table tbody tr,
+.admin-dashboard-page table tbody tr {
   background: transparent !important;
   --bs-table-bg: transparent !important;
   border-color: rgba(226, 232, 240, 0.1) !important;
 }
 
 .builder-dashboard-page .table tbody td,
-.builder-dashboard-page table tbody td {
+.builder-dashboard-page table tbody td,
+.admin-dashboard-page .table tbody td,
+.admin-dashboard-page table tbody td {
   background: transparent !important;
   color: var(--primary-text) !important;
   border-color: rgba(226, 232, 240, 0.1) !important;
 }
 
 .builder-dashboard-page .table-hover tbody tr:hover,
-.builder-dashboard-page table.table-hover tbody tr:hover {
+.builder-dashboard-page table.table-hover tbody tr:hover,
+.admin-dashboard-page .table-hover tbody tr:hover,
+.admin-dashboard-page table.table-hover tbody tr:hover {
   background: rgba(200, 162, 74, 0.1) !important;
   --bs-table-hover-bg: rgba(200, 162, 74, 0.1) !important;
 }

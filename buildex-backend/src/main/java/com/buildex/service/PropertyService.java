@@ -101,6 +101,7 @@ public class PropertyService {
                 .price(property.getPrice())
                 .rentAmount(property.getRentAmount())
                 .city(property.getCity())
+                .area(property.getArea()) // Map locality
                 // Efficiently fetch only the first image using native query
                 .thumbnail(propertyRepository.findThumbnail(property.getId()))
                 .type(property.getPropertyType())
@@ -114,6 +115,7 @@ public class PropertyService {
                 .status(property.getStatus())
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
+                .legalDocumentPath(property.getLegalDocumentPath())
                 .build();
     }
 

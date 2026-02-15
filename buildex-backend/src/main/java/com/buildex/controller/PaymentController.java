@@ -1,6 +1,7 @@
 package com.buildex.controller;
 
 import com.buildex.entity.Payment;
+import com.buildex.service.EmailService;
 import com.buildex.service.PaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,7 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final com.buildex.service.EmailService emailService;
 
-    public PaymentController(PaymentService paymentService, com.buildex.service.EmailService emailService) {
+    public PaymentController(PaymentService paymentService, EmailService emailService) {
         this.paymentService = paymentService;
         this.emailService = emailService;
     }
