@@ -260,17 +260,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApproveProperty = async (id) => {
-    // ... same content ...
-    try {
-      const result = await updatePropertyStatus(id, 'approved');
-      if (result.success) {
-        setProperties(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
-      }
-    } catch (error) {
-      console.error('Error approving property:', error);
-    }
-  };
 
   // Updated Delete Handler using Modal
   const handleDeleteProperty = (id) => {
@@ -331,7 +320,7 @@ const AdminDashboard = () => {
       setVerifyingId(id);
       const result = await verifyProperty(id, true, currentUser.id);
       if (result.success) {
-        setProperties(prev => prev.map(p => p.id === id ? { ...p, is_verified: true } : p));
+        setProperties(prev => prev.map(p => p.id === id ? result.data : p));
         toast.success("Property verified successfully");
       } else {
         toast.error('Failed to verify property');
@@ -349,7 +338,7 @@ const AdminDashboard = () => {
       setVerifyingId(id);
       const result = await verifyProperty(id, false, currentUser.id);
       if (result.success) {
-        setProperties(prev => prev.map(p => p.id === id ? { ...p, is_verified: false } : p));
+        setProperties(prev => prev.map(p => p.id === id ? result.data : p));
         toast.success("Property unverified successfully");
       } else {
         toast.error('Failed to unverify property');

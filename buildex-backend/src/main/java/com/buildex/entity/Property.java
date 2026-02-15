@@ -66,7 +66,7 @@ public class Property {
     @Column(name = "bathrooms")
     private Integer bathrooms;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "property_amenities", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "amenity")
     @org.hibernate.annotations.BatchSize(size = 50)
@@ -100,7 +100,7 @@ public class Property {
     @Column(name = "virtual_tour_link", columnDefinition = "TEXT")
     private String virtualTourLink;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "property_images", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "image_url", columnDefinition = "TEXT")
     @OrderColumn(name = "image_order")
@@ -117,7 +117,7 @@ public class Property {
     @Column(name = "panorama_image_path", columnDefinition = "TEXT")
     private String panoramaImagePath;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "property_panorama_images", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "panorama_image_url", columnDefinition = "TEXT")
     @OrderColumn(name = "image_order")

@@ -11,8 +11,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -65,7 +63,7 @@ public class DataSeeder implements CommandLineRunner {
             property.setArea("Bandra");
             property.setConstructionStatus(Property.ConstructionStatus.READY);
             property.setAvailabilityStatus(Property.AvailabilityStatus.AVAILABLE);
-            property.setIsVerified(true); // Ensure seeded property appears in listings
+            property.setIsVerified(false); // Manual verification required by admin
             property.setBuilder(builder); // Link to builder
 
             // Set Images

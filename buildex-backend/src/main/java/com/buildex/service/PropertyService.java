@@ -47,6 +47,7 @@ public class PropertyService {
                         throw new IllegalArgumentException("User is not a builder");
                     }
                     property.setBuilder(user);
+                    property.setIsVerified(false); // Force manual verification by admin
                     return propertyRepository.save(property);
                 })
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));

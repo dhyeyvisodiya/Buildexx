@@ -37,12 +37,24 @@ public class SchemaFixer implements CommandLineRunner {
             jdbcTemplate.execute(
                     "WITH ordered_rows AS (SELECT property_id, image_url, ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY image_url) - 1 as rn FROM property_images) UPDATE property_images SET image_order = ordered_rows.rn FROM ordered_rows WHERE property_images.property_id = ordered_rows.property_id AND property_images.image_url = ordered_rows.image_url");
 
-            // 3. Fix Panorama Images
+            // 4. Fix Withdrawals table (New project missing columns)
+            System.out.println("Checking for missing columns in withdrawals table...");
+            jdbcTemplate.execute("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS commission_amount DECIMAL(19, 2)");
             jdbcTemplate.execute(
-                    "DELETE FROM property_panorama_images a USING property_panorama_images b WHERE a.ctid < b.ctid AND a.property_id = b.property_id AND a.panorama_image_url = b.panorama_image_url");
-            jdbcTemplate.execute("ALTER TABLE property_panorama_images ADD COLUMN IF NOT EXISTS image_order INTEGER");
+                    "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
             jdbcTemplate.execute(
-                    "WITH ordered_rows AS (SELECT property_id, panorama_image_url, ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY panorama_image_url) - 1 as rn FROM property_panorama_images) UPDATE property_panorama_images SET image_order = ordered_rows.rn FROM ordered_rows WHERE property_panorama_images.property_id = ordered_rows.property_id AND property_panorama_images.panorama_image_url = ordered_rows.panorama_image_url");
+                    "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            jdbcTemplate.execute("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_amount DECIMAL(19, 2)");
+
+            // 5. Fix Payments table (Ensure all columns exist)
+            System.out.println("Checking for missing columns in payments table...");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS razorpay_signature VARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS total_amount DECIMAL(19, 2)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS remaining_amount DECIMAL(19, 2)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50)");
+            jdbcTemplate.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'INR'");
 
             System.out.println("Schema Fixer completed successfully.");
         } catch (Exception e) {

@@ -26,7 +26,7 @@ const handleResponse = async (response) => {
 };
 
 // Normalize backend property data to frontend field names
-const normalizeProperty = (p) => {
+export const normalizeProperty = (p) => {
     if (!p) return p;
     // console.log('Raw Property Data:', p); // Debugging
     const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
@@ -556,7 +556,7 @@ export const verifyProperty = async (id, isVerified, userId) => {
             method: 'PATCH'
         });
         const result = await handleResponse(response);
-        return { success: true, data: result };
+        return { success: true, data: normalizeProperty(result) };
     } catch (error) {
         return { success: false, error: error.message };
     }

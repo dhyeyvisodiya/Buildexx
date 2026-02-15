@@ -397,10 +397,20 @@ const BuilderDashboard = () => {
         }
       }
 
+      // Clean Price/Rent: Strip non-numeric except decimal points (handles "2.00 Cr", "₹50k" etc)
+      const cleanNumeric = (val) => {
+        if (!val) return null;
+        const cleaned = val.toString().replace(/[^0-9.]/g, '');
+        return cleaned ? cleaned : null;
+      };
+
       // 1. Create Property
       const propertyPayload = {
         ...propertyForm,
         title: propertyForm.name, // Map frontend 'name' to backend 'title'
+        price: cleanNumeric(propertyForm.price),
+        rent: cleanNumeric(propertyForm.rent),
+        rentAmount: cleanNumeric(propertyForm.rent), // Add alias
 
         // Backend PropertyType only accepts [RESIDENTIAL, COMMERCIAL]
         propertyType: ['Apartment', 'Villa', 'House', 'Plot', 'Farmhouse', 'Guest House'].includes(propertyForm.type)
