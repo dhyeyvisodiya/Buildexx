@@ -69,13 +69,26 @@ public class PropertyController {
     @PostMapping("/upload-images")
     public ResponseEntity<String[]> uploadPropertyImages(@RequestParam("files") MultipartFile[] files) {
         try {
-            List<String> urls = new ArrayList<>();
-            for (MultipartFile file : files) {
-                urls.add(cloudinaryService.uploadImage(file));
-            }
+            // Upload all images in PARALLEL for speed
+            List<java.util.concurrent.CompletableFuture<String>> futures = java.util.Arrays.stream(files)
+                    .map(file -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return cloudinaryService.uploadImage(file);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to upload: " + file.getOriginalFilename(), e);
+                        }
+                    }))
+                    .collect(java.util.stream.Collectors.toList());
+
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+            List<String> urls = futures.stream()
+                    .map(java.util.concurrent.CompletableFuture::join)
+                    .collect(java.util.stream.Collectors.toList());
+
             return ResponseEntity.ok(urls.toArray(new String[0]));
         } catch (Exception e) {
-            e.printStackTrace(); // Log error for debugging
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -187,10 +200,24 @@ public class PropertyController {
     @PostMapping("/upload-panorama")
     public ResponseEntity<?> uploadPanorama(@RequestParam("files") List<MultipartFile> files) {
         try {
-            List<String> urls = new ArrayList<>();
-            for (MultipartFile file : files) {
-                urls.add(cloudinaryService.uploadPanorama(file));
-            }
+            // Upload all files in PARALLEL for speed
+            List<java.util.concurrent.CompletableFuture<String>> futures = files.stream()
+                    .map(file -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return cloudinaryService.uploadPanorama(file);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to upload: " + file.getOriginalFilename(), e);
+                        }
+                    }))
+                    .collect(java.util.stream.Collectors.toList());
+
+            // Wait for all uploads to complete
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+            List<String> urls = futures.stream()
+                    .map(java.util.concurrent.CompletableFuture::join)
+                    .collect(java.util.stream.Collectors.toList());
+
             return ResponseEntity.ok(urls);
         } catch (Exception e) {
             System.err.println("Panorama upload failed: " + e.getMessage());

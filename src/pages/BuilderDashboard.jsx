@@ -335,21 +335,47 @@ const BuilderDashboard = () => {
     }
   };
 
-  const validatePanoramaDimensions = (file) => {
+  const validateAndCompressPanorama = (file) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        // Check for 2:1 aspect ratio with tolerance
         const ratio = img.width / img.height;
-        const isOptimal = Math.abs(ratio - 2) < 0.5; // Allow 1.5 - 2.5
+        const isOptimal = Math.abs(ratio - 2) < 0.5;
 
         if (!isOptimal) {
-          console.warn(`Image ${file.name} dimensions ${img.width}x${img.height} (Ratio: ${ratio.toFixed(2)}) may not look perfect in 360° viewer (Preferred 2:1).`);
-          // Optional: Alert user but still allow upload
-          // alert(`Note: ${file.name} may not look perfect in 360 view (Standard is 2:1). Uploading anyway.`);
+          console.warn(`Image ${file.name} dimensions ${img.width}x${img.height} (Ratio: ${ratio.toFixed(2)}) may not look perfect in 360° viewer.`);
         }
 
-        resolve(file); // Always resolve with file
+        // Compress: cap width at 4096px, quality 0.8
+        const MAX_WIDTH = 4096;
+        let targetWidth = img.width;
+        let targetHeight = img.height;
+
+        if (img.width > MAX_WIDTH) {
+          targetWidth = MAX_WIDTH;
+          targetHeight = Math.round((MAX_WIDTH / img.width) * img.height);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+              console.log(`[Panorama] ${file.name}: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(blob.size / 1024 / 1024).toFixed(1)}MB (${Math.round((1 - blob.size / file.size) * 100)}% smaller)`);
+              resolve(compressedFile);
+            } else {
+              resolve(file); // Fallback to original
+            }
+          },
+          'image/jpeg',
+          0.80
+        );
+
         URL.revokeObjectURL(img.src);
       };
       img.onerror = () => {
@@ -358,6 +384,39 @@ const BuilderDashboard = () => {
       };
       img.src = URL.createObjectURL(file);
     });
+  };
+
+  // ---- Panorama upload handler (extracted for cleaner JSX) ----
+  const handlePanoramaUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setUploadingPanorama(true);
+    toast('Compressing panorama images...', { icon: '🔄' });
+
+    // Validate & compress all images in parallel
+    const compressedFiles = (await Promise.all(files.map(f => validateAndCompressPanorama(f)))).filter(Boolean);
+
+    if (compressedFiles.length === 0) {
+      setUploadingPanorama(false);
+      e.target.value = null;
+      return;
+    }
+
+    toast(`Uploading ${compressedFiles.length} image(s)...`, { icon: '☁️' });
+    const result = await uploadPanoramaImages(compressedFiles);
+    setUploadingPanorama(false);
+
+    if (result.success) {
+      setPropertyForm(prev => ({
+        ...prev,
+        panoramaImages: [...(prev.panoramaImages || []), ...result.data]
+      }));
+      toast.success(`${compressedFiles.length} panorama image(s) uploaded!`);
+    } else {
+      toast.error('Failed to upload: ' + (result.error || 'Unknown error'));
+    }
+    e.target.value = null;
   };
 
   const handleSubmitProperty = async (e) => {
@@ -1234,39 +1293,7 @@ const BuilderDashboard = () => {
                               multiple
                               accept=".jpg,.jpeg,.png"
                               id="panorama-upload"
-                              onChange={async (e) => {
-                                const files = Array.from(e.target.files);
-                                if (files.length > 0) {
-                                  setLoading(true);
-
-                                  // Validate Dimensions
-                                  const validFiles = [];
-                                  for (const file of files) {
-                                    const validFile = await validatePanoramaDimensions(file);
-                                    if (validFile) validFiles.push(validFile);
-                                  }
-
-                                  if (validFiles.length === 0) {
-                                    setLoading(false);
-                                    e.target.value = null; // Reset input
-                                    return;
-                                  }
-
-                                  const result = await uploadPanoramaImages(validFiles);
-                                  setLoading(false);
-                                  if (result.success) {
-                                    setPropertyForm(prev => ({
-                                      ...prev,
-                                      panoramaImages: [...(prev.panoramaImages || []), ...result.data]
-                                    }));
-                                    alert(`${validFiles.length} panorama image(s) uploaded successfully!`);
-                                  } else {
-                                    alert('Failed to upload panorama images: ' + (result.error || 'Unknown error'));
-                                  }
-                                  // Reset input
-                                  e.target.value = null;
-                                }
-                              }}
+                              onChange={handlePanoramaUpload}
                               className="form-control"
                               style={{ display: 'none' }}
                             />
