@@ -20,6 +20,7 @@ import {
   uploadLegalDocument,
   uploadPropertyImages,
   uploadPanoramaImages,
+  uploadBrochure,
   getBuilderPayments,
   createWithdrawalRequest,
   getBuilderWithdrawals
@@ -404,6 +405,24 @@ const BuilderDashboard = () => {
         return cleaned ? cleaned : null;
       };
 
+      // 0. Upload brochure file to Cloudinary if a new file was selected
+      let brochureCloudinaryUrl = propertyForm.brochureUrl;
+      if (propertyForm.brochureFile) {
+        setFormMessage({ type: 'info', text: 'Uploading brochure...' });
+        const brochureResult = await uploadBrochure(propertyForm.brochureFile);
+        if (brochureResult.success) {
+          brochureCloudinaryUrl = brochureResult.data;
+        } else {
+          console.error('Brochure upload failed:', brochureResult.error);
+          toast.error('Brochure upload failed, property will be saved without it.');
+          brochureCloudinaryUrl = '';
+        }
+      }
+      // If brochureUrl is a data: string or 'pending-upload', clear it
+      if (brochureCloudinaryUrl && (brochureCloudinaryUrl.startsWith('data:') || brochureCloudinaryUrl === 'pending-upload')) {
+        brochureCloudinaryUrl = '';
+      }
+
       // 1. Create Property
       const propertyPayload = {
         ...propertyForm,
@@ -411,6 +430,7 @@ const BuilderDashboard = () => {
         price: cleanNumeric(propertyForm.price),
         rent: cleanNumeric(propertyForm.rent),
         rentAmount: cleanNumeric(propertyForm.rent), // Add alias
+        brochureUrl: brochureCloudinaryUrl || '',
 
         // Backend PropertyType only accepts [RESIDENTIAL, COMMERCIAL]
         propertyType: ['Apartment', 'Villa', 'House', 'Plot', 'Farmhouse', 'Guest House'].includes(propertyForm.type)
@@ -426,6 +446,8 @@ const BuilderDashboard = () => {
         panorama_image_url: propertyForm.panorama_image_url,
         amenities: amenitiesList
       };
+      // Remove file object from payload (not JSON serializable)
+      delete propertyPayload.brochureFile;
 
       // Handle Images & Panoramas (Keep URLs, Remove Base64)
       if (propertyForm.images && propertyForm.images.length > 0) {
@@ -1102,14 +1124,12 @@ const BuilderDashboard = () => {
                                     alert('File size must be less than 10MB');
                                     return;
                                   }
-                                  const reader = new FileReader();
-                                  reader.onload = (event) => {
-                                    setPropertyForm(prev => ({
-                                      ...prev,
-                                      brochureUrl: event.target.result
-                                    }));
-                                  };
-                                  reader.readAsDataURL(file);
+                                  // Store the File object for later upload to Cloudinary
+                                  setPropertyForm(prev => ({
+                                    ...prev,
+                                    brochureUrl: 'pending-upload',
+                                    brochureFile: file
+                                  }));
                                 }
                               }}
                               className="form-control"
@@ -1125,7 +1145,7 @@ const BuilderDashboard = () => {
                             <input
                               type="text"
                               name="brochureUrl"
-                              value={propertyForm.brochureUrl?.startsWith('data:') ? '' : propertyForm.brochureUrl}
+                              value={propertyForm.brochureUrl === 'pending-upload' || propertyForm.brochureUrl?.startsWith('data:') ? '' : propertyForm.brochureUrl}
                               onChange={handleInputChange}
                               className="form-control"
                               placeholder="https://..."
@@ -1137,12 +1157,12 @@ const BuilderDashboard = () => {
                             <div className="d-flex align-items-center gap-2 mt-1">
                               <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
                               <span style={{ color: '#10B981', fontSize: '0.85rem' }}>
-                                {propertyForm.brochureUrl.startsWith('data:') ? 'PDF uploaded' : 'URL set'}
+                                {propertyForm.brochureUrl === 'pending-upload' ? 'PDF ready to upload' : propertyForm.brochureUrl.startsWith('data:') ? 'PDF uploaded' : 'URL set'}
                               </span>
                               <button
                                 type="button"
                                 className="btn btn-sm"
-                                onClick={() => setPropertyForm(prev => ({ ...prev, brochureUrl: '' }))}
+                                onClick={() => setPropertyForm(prev => ({ ...prev, brochureUrl: '', brochureFile: null }))}
                                 style={{ color: '#DC2626', background: 'transparent', border: 'none', padding: '2px 8px' }}
                               >
                                 <i className="bi bi-x-circle"></i> Remove

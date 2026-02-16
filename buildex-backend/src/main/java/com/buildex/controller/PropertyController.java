@@ -173,6 +173,17 @@ public class PropertyController {
         }
     }
 
+    @PostMapping("/upload-brochure")
+    public ResponseEntity<String> uploadBrochure(@RequestParam("file") MultipartFile file) {
+        try {
+            String url = cloudinaryService.uploadBrochure(file);
+            return ResponseEntity.ok(url);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping("/upload-panorama")
     public ResponseEntity<?> uploadPanorama(@RequestParam("files") List<MultipartFile> files) {
         try {

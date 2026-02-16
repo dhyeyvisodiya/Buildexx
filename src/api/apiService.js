@@ -311,6 +311,28 @@ export const uploadLegalDocument = async (file) => {
     }
 };
 
+export const uploadBrochure = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE_URL}/api/properties/upload-brochure`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const url = await response.text();
+            return { success: true, data: url };
+        } else {
+            throw new Error('Brochure upload failed');
+        }
+    } catch (error) {
+        console.error('Error uploading brochure:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 export const uploadPanoramaImages = async (files) => {
     try {
         const formData = new FormData();

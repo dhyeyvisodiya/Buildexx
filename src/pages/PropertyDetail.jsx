@@ -794,7 +794,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             >
               <i className="bi bi-share me-1"></i> Share
             </button>
-            {property.brochure_url && (
+            {property.brochure_url ? (
               <a
                 href={`${getApiUrl()}/api/properties/${property.id}/brochure`}
                 target="_blank"
@@ -819,6 +819,24 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 <i className="bi bi-file-earmark-arrow-down me-2"></i>
                 Download Brochure
               </a>
+            ) : (
+              <button
+                className="btn btn-outline-secondary"
+                disabled
+                title="No brochure available for this property"
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  border: '1px solid #94A3B8',
+                  color: '#94A3B8',
+                  background: 'transparent',
+                  cursor: 'not-allowed',
+                  opacity: 0.6
+                }}
+              >
+                <i className="bi bi-file-earmark-arrow-down me-2"></i>
+                No Brochure
+              </button>
             )}
           </div>
         </div>
