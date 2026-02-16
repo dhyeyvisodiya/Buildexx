@@ -25,7 +25,7 @@ const PaymentButton = ({
     const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demo';
 
     // Determine amount based on payment type
-    // Token amount is 15% of the total price/rent
+    // Token amount is 5% of the total price/rent
     const totalAmount = paymentType === 'RENT'
         ? (property.min_rent_amount || property.rent_amount || property.rent || 0)
         : (property.price || 0);
@@ -34,7 +34,7 @@ const PaymentButton = ({
         ? parseFloat(totalAmount.replace(/[^0-9.]/g, ''))
         : Number(totalAmount);
 
-    const TOKEN_PERCENTAGE = 0.15;
+    const TOKEN_PERCENTAGE = 0.05;
     const calculatedToken = numericTotal * TOKEN_PERCENTAGE;
 
     const paymentAmount = amount || calculatedToken;
@@ -44,8 +44,8 @@ const PaymentButton = ({
         : Number(paymentAmount);
 
     const defaultButtonText = paymentType === 'RENT'
-        ? `Pay Rent (15% Booking) ₹${numericAmount.toLocaleString('en-IN')}`
-        : `Pay Booking Token (15%) ₹${numericAmount.toLocaleString('en-IN')}`;
+        ? `Pay Rent (5% Booking) ₹${numericAmount.toLocaleString('en-IN')}`
+        : `Pay Booking Token (5%) ₹${numericAmount.toLocaleString('en-IN')}`;
 
 
 

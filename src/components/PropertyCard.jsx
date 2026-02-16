@@ -129,7 +129,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
             <span className="fw-bold fs-5">
               {(property.purpose || '').toUpperCase() === 'BUY'
                 ? formatCurrency(property.price)
-                : `${formatCurrency(property.rent || property.rentAmount || property.rent_amount)}/mo`}
+                : `${formatCurrency(property.rent || property.rentAmount || property.rent_amount || property.price)}/mo`}
             </span>
             <span className="badge" style={{ backgroundColor: 'var(--construction-gold)', color: 'var(--primary-text)' }}>{property.type}</span>
           </div>

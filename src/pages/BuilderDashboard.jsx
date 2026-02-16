@@ -488,8 +488,8 @@ const BuilderDashboard = () => {
         title: propertyForm.name, // Map frontend 'name' to backend 'title'
         price: cleanNumeric(propertyForm.price),
         rent: cleanNumeric(propertyForm.rent),
-        rentAmount: cleanNumeric(propertyForm.rent), // Add alias
-        brochureUrl: brochureCloudinaryUrl || '',
+        rent_amount: cleanNumeric(propertyForm.rent), // Must match @JsonProperty("rent_amount")
+        brochure_url: brochureCloudinaryUrl || '', // Must match @JsonProperty("brochure_url")
 
         // Backend PropertyType only accepts [RESIDENTIAL, COMMERCIAL]
         propertyType: ['Apartment', 'Villa', 'House', 'Plot', 'Farmhouse', 'Guest House'].includes(propertyForm.type)
@@ -497,7 +497,7 @@ const BuilderDashboard = () => {
           : 'COMMERCIAL',
 
         // Backend ConstructionStatus only accepts [READY, UNDER_CONSTRUCTION]
-        constructionStatus: propertyForm.constructionStatus === 'Completed' ? 'READY' : 'UNDER_CONSTRUCTION',
+        construction_status: propertyForm.constructionStatus === 'Completed' ? 'READY' : 'UNDER_CONSTRUCTION',
 
         availabilityStatus: propertyForm.availability ? propertyForm.availability.toUpperCase() : 'AVAILABLE',
         purpose: propertyForm.purpose ? propertyForm.purpose.toUpperCase() : null,

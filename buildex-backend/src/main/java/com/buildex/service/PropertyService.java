@@ -102,6 +102,13 @@ public class PropertyService {
     }
 
     private PropertySummaryDTO convertToSummaryDTO(Property property) {
+        // Determine thumbnail WITHOUT accessing lazy-loaded galleryImages
+        String thumbnail = property.getImageUrl();
+        if (thumbnail == null || thumbnail.isEmpty()) {
+            // Use native query to get first gallery image — avoids lazy loading
+            thumbnail = propertyRepository.findThumbnail(property.getId());
+        }
+
         return PropertySummaryDTO.builder()
                 .id(property.getId())
                 .title(property.getTitle())
@@ -109,12 +116,7 @@ public class PropertyService {
                 .rentAmount(property.getRentAmount())
                 .city(property.getCity())
                 .area(property.getArea()) // Map locality
-                // Optimized: Use already-eagerly-loaded galleryImages instead of separate native
-                // query
-                .thumbnail(property.getImageUrl() != null ? property.getImageUrl() : 
-                          (property.getGalleryImages() != null && !property.getGalleryImages().isEmpty()
-                           ? property.getGalleryImages().get(0)
-                           : null))
+                .thumbnail(thumbnail)
                 .type(property.getPropertyType())
                 .purpose(property.getPurpose())
                 .availability(property.getAvailabilityStatus())

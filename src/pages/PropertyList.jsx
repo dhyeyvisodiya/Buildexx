@@ -128,7 +128,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
       const result = await searchProperties(apiFilters, pageNum, pageSize);
 
       if (result.success) {
-        setFilteredProperties(result.data);
+        // Filter out sold/rented properties — they shouldn't appear in listings
+        const activeProperties = result.data.filter(p => {
+          const status = (p.availability_status || p.availability || '').toUpperCase();
+          return status !== 'SOLD' && status !== 'RENTED';
+        });
+        setFilteredProperties(activeProperties);
         setTotalPages(result.totalPages);
         setTotalElements(result.totalElements);
         setPage(pageNum);
