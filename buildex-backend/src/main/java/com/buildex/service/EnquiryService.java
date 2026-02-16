@@ -19,6 +19,7 @@ public class EnquiryService {
         this.emailService = emailService;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public Enquiry createEnquiry(Enquiry enquiry) {
         Enquiry savedEnquiry = enquiryRepository.save(enquiry);
 
@@ -63,6 +64,13 @@ public class EnquiryService {
             }
         }
 
+        if (savedEnquiry.getProperty() != null) {
+            org.hibernate.Hibernate.initialize(savedEnquiry.getProperty());
+            if (savedEnquiry.getProperty().getBuilder() != null) {
+                org.hibernate.Hibernate.initialize(savedEnquiry.getProperty().getBuilder());
+            }
+        }
+
         return savedEnquiry;
     }
 
@@ -82,11 +90,19 @@ public class EnquiryService {
         return enquiryRepository.findAll();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public Enquiry updateEnquiryStatus(Long id, String status) {
         Enquiry enquiry = enquiryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Enquiry not found"));
         enquiry.setStatus(status.toUpperCase());
-        return enquiryRepository.save(enquiry);
+        Enquiry savedEnquiry = enquiryRepository.save(enquiry);
+        if (savedEnquiry.getProperty() != null) {
+            org.hibernate.Hibernate.initialize(savedEnquiry.getProperty());
+            if (savedEnquiry.getProperty().getBuilder() != null) {
+                org.hibernate.Hibernate.initialize(savedEnquiry.getProperty().getBuilder());
+            }
+        }
+        return savedEnquiry;
     }
 
     public void deleteEnquiry(Long id) {

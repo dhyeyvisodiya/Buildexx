@@ -39,8 +39,8 @@ public class ShareController {
         // If image URL is relative or needs prefix, handle it here.
         // Assuming imageUrls contains full URLs or we need a base URL.
         String imageUrl = "";
-        if (property.getImageUrls() != null && !property.getImageUrls().isEmpty()) {
-            imageUrl = property.getImageUrls().get(0);
+        if (property.getGalleryImages() != null && !property.getGalleryImages().isEmpty()) {
+            imageUrl = property.getGalleryImages().get(0);
         } else {
             // Fallback image
             imageUrl = "https://placehold.co/600x400?text=Buildex+Property";

@@ -18,6 +18,7 @@ public class Enquiry {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "hibernateLazyInitializer", "handler" })
     private Property property;
 
     @Column(nullable = false)

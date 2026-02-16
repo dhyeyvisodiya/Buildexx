@@ -21,6 +21,7 @@ public class ComplaintService {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
+    @org.springframework.transaction.annotation.Transactional
     public Complaint createComplaint(Long propertyId, Long userId, String issue) {
         if (propertyId == null) {
             throw new IllegalArgumentException("Property ID cannot be null");
@@ -53,6 +54,16 @@ public class ComplaintService {
                     property.getName(),
                     "Property Issue Reported",
                     issue);
+        }
+
+        if (savedComplaint.getProperty() != null) {
+            org.hibernate.Hibernate.initialize(savedComplaint.getProperty());
+            if (savedComplaint.getProperty().getBuilder() != null) {
+                org.hibernate.Hibernate.initialize(savedComplaint.getProperty().getBuilder());
+            }
+        }
+        if (savedComplaint.getUser() != null) {
+            org.hibernate.Hibernate.initialize(savedComplaint.getUser());
         }
 
         return savedComplaint;

@@ -28,22 +28,14 @@ const handleResponse = async (response) => {
 // Normalize backend property data to frontend field names
 export const normalizeProperty = (p) => {
     if (!p) return p;
-    // console.log('Raw Property Data:', p); // Debugging
     const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
-    console.log('Full Property Data:', p);
-    console.log('Building Extraction:', {
-        raw: p.builder,
-        name: p.builderName,
-        snake: p.builder_name,
-        extracted: (p.builderName || p.builder_name || (p.builder && (p.builder.companyName || p.builder.name || p.builder.username)))
-    });
 
     // Smart Locality Extraction: Ignore numeric values (often area sqft)
+    // Some fields might already be normalized if this is called twice. Handle that.
     let rawLocality = p.locality || p.area || (p.address && p.address.area);
     if (isNumeric(rawLocality)) {
         // If 'area' is a number, it's likely sqft, not location name. Try finding another field or default to empty.
-        // Check if there is a specific 'location' string field
-        rawLocality = (p.address && p.address.city) ? '' : ''; // Fallback
+        rawLocality = (p.locality && !isNumeric(p.locality)) ? p.locality : '';
     }
 
     // Builder Extraction
@@ -52,13 +44,15 @@ export const normalizeProperty = (p) => {
 
     return {
         ...p,
-        // Map backend camelCase to frontend expected names
+        // Map backend camelCase and new Cloudinary names to frontend expected names
         name: p.title || p.name,
         title: p.title || p.name,
         locality: (rawLocality && !isNumeric(rawLocality)) ? rawLocality : '',
-        images: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
-        imageUrls: p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
-        thumbnail: p.thumbnail || (p.imageUrls && p.imageUrls[0]) || (p.images && p.images[0]) || '',
+        imageUrl: p.imageUrl || p.image_url,
+        images: p.galleryImages || p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
+        galleryImages: p.galleryImages || p.imageUrls || p.images || [],
+        imageUrls: p.galleryImages || p.imageUrls || p.images || (p.thumbnail ? [p.thumbnail] : []),
+        thumbnail: p.imageUrl || p.image_url || p.thumbnail || (p.galleryImages && p.galleryImages[0]) || (p.imageUrls && p.imageUrls[0]) || (p.images && p.images[0]) || '',
         builder_name: builderName,
         builder_id: p.builderId || (p.builder && p.builder.id) || p.builder_id,
         type: p.propertyType || p.type,
@@ -66,22 +60,63 @@ export const normalizeProperty = (p) => {
         availability_status: p.availabilityStatus || p.availability_status || p.availability,
         availability: p.availabilityStatus || p.availability_status || p.availability,
         construction_status: p.constructionStatus || p.construction_status,
-        possession: p.possessionYear || p.possession,
+        possession: p.possessionStatus || p.possession || p.possessionYear,
         rent_amount: p.rentAmount || p.rent_amount || p.rent,
         rent: p.rentAmount || p.rent_amount || p.rent,
         area_sqft: p.areaSqft || p.area_sqft,
         areaSqft: p.areaSqft || p.area_sqft,
         brochure_url: p.brochureUrl || p.brochure_url,
         google_map_link: p.googleMapLink || p.google_map_link,
-        legal_document_path: p.legalDocumentPath || p.legal_document_path,
-        panorama_image_path: p.panoramaImagePath || p.panorama_image_path,
-        panoramaImages: p.panoramaImages || p.panorama_images || [],
+        legal_document_url: p.legalDocumentUrl || p.legal_document_url || p.legalDocumentPath || p.legal_document_path,
+        legal_document_path: p.legalDocumentUrl || p.legal_document_url || p.legalDocumentPath || p.legal_document_path,
+        panorama_image_url: p.panorama_image_url || p.panoramaImageUrl || p.panorama_image_path || p.panoramaImagePath || p.virtual_tour_link || p.virtualTourLink,
+        panorama_image_path: p.panorama_image_url || p.panoramaImageUrl || p.panorama_image_path || p.panoramaImagePath || p.virtual_tour_link || p.virtualTourLink,
+        panoramaImages: (p.panorama_images && p.panorama_images.length > 0) ? p.panorama_images : ((p.panoramaImages && p.panoramaImages.length > 0) ? p.panoramaImages : (p.virtualTours || [])),
         is_verified: p.isVerified ?? p.is_verified,
         isVerified: p.isVerified ?? p.is_verified,
         created_at: p.createdAt || p.created_at,
         deposit_amount: p.depositAmount || p.deposit_amount,
         virtual_tour_link: p.virtualTourLink || p.virtual_tour_link,
     };
+};
+
+export const searchProperties = async (filters = {}, page = 0, size = 10) => {
+    try {
+        const queryParams = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                queryParams.append(key, value);
+            }
+        });
+        queryParams.append('page', page);
+        queryParams.append('size', size);
+
+        const response = await fetch(`${API_BASE_URL}/api/properties/search?${queryParams}`);
+        const data = await handleResponse(response);
+
+        let properties = [];
+        let totalPages = 0;
+        let totalElements = 0;
+
+        if (data && data.content) {
+            properties = data.content;
+            totalPages = data.totalPages;
+            totalElements = data.totalElements;
+        } else if (Array.isArray(data)) {
+            properties = data;
+        }
+
+        return {
+            success: true,
+            data: properties.map(normalizeProperty),
+            totalPages,
+            totalElements,
+            currentPage: page
+        };
+    } catch (error) {
+        console.error("Error searching properties:", error);
+        return { success: false, error: error.message };
+    }
 };
 
 // --- Property APIs ---
@@ -533,7 +568,12 @@ export const getAllComplaints = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/api/complaints`);
         const data = await handleResponse(response);
-        return { success: true, data };
+        // Complaints contain property objects which should be normalized
+        const normalized = (data || []).map(c => ({
+            ...c,
+            property: c.property ? normalizeProperty(c.property) : null
+        }));
+        return { success: true, data: normalized };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -566,7 +606,12 @@ export const getAdminEnquiries = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/api/enquiries/all`);
         const data = await handleResponse(response);
-        return { success: true, data };
+        // Enquiries contain property objects which should be normalized
+        const normalized = (data || []).map(e => ({
+            ...e,
+            property: e.property ? normalizeProperty(e.property) : null
+        }));
+        return { success: true, data: normalized };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -686,5 +731,34 @@ export const checkBookingStatus = async (userId, propertyId) => {
     } catch (error) {
         console.error("Error checking booking status:", error);
         return { isBooked: false };
+    }
+};
+
+export const getPaymentById = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/${id}`);
+        // Backend returns the Payment object directly
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        console.error(`Error fetching payment ${id}:`, error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const deletePayment = async (id) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/payments/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            return { success: true };
+        } else {
+            const error = await handleResponse(response);
+            return { success: false, error: error.message || 'Failed to delete payment' };
+        }
+    } catch (error) {
+        console.error(`Error deleting payment ${id}:`, error);
+        return { success: false, error: error.message };
     }
 };

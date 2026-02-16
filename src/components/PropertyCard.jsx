@@ -34,15 +34,39 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
     }
   };
 
+  // Debounced prefetch to prevent flooding the backend on mouse-sweep
+  const prefetchTimerRef = React.useRef(null);
+
+  const prefetchDetails = () => {
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+
+    prefetchTimerRef.current = setTimeout(() => {
+      // If we have an API service that caches (like ours does with getPropertyById)
+      // calling it on hover will warm the cache.
+      import('../api/apiService').then(m => {
+        m.getPropertyById(property.id);
+      });
+    }, 150); // 150ms delay
+  };
+
+  const cancelPrefetch = () => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+  };
+
   return (
-    <div className="property-card card h-100 animate__animated animate__fadeInUp" style={{
-      cursor: 'pointer'
-    }}>
+    <div
+      className="property-card card h-100 animate__animated animate__fadeInUp"
+      style={{ cursor: 'pointer' }}
+      onMouseEnter={prefetchDetails}
+      onMouseLeave={cancelPrefetch}
+    >
       <div className="position-relative">
         <div className="property-image-wrapper" style={{ height: '250px', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-          {property.images && property.images.length > 0 ? (
+          {property.thumbnail || (property.images && property.images.length > 0) ? (
             <img
-              src={getImageUrl(property.images[0])}
+              src={getImageUrl(property.thumbnail || property.images[0])}
               className="property-image card-img-top"
               alt={property.name}
               style={{ height: '100%', width: '100%', objectFit: 'cover' }}

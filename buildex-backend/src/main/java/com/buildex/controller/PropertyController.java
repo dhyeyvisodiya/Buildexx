@@ -28,12 +28,14 @@ public class PropertyController {
     private final PropertyService propertyService;
     private final FileStorageService fileStorageService;
     private final UserRepository userRepository;
+    private final com.buildex.service.CloudinaryService cloudinaryService;
 
     public PropertyController(PropertyService propertyService, FileStorageService fileStorageService,
-            UserRepository userRepository) {
+            UserRepository userRepository, com.buildex.service.CloudinaryService cloudinaryService) {
         this.propertyService = propertyService;
         this.fileStorageService = fileStorageService;
         this.userRepository = userRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @PostMapping("/builder/{userId}")
@@ -67,9 +69,13 @@ public class PropertyController {
     @PostMapping("/upload-images")
     public ResponseEntity<String[]> uploadPropertyImages(@RequestParam("files") MultipartFile[] files) {
         try {
-            String[] fileUrls = fileStorageService.storeMultipleFiles(files);
-            return ResponseEntity.ok(fileUrls);
+            List<String> urls = new ArrayList<>();
+            for (MultipartFile file : files) {
+                urls.add(cloudinaryService.uploadImage(file));
+            }
+            return ResponseEntity.ok(urls.toArray(new String[0]));
         } catch (Exception e) {
+            e.printStackTrace(); // Log error for debugging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -143,24 +149,26 @@ public class PropertyController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<PropertySummaryDTO>> searchProperties(
+    public ResponseEntity<org.springframework.data.domain.Page<PropertySummaryDTO>> searchProperties(
             @RequestParam(required = false) Property.Purpose purpose,
             @RequestParam(required = false) Property.PropertyType propertyType,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String area,
-            @RequestParam(required = false) Property.AvailabilityStatus availabilityStatus) {
-        List<PropertySummaryDTO> properties = propertyService.searchPropertiesSummaries(purpose, propertyType, city,
-                area,
-                availabilityStatus);
+            @RequestParam(required = false) Property.AvailabilityStatus availabilityStatus,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        org.springframework.data.domain.Page<PropertySummaryDTO> properties = propertyService.searchPropertiesSummariesPaginated(
+                purpose, propertyType, city, area, availabilityStatus, page, size);
         return ResponseEntity.ok(properties);
     }
 
     @PostMapping("/upload-legal-doc")
     public ResponseEntity<String> uploadLegalDocument(@RequestParam("file") MultipartFile file) {
         try {
-            String fileName = fileStorageService.storePrivateFile(file);
-            return ResponseEntity.ok(fileName);
+            String url = cloudinaryService.uploadFile(file, "properties/legal");
+            return ResponseEntity.ok(url);
         } catch (Exception e) {
+            e.printStackTrace(); // Log error for debugging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -168,35 +176,19 @@ public class PropertyController {
     @PostMapping("/upload-panorama")
     public ResponseEntity<?> uploadPanorama(@RequestParam("files") List<MultipartFile> files) {
         try {
-            java.util.List<java.util.concurrent.CompletableFuture<String>> futures = files.stream()
-                    .map(file -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return fileStorageService.store360Image(file);
-                        } catch (Exception e) {
-                            System.err.println("Panorama individual upload failed: " + e.getMessage());
-                            throw new java.util.concurrent.CompletionException(e);
-                        }
-                    }))
-                    .collect(java.util.stream.Collectors.toList());
-
-            java.util.List<String> filePaths = futures.stream()
-                    .map(java.util.concurrent.CompletableFuture::join)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toList());
-
-            return ResponseEntity.ok(filePaths);
-        } catch (Exception e) {
-            String errorMessage = e.getMessage();
-            if (e instanceof java.util.concurrent.CompletionException && e.getCause() != null) {
-                errorMessage = e.getCause().getMessage();
+            List<String> urls = new ArrayList<>();
+            for (MultipartFile file : files) {
+                urls.add(cloudinaryService.uploadPanorama(file));
             }
-            System.err.println("Panorama upload failed: " + errorMessage);
-            return ResponseEntity.badRequest().body(java.util.Collections.singletonMap("error", errorMessage));
+            return ResponseEntity.ok(urls);
+        } catch (Exception e) {
+            System.err.println("Panorama upload failed: " + e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Collections.singletonMap("error", e.getMessage()));
         }
     }
 
     @GetMapping("/{propertyId}/legal-doc")
-    public ResponseEntity<Resource> getLegalDocument(@PathVariable Long propertyId, @RequestParam Long userId) {
+    public ResponseEntity<?> getLegalDocument(@PathVariable Long propertyId, @RequestParam Long userId) {
         try {
             User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
             if (!"admin".equalsIgnoreCase(user.getRole())) {
@@ -205,38 +197,52 @@ public class PropertyController {
 
             Property property = propertyService.getPropertyById(propertyId)
                     .orElseThrow(() -> new RuntimeException("Property not found"));
-            String fileName = property.getLegalDocumentPath();
+            String legalDocUrl = property.getLegalDocumentUrl();
 
-            if (fileName == null) {
+            if (legalDocUrl == null || legalDocUrl.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            Resource resource = fileStorageService.loadPrivateFile(fileName);
-            return ResponseEntity.ok()
-                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                    .body(resource);
+            // Redirect to Cloudinary URL
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(legalDocUrl))
+                    .build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PatchMapping("/{propertyId}/verify")
-    public ResponseEntity<Property> verifyProperty(@PathVariable Long propertyId,
+    public ResponseEntity<?> verifyProperty(@PathVariable Long propertyId,
             @RequestParam Boolean isVerified,
             @RequestParam Long userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        // if (!"admin".equalsIgnoreCase(user.getRole())) {
-        // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        // }
-
-        Optional<Property> propertyOpt = propertyService.verifyProperty(propertyId, isVerified);
-        return propertyOpt.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Admin user not found");
+            }
+            
+            User user = userOpt.get();
+            // Optional: Ensure user is admin (restoring safety but making it more informative)
+            if (!"admin".equalsIgnoreCase(user.getRole())) {
+                System.out.println("Property verification attempted by non-admin: " + userId + " (Role: " + user.getRole() + ")");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only admins can verify properties");
+            }
+            
+            System.out.println("Property verification request: id=" + propertyId + ", status=" + isVerified + ", adminId=" + userId);
+            
+            Optional<Property> propertyOpt = propertyService.verifyProperty(propertyId, isVerified);
+            return propertyOpt.map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
+        } catch (Exception e) {
+            System.err.println("Property verification failed: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Verification failed: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{propertyId}/brochure")
-    public ResponseEntity<Resource> getBrochure(@PathVariable Long propertyId) {
+    public ResponseEntity<?> getBrochure(@PathVariable Long propertyId) {
         try {
             Property property = propertyService.getPropertyById(propertyId)
                     .orElseThrow(() -> new RuntimeException("Property not found"));
@@ -246,23 +252,10 @@ public class PropertyController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Extract filename from URL/path
-            String fileName = brochureUrl.substring(brochureUrl.lastIndexOf("/") + 1);
-
-            // Try to load from uploads (public) first, then secure (if logic changes)
-            java.nio.file.Path filePath = java.nio.file.Paths.get(System.getProperty("user.dir")
-                    + java.io.File.separator + "uploads" + java.io.File.separator + fileName);
-            Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
-
-            if (resource.exists() || resource.isReadable()) {
-                return ResponseEntity.ok()
-                        .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
-                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                "attachment; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
+            // Redirect to Cloudinary URL
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(brochureUrl))
+                    .build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

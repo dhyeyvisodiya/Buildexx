@@ -16,13 +16,14 @@ import {
   getAdminWithdrawals,
   updateWithdrawalStatus,
   getAdminEnquiries,
-  updateEnquiryStatus,
   deleteComplaint,
-  deleteEnquiry
+  deleteEnquiry,
+  normalizeProperty
 } from '../api/apiService';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getApiUrl } from '../config';
 import '../DashboardStyles.css';
+import { color } from 'framer-motion';
 
 const AdminDashboard = () => {
   const { currentUser } = useAuth();
@@ -144,7 +145,9 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const result = await getAdminEnquiries();
-      if (result.success) setEnquiries(result.data);
+      if (result.success) {
+        setEnquiries(result.data);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -749,7 +752,7 @@ const AdminDashboard = () => {
                               <i className="bi bi-file-earmark-pdf me-1"></i> View
                             </a>
                           ) : (
-                            <span className="text-muted small">Not Uploaded</span>
+                            <span className="text-muted small" style={{ color: "red" }}>Not Uploaded</span>
                           )}
                         </td>
                         <td>
@@ -1207,7 +1210,7 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

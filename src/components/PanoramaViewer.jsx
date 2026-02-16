@@ -25,6 +25,7 @@ const PanoramaViewer = ({
 
     // Determine the current image to show
     const getCurrentImage = () => {
+        console.log('[PanoramaViewer] Checking props:', { imageUrl, imageUrls });
         if (imageUrls && imageUrls.length > 0) {
             return imageUrls[currentIndex];
         }
@@ -47,13 +48,12 @@ const PanoramaViewer = ({
         const processImage = async () => {
             // If local or data URL, use directly
             if (currentImage.startsWith('data:') || currentImage.startsWith('/') || currentImage.includes('localhost')) {
-                setProcessedUrl(currentImage);
+                setProcessedUrl(currentImage.startsWith('/') ? getApiUrl(currentImage) : currentImage);
                 return;
             }
 
             // External URL - Proxy it
             try {
-                // console.log("Proxying 360 image:", currentImage);
                 const response = await fetch(getApiUrl('/api/images/proxy-360'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -63,7 +63,8 @@ const PanoramaViewer = ({
                 if (response.ok) {
                     const data = await response.json();
                     if (data.localUrl) {
-                        setProcessedUrl(data.localUrl);
+                        // Crucial: Prepend API URL if it's a relative path from the backend
+                        setProcessedUrl(data.localUrl.startsWith('/') ? getApiUrl(data.localUrl) : data.localUrl);
                     } else {
                         setProcessedUrl(currentImage);
                     }
@@ -72,7 +73,7 @@ const PanoramaViewer = ({
                 }
             } catch (err) {
                 console.error("Proxy error:", err);
-                setProcessedUrl(currentImage); // Try original anyway
+                setProcessedUrl(currentImage);
             }
         };
 

@@ -17,7 +17,7 @@ public class RentRequest {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "payments" })
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "payments", "hibernateLazyInitializer", "handler" })
     private Property property;
     
     @Column(name = "applicant_name", nullable = false)
@@ -39,6 +39,9 @@ public class RentRequest {
     @Column(name = "status")
     private Status status = Status.PENDING;
     
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -110,6 +113,14 @@ public class RentRequest {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public LocalDateTime getCreatedAt() {

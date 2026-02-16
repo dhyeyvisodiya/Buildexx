@@ -4,7 +4,7 @@ import PropertyCard from '../components/PropertyCard';
 import LocationSearch from '../components/LocationSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropertyCardSkeleton from '../components/PropertyCardSkeleton';
-import { getProperties, getNearbyProperties, getCities } from '../api/apiService';
+import { getProperties, getNearbyProperties, getCities, searchProperties } from '../api/apiService';
 
 import { useGeolocation } from '../lib/useGeolocation';
 
@@ -97,36 +97,60 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     search: ''
   });
 
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 9;
+
   // Fetch properties and cities on mount
   useEffect(() => {
-    const loadData = async () => {
-      // 1. Fetch Cities
-      try {
-        const citiesData = await getCities();
-        if (citiesData && citiesData.length > 0) {
-          // Sort cities alphabetically
-          setCities(citiesData.sort((a, b) => a.localeCompare(b)));
-        }
-      } catch (err) {
-        console.error("Failed to load cities", err);
+    const loadCities = async () => {
+      const citiesData = await getCities();
+      if (citiesData && Array.isArray(citiesData)) {
+        setCities(citiesData.sort((a, b) => a.localeCompare(b)));
       }
-
-      // 2. Fetch Properties (if not cached)
-      if (!loading && properties.length > 0) {
-        console.log('[PropertyList] Initialized from cache');
-        // If cities failed to load from API, extract from properties as fallback
-        if (cities.length === 0) {
-          const uniqueCities = [...new Set(properties.map(p => p.city).filter(Boolean))];
-          setCities(uniqueCities.sort((a, b) => a.localeCompare(b)));
-        }
-        return;
-      }
-
-      await fetchProperties();
     };
+    loadCities();
+  }, []);
 
-    loadData();
-  }, []); // Run once on mount
+  const loadProperties = async (pageNum = 0) => {
+    setLoading(true);
+    try {
+      // Map frontend filters to API filters
+      const apiFilters = {
+        purpose: filters.purpose === 'Sale' ? 'BUY' : (filters.purpose === 'Rent' ? 'RENT' : null),
+        propertyType: filters.type || null,
+        city: filters.city || null,
+        area: filters.locality || null,
+        search: filters.search || null
+      };
+
+      const result = await searchProperties(apiFilters, pageNum, pageSize);
+
+      if (result.success) {
+        setFilteredProperties(result.data);
+        setTotalPages(result.totalPages);
+        setTotalElements(result.totalElements);
+        setPage(pageNum);
+
+        // Update localities if city is selected but localities is empty
+        if (filters.city && localities.length === 0 && result.data.length > 0) {
+          const cityLocalities = [...new Set(result.data.map(p => p.locality).filter(Boolean))];
+          setLocalities(cityLocalities);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load properties", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!nearbyMode) {
+      loadProperties(0);
+    }
+  }, [filters.type, filters.purpose, filters.city, filters.locality, filters.search, nearbyMode]);
 
   // Handle location from search or geolocation
   useEffect(() => {
@@ -137,7 +161,6 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   }, [userLocation, nearbyMode]);
 
   const fetchProperties = async () => {
-    console.log('[PropertyList] fetchProperties called - starting fetch');
     setLoading(true);
     setNearbyMode(false);
     try {
@@ -150,14 +173,54 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         // Cache the data 
         cachedPropertiesRef.current = result.data;
         dataLoadedRef.current = true;
+
+        // Cache a trimmed version to save session storage space
+        const summaryData = result.data.map(p => ({
+          id: p.id,
+          name: p.name,
+          title: p.title,
+          price: p.price,
+          rent: p.rent,
+          locality: p.locality,
+          city: p.city,
+          imageUrl: p.imageUrl,
+          thumbnail: p.thumbnail,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          type: p.type,
+          purpose: p.purpose,
+          bedrooms: p.bedrooms,
+          bathrooms: p.bathrooms,
+          area: p.area,
+          availability_status: p.availability_status,
+          is_verified: p.is_verified
+        }));
+
         try {
           sessionStorage.setItem('propertiesCache', JSON.stringify({
-            data: result.data,
+            data: summaryData,
             timestamp: Date.now(),
             version: CACHE_VERSION
           }));
         } catch (e) {
-          console.warn('Session storage full, skipping properties cache');
+          if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+            console.warn('[PropertyList] Session storage full, clearing old property detail cache...');
+            // Clear detail caches to make room for the main list
+            Object.keys(sessionStorage).forEach(key => {
+              if (key.startsWith('property_detail_')) sessionStorage.removeItem(key);
+            });
+            try {
+              sessionStorage.setItem('propertiesCache', JSON.stringify({
+                data: result.data,
+                timestamp: Date.now(),
+                version: CACHE_VERSION
+              }));
+            } catch (retryError) {
+              console.warn('[PropertyList] Session storage still full, skipping properties cache');
+            }
+          } else {
+            console.warn('[PropertyList] Skipping properties cache:', e);
+          }
         }
 
         // Fallback: If cities array is empty (API failed), extract from properties
@@ -242,88 +305,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     }
   };
 
-  // Apply filters when they change
-  useEffect(() => {
-    if (nearbyMode) return; // Skip filtering in nearby mode
-
-    let result = properties;
-
-    // Property Visibility Rules:
-    // - Sold: Hide from all searches
-    // - Rented: Hide from rent listings
-    // - Available & Booked: Always show
-    result = result.filter(property => {
-      const status = (property.availability || '').toLowerCase();
-      const purpose = (property.purpose || '').toLowerCase();
-
-      // Hide sold properties completely
-      if (status === 'sold') return false;
-
-      // Hide rented properties from rent listings
-      if (status === 'rented' && purpose === 'rent') return false;
-
-      return true;
-    });
-
-    if (filters.type) {
-      const fType = filters.type.toLowerCase();
-
-      // Define synonyms/keywords for each filter type
-      const keywordsMap = {
-        'apartment': ['apartment', 'flat', 'penthouse', 'studio', 'condo'],
-        'villa': ['villa', 'bungalow', 'duplex', 'triplex', 'independent'],
-        'house': ['house', 'home', 'residence'],
-        'farmhouse': ['farmhouse', 'farm'],
-        'commercial': ['commercial', 'shop', 'showroom', 'retail'],
-        'office': ['office', 'workspace'],
-        'industrial': ['industrial', 'factory', 'godown'],
-        'warehouse': ['warehouse', 'storage'],
-        'plot': ['plot', 'land']
-      };
-
-      const typeKeywords = keywordsMap[fType] || [fType];
-
-      result = result.filter(property => {
-        const pType = (property.type || property.property_type || '').toString().toLowerCase();
-        const pTitle = (property.title || property.name || '').toString().toLowerCase();
-
-        // Check if any keyword matches either type field or title
-        return typeKeywords.some(keyword =>
-          pType.includes(keyword) || pTitle.includes(keyword)
-        );
-      });
-    }
-
-    if (filters.purpose) {
-      result = result.filter(property => (property.purpose || '').toLowerCase() === filters.purpose.toLowerCase());
-    }
-
-    if (filters.city) {
-      const filterCity = filters.city.trim().toLowerCase();
-      result = result.filter(property => (property.city || '').trim().toLowerCase() === filterCity);
-      // Update localities for selected city
-      const cityLocalities = [...new Set(
-        properties.filter(p => (p.city || '').trim().toLowerCase() === filterCity).map(p => p.locality).filter(Boolean)
-      )];
-      setLocalities(cityLocalities);
-    }
-
-    if (filters.locality) {
-      const filterLocality = filters.locality.trim().toLowerCase();
-      result = result.filter(property => (property.locality || '').trim().toLowerCase() === filterLocality);
-    }
-
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      result = result.filter(property =>
-        (property.name || '').toLowerCase().includes(searchTerm) ||
-        (property.city || '').toLowerCase().includes(searchTerm) ||
-        (property.locality || '').toLowerCase().includes(searchTerm)
-      );
-    }
-
-    setFilteredProperties(result);
-  }, [filters, properties, nearbyMode]);
+  // Filters are now handled server-side in loadProperties
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -875,8 +857,61 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             </button>
           </div>
         )}
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="d-flex justify-content-center mt-5 mb-5">
+            <nav>
+              <ul className="pagination shadow-sm">
+                <li className={`page-item ${page === 0 ? 'disabled' : ''}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => {
+                      loadProperties(page - 1);
+                      window.scrollTo(0, 0);
+                    }}
+                    style={{ background: '#0F1E33', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                  </button>
+                </li>
+                {[...Array(totalPages)].map((_, i) => (
+                  <li key={i} className={`page-item ${page === i ? 'active' : ''}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => {
+                        loadProperties(i);
+                        window.scrollTo(0, 0);
+                      }}
+                      style={{
+                        background: page === i ? 'var(--construction-gold)' : '#0F1E33',
+                        color: page === i ? '#0F172A' : '#C8A24A',
+                        border: '1px solid rgba(200,162,74,0.3)',
+                        padding: '10px 20px',
+                        fontWeight: page === i ? '700' : '400'
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${page === totalPages - 1 ? 'disabled' : ''}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => {
+                      loadProperties(page + 1);
+                      window.scrollTo(0, 0);
+                    }}
+                    style={{ background: '#0F1E33', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
+                  >
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
       </div>
-    </div >
+    </div>
   );
 };
 

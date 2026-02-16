@@ -153,7 +153,7 @@ const BuilderDashboard = () => {
     availability: 'available',
     brochureUrl: '',
     legalDocumentPath: '',
-    panoramaImagePath: '', // Keep for backward compatibility or single file fallback
+    panorama_image_url: '',
     panoramaImages: [] // New array for multiple 360 images
   });
 
@@ -422,6 +422,8 @@ const BuilderDashboard = () => {
 
         availabilityStatus: propertyForm.availability ? propertyForm.availability.toUpperCase() : 'AVAILABLE',
         purpose: propertyForm.purpose ? propertyForm.purpose.toUpperCase() : null,
+        legal_document_url: propertyForm.legalDocumentPath,
+        panorama_image_url: propertyForm.panorama_image_url,
         amenities: amenitiesList
       };
 
@@ -436,13 +438,12 @@ const BuilderDashboard = () => {
 
       if (propertyForm.panoramaImages && propertyForm.panoramaImages.length > 0) {
         const validPanos = propertyForm.panoramaImages.filter(img => !img.startsWith('data:'));
-        if (validPanos.length > 0) propertyPayload.panoramaImages = validPanos;
-        else delete propertyPayload.panoramaImages;
+        if (validPanos.length > 0) propertyPayload.panorama_images = validPanos;
+        else delete propertyPayload.panorama_images;
       } else {
-        delete propertyPayload.panoramaImages;
+        delete propertyPayload.panorama_images;
       }
 
-      console.log('[BuilderDashboard] Submitting property payload:', propertyPayload);
 
       let propertyId;
 
@@ -531,8 +532,8 @@ const BuilderDashboard = () => {
       availability: property.availability || 'available',
       brochureUrl: property.brochure_url || '',
       legalDocumentPath: property.legal_document_path || '',
-      panoramaImagePath: property.panorama_image_path || '',
-      panoramaImages: property.panorama_images || []
+      panorama_image_url: property.panorama_image_url || '',
+      panoramaImages: property.panoramaImages || []
     });
     setEditMode(true);
     setEditingPropertyId(property.id);

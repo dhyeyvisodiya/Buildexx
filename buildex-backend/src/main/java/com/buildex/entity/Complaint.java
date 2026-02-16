@@ -25,10 +25,12 @@ public class Complaint {
 
     @ManyToOne
     @JoinColumn(name = "property_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "hibernateLazyInitializer", "handler" })
     private Property property;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"properties", "password"})
     private User user;
 
     @Column(columnDefinition = "TEXT")

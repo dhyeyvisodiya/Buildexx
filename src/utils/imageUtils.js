@@ -15,6 +15,10 @@ export const getImageUrl = (url) => {
 
     // If it's already a full URL or base64, return it
     if (targetUrl.startsWith('http') || targetUrl.startsWith('data:')) {
+        // Optimization for Cloudinary URLs: apply auto format and quality
+        if (targetUrl.includes('cloudinary.com') && targetUrl.includes('/upload/')) {
+            return targetUrl.replace('/upload/', '/upload/f_auto,q_auto/');
+        }
         return targetUrl;
     }
 

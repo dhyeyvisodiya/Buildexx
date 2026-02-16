@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import com.buildex.dto.PropertySummaryDTO;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 
 @Service
 public class PropertyService {
@@ -39,6 +42,8 @@ public class PropertyService {
         this.paymentRepository = paymentRepository;
     }
 
+    @org.springframework.transaction.annotation.Transactional
+    @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
     public Property createProperty(Long userId, Property property) {
         return userRepository.findById(userId)
                 .map(user -> {
@@ -53,24 +58,23 @@ public class PropertyService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
+    @Cacheable(value = "property_details", key = "#id")
     public Optional<Property> getPropertyById(Long id) {
         return propertyRepository.findById(id);
     }
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Cacheable(value = "property_details", key = "#id")
     public Optional<Property> getPropertyByIdEager(Long id) {
-        Optional<Property> propertyOpt = propertyRepository.findById(id);
-        // Force-initialize lazy collections within the transaction
+        Optional<Property> propertyOpt = propertyRepository.findByIdWithBuilder(id);
+        
         propertyOpt.ifPresent(property -> {
-            if (property.getImageUrls() != null)
-                property.getImageUrls().size();
-            if (property.getAmenities() != null)
-                property.getAmenities().size();
-            if (property.getPanoramaImages() != null)
-                property.getPanoramaImages().size();
-            if (property.getBuilder() != null)
-                property.getBuilder().getCompanyName();
+            if (property.getGalleryImages() != null) property.getGalleryImages().size();
+            if (property.getAmenities() != null) property.getAmenities().size();
+            if (property.getPanoramaImages() != null) property.getPanoramaImages().size();
+            if (property.getBuilder() != null) property.getBuilder().getEmail();
         });
+        
         return propertyOpt;
     }
 
@@ -87,7 +91,9 @@ public class PropertyService {
                 org.springframework.data.domain.Sort.by("createdAt").descending())).getContent();
     }
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "builder" })
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Cacheable(value = "properties_list", key = "{#page, #size}")
     public org.springframework.data.domain.Page<PropertySummaryDTO> getAllPropertiesSummaries(int page,
             int size) {
         return propertyRepository.findByIsVerifiedTrue(org.springframework.data.domain.PageRequest.of(page, size,
@@ -103,8 +109,12 @@ public class PropertyService {
                 .rentAmount(property.getRentAmount())
                 .city(property.getCity())
                 .area(property.getArea()) // Map locality
-                // Efficiently fetch only the first image using native query
-                .thumbnail(propertyRepository.findThumbnail(property.getId()))
+                // Optimized: Use already-eagerly-loaded galleryImages instead of separate native
+                // query
+                .thumbnail(property.getImageUrl() != null ? property.getImageUrl() : 
+                          (property.getGalleryImages() != null && !property.getGalleryImages().isEmpty()
+                           ? property.getGalleryImages().get(0)
+                           : null))
                 .type(property.getPropertyType())
                 .purpose(property.getPurpose())
                 .availability(property.getAvailabilityStatus())
@@ -116,19 +126,23 @@ public class PropertyService {
                 .status(property.getStatus())
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
-                .legalDocumentPath(property.getLegalDocumentPath())
+                .legalDocumentUrl(property.getLegalDocumentUrl())
                 .build();
     }
 
-    public List<PropertySummaryDTO> searchPropertiesSummaries(Property.Purpose purpose,
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    @Cacheable(value = "properties_search", key = "{#purpose, #propertyType, #city, #area, #availabilityStatus, #page, #size}")
+    public org.springframework.data.domain.Page<PropertySummaryDTO> searchPropertiesSummariesPaginated(
+            Property.Purpose purpose,
             Property.PropertyType propertyType,
             String city,
             String area,
-            Property.AvailabilityStatus availabilityStatus) {
-        return propertyRepository.findByFilters(purpose, propertyType, city, area, availabilityStatus)
-                .stream()
-                .map(this::convertToSummaryDTO)
-                .collect(java.util.stream.Collectors.toList());
+            Property.AvailabilityStatus availabilityStatus,
+            int page, int size) {
+        return propertyRepository.findByFiltersPaginated(purpose, propertyType, city, area, availabilityStatus,
+                org.springframework.data.domain.PageRequest.of(page, size,
+                        org.springframework.data.domain.Sort.by("createdAt").descending()))
+                .map(this::convertToSummaryDTO);
     }
 
     public org.springframework.data.domain.Page<Property> getAllProperties(int page, int size) {
@@ -136,10 +150,25 @@ public class PropertyService {
                 org.springframework.data.domain.Sort.by("createdAt").descending()));
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Property> getPropertiesByBuilderId(Long builderId) {
-        return propertyRepository.findByBuilder_Id(builderId);
+        List<Property> properties = propertyRepository.findByBuilder_Id(builderId);
+        // Initialize lazy collections
+        properties.forEach(p -> {
+            if (p.getAmenities() != null) p.getAmenities().size();
+            if (p.getGalleryImages() != null) p.getGalleryImages().size();
+            if (p.getPanoramaImages() != null) p.getPanoramaImages().size();
+            // Initialize User proxy (builder) - Access non-ID field to force load
+            if (p.getBuilder() != null) p.getBuilder().getEmail();
+        });
+        return properties;
     }
 
+    @org.springframework.transaction.annotation.Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "property_details", key = "#id"),
+            @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
+    })
     public Optional<Property> updateProperty(Long id, Property updatedProperty) {
         return propertyRepository.findById(id).map(existingProperty -> {
             // Update basic fields
@@ -161,29 +190,41 @@ public class PropertyService {
             existingProperty.setGoogleMapLink(updatedProperty.getGoogleMapLink());
             existingProperty.setBrochureUrl(updatedProperty.getBrochureUrl());
             existingProperty.setVirtualTourLink(updatedProperty.getVirtualTourLink());
-            existingProperty.setLegalDocumentPath(updatedProperty.getLegalDocumentPath());
+            existingProperty.setLegalDocumentUrl(updatedProperty.getLegalDocumentUrl());
             existingProperty.setLatitude(updatedProperty.getLatitude());
             existingProperty.setLongitude(updatedProperty.getLongitude());
+            existingProperty.setImageUrl(updatedProperty.getImageUrl());
+            existingProperty.setPanoramaImageUrl(updatedProperty.getPanoramaImageUrl());
 
             // Update collections (Selective replacement/merge if needed)
             if (updatedProperty.getAmenities() != null) {
                 existingProperty.setAmenities(updatedProperty.getAmenities());
             }
-            if (updatedProperty.getImageUrls() != null) {
-                existingProperty.setImageUrls(updatedProperty.getImageUrls());
+            if (updatedProperty.getGalleryImages() != null) {
+                existingProperty.setGalleryImages(updatedProperty.getGalleryImages());
             }
             if (updatedProperty.getPanoramaImages() != null) {
                 existingProperty.setPanoramaImages(updatedProperty.getPanoramaImages());
             }
 
-            // IMPORTANT: Never overwrite complaints, enquiries, payments, or the builder
-            // Those relationships are managed by their respective entities or specific
-            // flows
-
-            return propertyRepository.save(existingProperty);
+            Property saved = propertyRepository.save(existingProperty);
+            
+            // Initialize lazy collections
+            if (saved.getAmenities() != null) saved.getAmenities().size();
+            if (saved.getGalleryImages() != null) saved.getGalleryImages().size();
+            if (saved.getPanoramaImages() != null) saved.getPanoramaImages().size();
+            
+            // Initialize User proxy (builder) - Access non-ID field to force load
+            if (saved.getBuilder() != null) saved.getBuilder().getEmail();
+            
+            return saved;
         });
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "property_details", key = "#id"),
+            @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
+    })
     public Optional<Property> updateAvailabilityStatus(Long id, Property.AvailabilityStatus status) {
         Optional<Property> propertyOpt = propertyRepository.findById(id);
         if (propertyOpt.isPresent()) {
@@ -195,6 +236,10 @@ public class PropertyService {
     }
 
     @org.springframework.transaction.annotation.Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "property_details", key = "#id"),
+            @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
+    })
     public void deleteProperty(Long id) {
         // Delete related entities first to avoid FK constraint violations
         // RentRequest uses direct ID mapping, so we must delete manually
@@ -227,13 +272,28 @@ public class PropertyService {
                         org.springframework.data.domain.Sort.by("createdAt").descending()));
     }
 
+    @org.springframework.transaction.annotation.Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "property_details", key = "#id"),
+            @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
+    })
     public Optional<Property> verifyProperty(Long id, Boolean isVerified) {
         return propertyRepository.findById(id).map(property -> {
             property.setIsVerified(isVerified);
-            return propertyRepository.save(property);
+            Property saved = propertyRepository.save(property);
+            
+            // Initialize lazy collections to avoid LazyInitializationException during serialization
+            if (saved.getAmenities() != null) saved.getAmenities().size();
+            if (saved.getGalleryImages() != null) saved.getGalleryImages().size();
+            if (saved.getPanoramaImages() != null) saved.getPanoramaImages().size();
+            // Initialize User proxy (builder) - Access non-ID field to force load
+            if (saved.getBuilder() != null) saved.getBuilder().getEmail();
+            
+            return saved;
         });
     }
 
+    @Cacheable(value = "cities")
     public List<String> getAllCities() {
         return propertyRepository.findAllCities();
     }

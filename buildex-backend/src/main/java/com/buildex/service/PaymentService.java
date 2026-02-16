@@ -13,10 +13,11 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PaymentService {
@@ -25,14 +26,9 @@ public class PaymentService {
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final PdfService pdfService;
+    private final CloudinaryService cloudinaryService;
 
-    // In a real app, these should be in properties, but for now we might use
-    // hardcoded or placeholders
-    // User needs to provide keys or we verify if they exist.
-    // For this implementation, I will treat Razorpay calls as optional or mocked if
-    // keys are missing
-    // to strictly allow the "Record Payment" flow to work even without a real
-    // gateway for the demo.
     @Value("${razorpay.key_id:rzp_test_placeholder}")
     private String razorpayKeyId;
 
@@ -40,26 +36,13 @@ public class PaymentService {
     private String razorpayKeySecret;
 
     public PaymentService(PaymentRepository paymentRepository, PropertyRepository propertyRepository,
-            UserRepository userRepository, EmailService emailService) {
+            UserRepository userRepository, EmailService emailService, PdfService pdfService, CloudinaryService cloudinaryService) {
         this.paymentRepository = paymentRepository;
         this.propertyRepository = propertyRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
-    }
-
-    private static final BigDecimal MAX_BOOKING_AMOUNT = new BigDecimal("25000");
-
-    public BigDecimal calculateBookingAmount(Property property) {
-        BigDecimal totalAmount = property.getPurpose() == Property.Purpose.RENT
-                ? property.getRentAmount()
-                : property.getPrice();
-
-        if (totalAmount == null)
-            return BigDecimal.ZERO;
-
-        // Booking amount is 15% of the total price/rent, capped at MAX_BOOKING_AMOUNT
-        BigDecimal calculatedAmount = totalAmount.multiply(new BigDecimal("0.15"));
-        return calculatedAmount.compareTo(MAX_BOOKING_AMOUNT) > 0 ? MAX_BOOKING_AMOUNT : calculatedAmount;
+        this.pdfService = pdfService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Transactional
@@ -69,43 +52,60 @@ public class PaymentService {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new RuntimeException("Property not found"));
 
-        // Check if already booked
         if (paymentRepository.existsByUserIdAndPropertyIdAndStatus(userId, propertyId, Payment.PaymentStatus.SUCCESS)) {
-            throw new RuntimeException("You have already booked this property.");
+           // Allow multiple rent payments, but block buy if already bought?
+           if (property.getPurpose() == Property.Purpose.BUY) {
+               throw new RuntimeException("You have already booked/purchased this property.");
+           }
         }
 
-        BigDecimal bookingAmount = calculateBookingAmount(property);
-        BigDecimal totalAmount = property.getPrice() != null ? property.getPrice()
-                : (property.getRentAmount() != null ? property.getRentAmount() : BigDecimal.ZERO);
+        // Full Payment Amount
+        BigDecimal totalAmount = property.getPurpose() == Property.Purpose.RENT
+                ? property.getRentAmount()
+                : property.getPrice();
+        
+        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
+
+        // Cap booking amount at 25000
+        BigDecimal maxAmount = new BigDecimal("25000");
+        BigDecimal payableAmount = totalAmount.compareTo(maxAmount) > 0 ? maxAmount : totalAmount;
+        BigDecimal remainingAmount = totalAmount.subtract(payableAmount);
 
         Payment payment = Payment.builder()
                 .user(user)
                 .property(property)
                 .builder(property.getBuilder())
-                .amount(bookingAmount)
+                .amount(payableAmount)
                 .totalAmount(totalAmount)
-                .remainingAmount(totalAmount.subtract(bookingAmount))
+                .remainingAmount(remainingAmount)
                 .status(Payment.PaymentStatus.PENDING)
                 .paymentType(property.getPurpose() == Property.Purpose.RENT ? Payment.PaymentType.RENT
                         : Payment.PaymentType.BUY)
                 .build();
 
-        // Integrate with Razorpay if keys are present
+        // Integrate with Razorpay
         if (!"rzp_test_placeholder".equals(razorpayKeyId)) {
             RazorpayClient razorpay = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
             JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", bookingAmount.multiply(new BigDecimal(100))); // Amount in paise
+            orderRequest.put("amount", payableAmount.multiply(new BigDecimal(100))); // Amount in paise
             orderRequest.put("currency", "INR");
             orderRequest.put("receipt", "txn_" + System.currentTimeMillis());
 
             Order order = razorpay.orders.create(orderRequest);
             payment.setRazorpayOrderId(order.get("id").toString());
         } else {
-            // Mock Order ID for demo
             payment.setRazorpayOrderId("order_" + System.currentTimeMillis());
         }
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        Hibernate.initialize(savedPayment.getUser());
+        Hibernate.initialize(savedPayment.getProperty());
+        if (savedPayment.getProperty() != null) {
+            Hibernate.initialize(savedPayment.getProperty().getBuilder());
+            Hibernate.initialize(savedPayment.getProperty().getGalleryImages());
+        }
+        Hibernate.initialize(savedPayment.getBuilder());
+        return savedPayment;
     }
 
     @Transactional
@@ -113,38 +113,134 @@ public class PaymentService {
         Payment payment = paymentRepository.findByRazorpayOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Payment order not found"));
 
-        // In a real app, verify signature here using RazorpayUtils
-
         payment.setRazorpayPaymentId(paymentId);
         payment.setRazorpaySignature(signature);
         payment.setStatus(Payment.PaymentStatus.SUCCESS);
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setTransactionId(paymentId);
 
-        // Update Property Availability to BOOKED
         Property property = payment.getProperty();
         if (property != null) {
-            property.setAvailabilityStatus(Property.AvailabilityStatus.BOOKED);
-            propertyRepository.save(property);
-
+            if (payment.getPaymentType() == Payment.PaymentType.RENT) {
+                property.setRentalStatus(Property.RentalStatus.RENTED);
+                property.setAvailabilityStatus(Property.AvailabilityStatus.RENTED);
+                
+                // Rent specific updates
+                payment.setRentMonth(payment.getPaymentDate().getMonth().name() + " " + payment.getPaymentDate().getYear());
+                payment.setNextDueDate(payment.getPaymentDate().toLocalDate().plusMonths(1));
+                
+            } else if (payment.getPaymentType() == Payment.PaymentType.BUY) {
+                property.setBuyer(payment.getUser());
+                property.setSoldDate(payment.getPaymentDate());
+                property.setAvailabilityStatus(Property.AvailabilityStatus.SOLD);
+                property.setRentalStatus(Property.RentalStatus.RENTED); // Occupied
+            }
             propertyRepository.save(property);
         }
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        
+        // Generate PDF and Send Email (Best effort)
+        try {
+            byte[] pdfBytes = pdfService.generatePaymentReceipt(savedPayment);
+            String fileName = "receipt_" + savedPayment.getId() + ".pdf";
+            
+            // Upload to Cloudinary (use fileName as publicId since we switched to raw)
+            String pdfUrl = cloudinaryService.uploadPdf(pdfBytes, fileName);
+            savedPayment.setPdfUrl(pdfUrl);
+            paymentRepository.save(savedPayment);
+            
+            // Send Email
+            String subject = payment.getPaymentType() == Payment.PaymentType.RENT 
+                    ? "Rent Payment Confirmation - Buildex" 
+                    : "Property Purchase Confirmation - Buildex";
+                    
+            String body = "<h1>Payment Successful</h1>" +
+                    "<p>Dear " + savedPayment.getUser().getFullName() + ",</p>" +
+                    "<p>Your payment of " + savedPayment.getAmount() + " for <b>" + property.getTitle() + "</b> was successful.</p>" +
+                    "<p>Please find your receipt attached.</p>" +
+                    "<br/><p>Regards,<br/>Buildex Team</p>";
+
+            emailService.sendEmailWithAttachment(
+                    savedPayment.getUser().getEmail(),
+                    subject,
+                    body,
+                    pdfBytes,
+                    fileName
+            );
+        } catch (Exception e) {
+            System.err.println("Error processing PDF/Email: " + e.getMessage());
+            e.printStackTrace();
+            // Do not fail the transaction for non-critical steps
+        }
+
+        Hibernate.initialize(savedPayment.getUser());
+        Hibernate.initialize(savedPayment.getProperty());
+        if (savedPayment.getProperty() != null) {
+            Hibernate.initialize(savedPayment.getProperty().getBuilder());
+        }
+        Hibernate.initialize(savedPayment.getBuilder());
+        return savedPayment;
     }
 
+    @Transactional(readOnly = true)
     public List<Payment> getUserPayments(Long userId) {
-        return paymentRepository.findByUserId(userId);
+        List<Payment> payments = paymentRepository.findByUserId(userId);
+        payments.forEach(p -> {
+            Hibernate.initialize(p.getUser());
+            Hibernate.initialize(p.getProperty());
+            Hibernate.initialize(p.getBuilder());
+        });
+        return payments;
     }
 
+    @Transactional(readOnly = true)
     public List<Payment> getBuilderPayments(Long builderId) {
-        return paymentRepository.findByBuilderId(builderId);
+        List<Payment> payments = paymentRepository.findByBuilderId(builderId);
+        payments.forEach(p -> {
+            Hibernate.initialize(p.getUser());
+            Hibernate.initialize(p.getProperty());
+            Hibernate.initialize(p.getBuilder());
+        });
+        return payments;
     }
 
+    @Transactional(readOnly = true)
     public List<Payment> getAllPayments() {
-        return paymentRepository.findAll();
+        List<Payment> payments = paymentRepository.findAll();
+        payments.forEach(p -> {
+            Hibernate.initialize(p.getUser());
+            Hibernate.initialize(p.getProperty());
+            Hibernate.initialize(p.getBuilder());
+        });
+        return payments;
     }
 
     public boolean hasUserBookedProperty(Long userId, Long propertyId) {
         return paymentRepository.existsByUserIdAndPropertyIdAndStatus(userId, propertyId,
                 Payment.PaymentStatus.SUCCESS);
+    }
+
+    @Transactional(readOnly = true)
+    public Payment getPaymentById(Long id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+        Hibernate.initialize(payment.getUser());
+        Hibernate.initialize(payment.getProperty());
+        if (payment.getProperty() != null) {
+            Hibernate.initialize(payment.getProperty().getBuilder());
+            Hibernate.initialize(payment.getProperty().getGalleryImages());
+        }
+        Hibernate.initialize(payment.getBuilder());
+        return payment;
+    }
+
+    @Transactional
+    public void deletePayment(Long id) {
+        if (paymentRepository.existsById(id)) {
+            paymentRepository.deleteById(id);
+        } else {
+            throw new RuntimeException("Payment not found");
+        }
     }
 }

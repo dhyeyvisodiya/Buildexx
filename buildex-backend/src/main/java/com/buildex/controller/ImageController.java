@@ -31,12 +31,17 @@ public class ImageController {
         try {
             String fileName = imageService.saveImageFromUrl(imageUrl);
             Map<String, String> response = new HashMap<>();
-            // Assuming the backend is running on localhost:8080 or similar.
-            // The frontend will use this path.
-            response.put("localUrl", "/api/images/serve-360/" + fileName);
+            if (fileName != null) {
+                response.put("localUrl", "/api/images/serve-360/" + fileName);
+            } else {
+                response.put("localUrl", imageUrl); // Fallback
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Failed to process image: " + e.getMessage());
+            System.err.println("Proxy failed for " + imageUrl + ": " + e.getMessage());
+            Map<String, String> response = new HashMap<>();
+            response.put("localUrl", imageUrl);
+            return ResponseEntity.ok(response);
         }
     }
 

@@ -4,7 +4,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,9 +46,24 @@ public class ImageService {
             return fileName;
         }
 
-        URL url = new URL(imageUrl);
-        try (InputStream in = url.openStream()) {
+        java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new java.net.URL(imageUrl)
+                .openConnection();
+        connection.setRequestMethod("GET");
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(5000);
+        // Add User-Agent to avoid being blocked by CDNs (like Wikimedia)
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+        connection.connect();
+
+        if (connection.getResponseCode() != 200) {
+            System.err.println("HTTP error " + connection.getResponseCode() + " for URL: " + imageUrl);
+            return null;
+        }
+
+        try (InputStream in = connection.getInputStream()) {
             Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            connection.disconnect();
         }
 
         return fileName;

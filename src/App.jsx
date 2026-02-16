@@ -22,6 +22,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 
 // ComparePropertiesModal is a component
 
@@ -158,6 +159,12 @@ function AppContent() {
                 </ProtectedRoute>
               } />
 
+              <Route path="/payment/success/:paymentId" element={
+                <ProtectedRoute allowedRoles={['user', 'builder', 'admin']}>
+                  <PaymentSuccess />
+                </ProtectedRoute>
+              } />
+
               <Route path="*" element={<Home />} />
             </Routes>
           </AnimatePresence>
@@ -167,102 +174,103 @@ function AppContent() {
       <BackToTop />
 
       {/* Floating Compare Tray */}
-      {compareList.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg, #112A46, #0F1E33)',
-          borderRadius: '16px',
-          padding: '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-          border: '1px solid rgba(200, 162, 74, 0.3)',
-          zIndex: 1000
-        }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {compareList.map((prop) => (
-              <div key={prop.id} style={{ position: 'relative' }}>
-                <div style={{
+      {
+        compareList.length > 0 && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #112A46, #0F1E33)',
+            borderRadius: '16px',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+            border: '1px solid rgba(200, 162, 74, 0.3)',
+            zIndex: 1000
+          }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {compareList.map((prop) => (
+                <div key={prop.id} style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    border: '2px solid rgba(200, 162, 74, 0.5)',
+                    marginRight: '8px' // Add spacing for the close button
+                  }}>
+                    {prop.images && prop.images[0] ? (
+                      <img src={getImageUrl(prop.images[0])} alt={prop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className="bi bi-building" style={{ color: '#64748B' }}></i>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeFromCompare(prop.id)}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      width: '20px',
+                      height: '20px',
+                      background: '#EF4444',
+                      border: '2px solid #0F1E33',
+                      borderRadius: '50%',
+                      color: 'white',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 10
+                    }}
+                  >
+                    <i className="bi bi-x"></i>
+                  </button>
+                </div>
+              ))}
+              {/* Empty slots */}
+              {[...Array(3 - compareList.length)].map((_, i) => (
+                <div key={`empty-${i}`} style={{
                   width: '50px',
                   height: '50px',
                   borderRadius: '10px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  border: '2px solid rgba(200, 162, 74, 0.5)',
-                  marginRight: '8px' // Add spacing for the close button
+                  border: '2px dashed rgba(100, 116, 139, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  {prop.images && prop.images[0] ? (
-                    <img src={getImageUrl(prop.images[0])} alt={prop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', background: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className="bi bi-building" style={{ color: '#64748B' }}></i>
-                    </div>
-                  )}
+                  <i className="bi bi-plus" style={{ color: '#64748B' }}></i>
                 </div>
-                <button
-                  onClick={() => removeFromCompare(prop.id)}
-                  style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
-                    width: '20px',
-                    height: '20px',
-                    background: '#EF4444',
-                    border: '2px solid #0F1E33',
-                    borderRadius: '50%',
-                    color: 'white',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10
-                  }}
-                >
-                  <i className="bi bi-x"></i>
-                </button>
-              </div>
-            ))}
-            {/* Empty slots */}
-            {[...Array(3 - compareList.length)].map((_, i) => (
-              <div key={`empty-${i}`} style={{
-                width: '50px',
-                height: '50px',
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/compare')}
+              disabled={compareList.length < 2}
+              style={{
+                background: compareList.length >= 2 ? 'linear-gradient(135deg, #C8A24A, #9E7C2F)' : '#374151',
+                border: 'none',
                 borderRadius: '10px',
-                border: '2px dashed rgba(100, 116, 139, 0.5)',
+                padding: '12px 24px',
+                color: compareList.length >= 2 ? '#0F172A' : '#64748B',
+                fontWeight: '700',
+                cursor: compareList.length >= 2 ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <i className="bi bi-plus" style={{ color: '#64748B' }}></i>
-              </div>
-            ))}
+                gap: '8px'
+              }}
+            >
+              <i className="bi bi-layout-split"></i>
+              Compare ({compareList.length}/3)
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/compare')}
-            disabled={compareList.length < 2}
-            style={{
-              background: compareList.length >= 2 ? 'linear-gradient(135deg, #C8A24A, #9E7C2F)' : '#374151',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '12px 24px',
-              color: compareList.length >= 2 ? '#0F172A' : '#64748B',
-              fontWeight: '700',
-              cursor: compareList.length >= 2 ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <i className="bi bi-layout-split"></i>
-            Compare ({compareList.length}/3)
-          </button>
-        </div>
-      )
+        )
       }
 
 

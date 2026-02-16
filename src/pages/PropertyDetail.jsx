@@ -83,12 +83,51 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
           cachedPropertyRef.current = result.data;
           loadedPropertyIdRef.current = id;
           try {
+            // Trim unnecessary large fields before caching to save session storage space
+            const trimmedData = { ...result.data };
+            // Remove huge collections if they exist and aren't critical for initial cache hit
+            delete trimmedData.complaints;
+            delete trimmedData.enquiries;
+            delete trimmedData.payments;
+            delete trimmedData.rentRequests;
+            delete trimmedData.nearbyPlaces; // Often contains large objects/arrays
+            delete trimmedData.nearbyProperties;
+            // Limit the number of gallery images stored in cache
+            if (trimmedData.images && trimmedData.images.length > 5) {
+              trimmedData.images = trimmedData.images.slice(0, 5);
+            }
+
             sessionStorage.setItem(`property_detail_${id}`, JSON.stringify({
-              data: result.data,
+              data: trimmedData,
               timestamp: Date.now()
             }));
           } catch (e) {
-            console.warn('Session storage full, skipping cache for property:', id);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+              console.warn('[PropertyDetail] Session storage full, clearing old property cache and list cache...');
+              // Clear only property_detail_ keys to make room
+              Object.keys(sessionStorage).forEach(key => {
+                if (key.startsWith('property_detail_')) sessionStorage.removeItem(key);
+              });
+              // Also clear property list cache if still full
+              sessionStorage.removeItem('cached_properties');
+              try {
+                // Try again with trimmed data
+                const trimmedData = { ...result.data };
+                delete trimmedData.complaints;
+                delete trimmedData.enquiries;
+                delete trimmedData.payments;
+                delete trimmedData.rentRequests;
+
+                sessionStorage.setItem(`property_detail_${id}`, JSON.stringify({
+                  data: trimmedData,
+                  timestamp: Date.now()
+                }));
+              } catch (retryError) {
+                console.warn('[PropertyDetail] Session storage still full, skipping cache.');
+              }
+            } else {
+              console.warn('[PropertyDetail] Skipping cache:', e);
+            }
           }
         }
       }
@@ -671,28 +710,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                   property={property}
                   paymentType={property.purpose === 'Rent' ? 'RENT' : 'BUY'}
                   onSuccess={(data) => {
-                    const now = new Date();
-                    const dateTime = now.toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      hour12: true
-                    });
-                    alert(`Payment Successful!\n\nTransaction Date & Time: ${dateTime}\nTransaction ID: ${data.razorpayPaymentId || 'N/A'}\n\nYour ${property.purpose === 'Rent' ? 'rental' : 'purchase'} has been confirmed.`);
-                    // Instant update of availability status
-                    setProperty(prev => ({
-                      ...prev,
-                      availability_status: property.purpose === 'Rent' ? 'rented' : 'booked'
-                    }));
-                    // Also invalidate cache
-                    import('../api/apiService').then(module => {
-                      // Note: We can't easily import cacheInvalidate here if it's not exported, 
-                      // but since we updated local state, the UI reflects it.
-                      // Ideally we should assume the backend update is done.
-                    });
+                    navigate(`/payment/success/${data.id}`);
                   }}
                   onFailure={(error) => {
                     console.error('Payment failed:', error);
@@ -778,31 +796,28 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             </button>
             {property.brochure_url && (
               <a
-                href={property.brochure_url}
+                href={`${getApiUrl()}/api/properties/${property.id}/brochure`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-outline-secondary"
+                className="btn btn-outline-primary"
                 style={{
                   borderRadius: '8px',
                   fontWeight: '600',
-                  transition: 'all 0.3s ease',
-                  border: '1px solid #94A3B8',
-                  color: '#64748B',
-                  background: 'transparent',
-                  textDecoration: 'none'
+                  border: '1px solid var(--construction-gold)',
+                  color: 'var(--construction-gold)',
+                  background: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.background = '#F1F5F9';
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(148, 163, 184, 0.2)';
+                  e.target.style.background = '#F5F0E6';
+                  e.target.style.color = '#0B1220';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.background = 'transparent';
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = 'none';
+                  e.target.style.color = 'var(--construction-gold)';
                 }}
               >
-                <i className="bi bi-file-pdf me-1"></i> Brochure
+                <i className="bi bi-file-earmark-arrow-down me-2"></i>
+                Download Brochure
               </a>
             )}
           </div>
@@ -814,32 +829,6 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             <div className="details-section mb-5 animate__animated animate__fadeInUp animate__delay-2s">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h3 className="mb-0">Property Details</h3>
-                {property.brochure_url && (
-                  <a
-                    href={`${getApiUrl()}/api/properties/${property.id}/brochure`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline-primary"
-                    style={{
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      border: '1px solid var(--construction-gold)',
-                      color: 'var(--construction-gold)',
-                      background: 'transparent'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = '#F5F0E6';
-                      e.target.style.color = '#0B1220';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'transparent';
-                      e.target.style.color = 'var(--construction-gold)';
-                    }}
-                  >
-                    <i className="bi bi-file-earmark-arrow-down me-2"></i>
-                    Download Brochure
-                  </a>
-                )}
               </div>
               <div className="row g-3">
                 <div className="col-md-6">
@@ -939,8 +928,8 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 360° Virtual Tour
               </h3>
               <PanoramaViewer
-                imageUrl={getImageUrl(property.panorama_image_path || property.virtual_tour_link)}
-                imageUrls={getImagesUrls(property.panoramaImages || (property.panorama_image_path ? [property.panorama_image_path] : []))}
+                imageUrl={getImageUrl(property.panorama_image_url || property.panorama_image_path || property.virtual_tour_link)}
+                imageUrls={getImagesUrls((property.panoramaImages && property.panoramaImages.length > 0) ? property.panoramaImages : (property.panorama_image_url ? [property.panorama_image_url] : (property.panorama_image_path ? [property.panorama_image_path] : [])))}
                 title={`360° View - ${property.name}`}
                 height="450px"
               />
@@ -1173,7 +1162,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         <div className="mt-3">
                           <FinancialCalculators
                             propertyPrice={property.price}
-                            monthlyRent={property.rent || property.rent_amount || (property.price ? property.price / 300 : 25000)}
+                            monthlyRent={property.rent || property.rent_amount || property.rentAmount || (property.price ? property.price / 300 : 25000)}
                             purpose={property.purpose?.toLowerCase() || 'buy'}
                             propertyType={property.property_type}
                             inline={true}

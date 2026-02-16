@@ -34,5 +34,8 @@ public class PropertySummaryDTO {
     private String status; // "approved", "pending", "rejected"
     private Double latitude;
     private Double longitude;
-    private String legalDocumentPath;
+    @com.fasterxml.jackson.annotation.JsonProperty("legal_document_url")
+    private String legalDocumentUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("panorama_image_url")
+    private String panoramaImageUrl;
 }

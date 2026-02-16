@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import PropertyCard from '../components/PropertyCard';
 import TabLoading from '../components/TabLoading';
@@ -117,6 +117,72 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
     }
   };
 
+  // Bulk Selection State
+  const [selectedItems, setSelectedItems] = useState(new Set());
+
+  // Clear selection on tab change
+  useEffect(() => {
+    setSelectedItems(new Set());
+  }, [activeTab]);
+
+  const handleSelectAll = (items) => {
+    if (selectedItems.size === items.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(items.map(i => i.id)));
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.size} items?`)) return;
+
+    setLoading(true);
+    try {
+      const ids = Array.from(selectedItems);
+      let apiCall;
+
+      // Determine API based on active tab
+      if (activeTab === 'enquiries') apiCall = import('../api/apiService').then(m => m.deleteEnquiry);
+      else if (activeTab === 'rentals') apiCall = import('../api/apiService').then(m => m.deleteRentRequest); // Or delete rent history?
+      else if (activeTab === 'payments') apiCall = import('../api/apiService').then(m => m.deletePayment);
+
+      const deleteFunc = await apiCall;
+
+      // Execute deletions (parallel)
+      await Promise.all(ids.map(id => deleteFunc(id)));
+
+      // Refresh data
+      if (activeTab === 'enquiries') {
+        const res = await getUserEnquiries(currentUser.id);
+        if (res.success) setEnquiries(res.data);
+      } else if (activeTab === 'rentals') {
+        const res = await getUserRentHistory(currentUser.id);
+        if (res.success) setRentHistory(res.data);
+      } else if (activeTab === 'payments') {
+        const res = await getUserPayments(currentUser.id);
+        if (res.success) setPayments(res.data);
+      }
+
+      setSelectedItems(new Set());
+      alert('Items deleted successfully');
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Failed to delete items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = {
     wishlistCount: wishlist?.length || 0,
     enquiriesCount: enquiries.length,
@@ -216,14 +282,14 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
               }}>
                 <div className="d-flex align-items-center gap-3">
                   <div style={{
                     width: '56px',
                     height: '56px',
-                    background: 'linear-gradient(135deg, #EF444420, #EF444410)',
+                    background: 'rgba(239, 68, 68, 0.2)',
                     borderRadius: '14px',
                     display: 'flex',
                     alignItems: 'center',
@@ -232,8 +298,8 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                     <i className="bi bi-heart-fill fs-4" style={{ color: '#EF4444' }}></i>
                   </div>
                   <div>
-                    <h3 className="fw-bold mb-0" style={{ color: '#0F172A' }}>{stats.wishlistCount}</h3>
-                    <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>Saved Properties</p>
+                    <h3 className="fw-bold mb-0 text-white">{stats.wishlistCount}</h3>
+                    <p className="text-white-50" style={{ margin: 0, fontSize: '0.9rem' }}>Saved Properties</p>
                   </div>
                 </div>
               </div>
@@ -244,14 +310,14 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
               }}>
                 <div className="d-flex align-items-center gap-3">
                   <div style={{
                     width: '56px',
                     height: '56px',
-                    background: 'linear-gradient(135deg, #3B82F620, #3B82F610)',
+                    background: 'rgba(59, 130, 246, 0.2)',
                     borderRadius: '14px',
                     display: 'flex',
                     alignItems: 'center',
@@ -260,8 +326,8 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                     <i className="bi bi-envelope-fill fs-4" style={{ color: '#3B82F6' }}></i>
                   </div>
                   <div>
-                    <h3 className="fw-bold mb-0" style={{ color: '#0F172A' }}>{stats.enquiriesCount}</h3>
-                    <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>Active Enquiries</p>
+                    <h3 className="fw-bold mb-0 text-white">{stats.enquiriesCount}</h3>
+                    <p className="text-white-50" style={{ margin: 0, fontSize: '0.9rem' }}>Active Enquiries</p>
                   </div>
                 </div>
               </div>
@@ -272,14 +338,14 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
               }}>
                 <div className="d-flex align-items-center gap-3">
                   <div style={{
                     width: '56px',
                     height: '56px',
-                    background: 'linear-gradient(135deg, #10B98120, #10B98110)',
+                    background: 'rgba(16, 185, 129, 0.2)',
                     borderRadius: '14px',
                     display: 'flex',
                     alignItems: 'center',
@@ -288,8 +354,8 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                     <i className="bi bi-house-fill fs-4" style={{ color: '#10B981' }}></i>
                   </div>
                   <div>
-                    <h3 className="fw-bold mb-0" style={{ color: '#0F172A' }}>{stats.rentalsCount}</h3>
-                    <p style={{ color: '#64748B', margin: 0, fontSize: '0.9rem' }}>Active Rentals</p>
+                    <h3 className="fw-bold mb-0 text-white">{stats.rentalsCount}</h3>
+                    <p className="text-white-50" style={{ margin: 0, fontSize: '0.9rem' }}>Active Rentals</p>
                   </div>
                 </div>
               </div>
@@ -301,10 +367,10 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: 'none',
+                border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: 'var(--card-shadow)'
               }}>
-                <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>Quick Actions</h5>
+                <h5 className="fw-bold mb-4 text-white">Quick Actions</h5>
                 <div className="d-flex gap-3 flex-wrap">
                   <button
                     onClick={() => navigate('/property-list')}
@@ -322,28 +388,24 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                   </button>
                   <button
                     onClick={() => navigate('/compare-properties')}
-                    className="btn"
+                    className="btn btn-outline-light"
                     style={{
-                      background: '#0F1E33',
-                      color: '#64748B',
                       padding: '12px 24px',
                       borderRadius: '12px',
                       fontWeight: '600',
-                      border: '1px solid #E2E8F0'
+                      borderColor: 'rgba(255,255,255,0.2)'
                     }}
                   >
                     <i className="bi bi-arrow-left-right me-2"></i>Compare Properties
                   </button>
                   <button
                     onClick={() => setActiveTab('wishlist')}
-                    className="btn"
+                    className="btn btn-outline-light"
                     style={{
-                      background: '#0F1E33',
-                      color: '#64748B',
                       padding: '12px 24px',
                       borderRadius: '12px',
                       fontWeight: '600',
-                      border: '1px solid #E2E8F0'
+                      borderColor: 'rgba(255,255,255,0.2)'
                     }}
                   >
                     <i className="bi bi-heart me-2"></i>View Wishlist
@@ -358,26 +420,26 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 background: 'var(--card-bg)',
                 borderRadius: '16px',
                 padding: '24px',
-                border: 'none',
+                border: '1px solid rgba(255,255,255,0.1)',
                 boxShadow: 'var(--card-shadow)'
               }}>
-                <h5 className="fw-bold mb-4" style={{ color: 'var(--primary-text)' }}>Recent Activity</h5>
+                <h5 className="fw-bold mb-4 text-white">Recent Activity</h5>
                 {wishlist.length === 0 && enquiries.length === 0 ? (
                   <div className="text-center py-5">
                     <div style={{
                       width: '80px',
                       height: '80px',
-                      background: '#F1F5F9',
+                      background: 'rgba(255,255,255,0.05)',
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       margin: '0 auto 16px'
                     }}>
-                      <i className="bi bi-clock-history fs-2" style={{ color: '#94A3B8' }}></i>
+                      <i className="bi bi-clock-history fs-2 text-white-50"></i>
                     </div>
-                    <h6 style={{ color: '#64748B' }}>No recent activity</h6>
-                    <p style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
+                    <h6 className="text-white">No recent activity</h6>
+                    <p className="text-white-50" style={{ fontSize: '0.9rem' }}>
                       Start browsing properties to see your activity here
                     </p>
                     <button
@@ -502,19 +564,29 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
             background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
-            border: '1px solid #E2E8F0'
+            border: '1px solid rgba(255,255,255,0.1)'
           }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
-              Your Enquiries ({enquiries.length})
-            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0 text-white">
+                <i className="bi bi-envelope me-2" style={{ color: '#3B82F6' }}></i>
+                Your Enquiries ({enquiries.length})
+              </h5>
+              {selectedItems.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="btn btn-danger btn-sm"
+                >
+                  <i className="bi bi-trash me-2"></i>Delete Selected ({selectedItems.size})
+                </button>
+              )}
+            </div>
 
             {enquiries.length === 0 ? (
               <div className="text-center py-5">
                 <div style={{
                   width: '100px',
                   height: '100px',
-                  background: 'linear-gradient(135deg, #DBEAFE20, #DBEAFE10)',
+                  background: 'rgba(59, 130, 246, 0.2)',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -523,36 +595,54 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 }}>
                   <i className="bi bi-envelope-open" style={{ fontSize: '3rem', color: '#60A5FA' }}></i>
                 </div>
-                <h5 style={{ color: '#0F172A' }}>No enquiries yet</h5>
-                <p style={{ color: '#64748B', maxWidth: '400px', margin: '0 auto' }}>
+                <h5 className="text-white">No enquiries yet</h5>
+                <p className="text-white-50" style={{ maxWidth: '400px', margin: '0 auto' }}>
                   When you send enquiries for properties, they will appear here
                 </p>
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-dark table-hover bg-transparent" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Location</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                      <th style={{ width: '40px', background: 'transparent', color: '#fff' }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                          checked={selectedItems.size === enquiries.length && enquiries.length > 0}
+                          onChange={() => handleSelectAll(enquiries)}
+                        />
+                      </th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Property</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Location</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Date</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {enquiries.map(enquiry => (
                       <tr key={enquiry.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{enquiry.property?.title || 'Deleted Property'}</td>
-                        <td style={{ color: '#64748B' }}>{enquiry.property?.city}, {enquiry.property?.locality}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(enquiry.createdAt)}</td>
-                        <td>
+                        <td style={{ background: 'transparent' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                            checked={selectedItems.has(enquiry.id)}
+                            onChange={() => handleSelectItem(enquiry.id)}
+                          />
+                        </td>
+                        <td style={{ background: 'transparent', color: '#fff', fontWeight: '500' }}>{enquiry.property?.title || 'Deleted Property'}</td>
+                        <td style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)' }}>{enquiry.property?.city}, {enquiry.property?.locality}</td>
+                        <td style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)' }}>{formatDate(enquiry.createdAt)}</td>
+                        <td style={{ background: 'transparent' }}>
                           <span style={{
                             padding: '4px 12px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
                             fontWeight: '600',
-                            background: enquiry.status === 'approved' ? '#D1FAE5' : enquiry.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
-                            color: enquiry.status === 'approved' ? '#059669' : enquiry.status === 'rejected' ? '#DC2626' : '#D97706'
+                            background: enquiry.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' : enquiry.status === 'rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                            color: enquiry.status === 'approved' ? '#34D399' : enquiry.status === 'rejected' ? '#F87171' : '#FBBF24'
                           }}>
                             {enquiry.status.charAt(0).toUpperCase() + enquiry.status.slice(1)}
                           </span>
@@ -572,7 +662,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
             background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
-            border: '1px solid #E2E8F0'
+            border: '1px solid rgba(255,255,255,0.1)'
           }}>
             {/* Subscriptions Section */}
             {rentSubscriptions.length > 0 && (
@@ -584,29 +674,27 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 <div className="row g-3">
                   {rentSubscriptions.map(sub => (
                     <div className="col-md-6" key={sub.id}>
-                      <div className="p-3 border rounded shadow-sm bg-white">
+                      <div className="p-3 border rounded shadow-sm" style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span className="fw-bold fs-5">{sub.property_name}</span>
+                          <span className="fw-bold fs-5 text-white">{sub.property_name}</span>
                           <span className="badge bg-success">Active</span>
                         </div>
-                        <p className="mb-1 text-muted"><i className="bi bi-geo-alt me-1"></i>{sub.city}, {sub.area}</p>
-                        <hr />
+                        <p className="mb-1 text-white-50"><i className="bi bi-geo-alt me-1"></i>{sub.city}, {sub.area}</p>
+                        <hr className="border-secondary" />
                         <div className="d-flex justify-content-between align-items-center">
                           <div>
-                            <label className="text-muted small d-block">Monthly Rent</label>
-                            <span className="fw-bold text-dark fs-5">₹{sub.rent_amount}</span>
+                            <label className="text-white-50 small d-block">Monthly Rent</label>
+                            <span className="fw-bold fs-5 text-warning">₹{sub.rent_amount}</span>
                           </div>
                           <div>
-                            <label className="text-muted small d-block">Next Due</label>
-                            <span className={`fw-bold ${new Date(sub.next_payment_due) <= new Date() ? 'text-danger' : 'text-dark'}`}>
+                            <label className="text-white-50 small d-block">Next Due</label>
+                            <span className={`fw-bold ${new Date(sub.next_payment_due) <= new Date() ? 'text-danger' : 'text-white'}`}>
                               {formatDate(sub.next_payment_due)}
                             </span>
                           </div>
                           <button
                             className="btn btn-primary"
-                            disabled={new Date(sub.next_payment_due) > new Date(new Date().setDate(new Date().getDate() + 30))} // Disable if far in future? No, user requested "active every month".
-                            // Activating if needed. But user said "every month the button should be active".
-                            // Let's just allow it always, and logic moves date forward.
+                            disabled={new Date(sub.next_payment_due) > new Date(new Date().setDate(new Date().getDate() + 30))}
                             onClick={async () => {
                               if (window.confirm(`Pay rent of ₹${sub.rent_amount} for ${sub.property_name}?`)) {
                                 setLoading(true);
@@ -634,10 +722,20 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
               </div>
             )}
 
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-journal-text me-2" style={{ color: '#10B981' }}></i>
-              Rent Requests History ({rentHistory.length})
-            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0 text-white">
+                <i className="bi bi-journal-text me-2" style={{ color: '#10B981' }}></i>
+                Rent Requests History ({rentHistory.length})
+              </h5>
+              {selectedItems.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="btn btn-danger btn-sm"
+                >
+                  <i className="bi bi-trash me-2"></i>Delete Selected ({selectedItems.size})
+                </button>
+              )}
+            </div>
 
             {/* Same Rent History Table as before */}
             {rentHistory.length === 0 ? (
@@ -645,7 +743,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 <div style={{
                   width: '100px',
                   height: '100px',
-                  background: 'linear-gradient(135deg, #D1FAE520, #D1FAE510)',
+                  background: 'rgba(16, 185, 129, 0.2)',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -654,36 +752,54 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                 }}>
                   <i className="bi bi-house-check" style={{ fontSize: '3rem', color: '#34D399' }}></i>
                 </div>
-                <h5 style={{ color: '#0F172A' }}>No rental history</h5>
-                <p style={{ color: '#64748B', maxWidth: '400px', margin: '0 auto' }}>
+                <h5 className="text-white">No rental history</h5>
+                <p className="text-white-50" style={{ maxWidth: '400px', margin: '0 auto' }}>
                   Your rental agreements and history will appear here
                 </p>
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-dark table-hover bg-transparent" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Start Date</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Amount</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                      <th style={{ width: '40px', background: 'transparent', color: '#fff' }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                          checked={selectedItems.size === rentHistory.length && rentHistory.length > 0}
+                          onChange={() => handleSelectAll(rentHistory)}
+                        />
+                      </th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Property</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Start Date</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Amount</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rentHistory.map(rent => (
                       <tr key={rent.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{rent.property?.title || 'Deleted Property'}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(rent.createdAt)}</td>
-                        <td style={{ color: '#C8A24A', fontWeight: '600' }}>{rent.monthlyRent || '-'}</td>
-                        <td>
+                        <td style={{ background: 'transparent' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                            checked={selectedItems.has(rent.id)}
+                            onChange={() => handleSelectItem(rent.id)}
+                          />
+                        </td>
+                        <td style={{ background: 'transparent', color: '#fff', fontWeight: '500' }}>{rent.property?.title || 'Deleted Property'}</td>
+                        <td style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)' }}>{formatDate(rent.createdAt)}</td>
+                        <td style={{ background: 'transparent', color: '#C8A24A', fontWeight: '600' }}>{rent.monthlyRent || '-'}</td>
+                        <td style={{ background: 'transparent' }}>
                           <span style={{
                             padding: '4px 12px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
                             fontWeight: '600',
-                            background: rent.status === 'active' ? '#D1FAE5' : '#F1F5F9',
-                            color: rent.status === 'active' ? '#059669' : '#64748B'
+                            background: rent.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)',
+                            color: rent.status === 'active' ? '#34D399' : '#94A3B8'
                           }}>
                             {rent.status ? (rent.status.charAt(0).toUpperCase() + rent.status.slice(1)) : 'Pending'}
                           </span>
@@ -704,47 +820,87 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
             background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '24px',
-            border: '1px solid #E2E8F0'
+            border: '1px solid rgba(255,255,255,0.1)'
           }}>
-            <h5 className="fw-bold mb-4" style={{ color: '#0F172A' }}>
-              <i className="bi bi-credit-card me-2" style={{ color: '#C8A24A' }}></i>
-              My Bookings & Payments ({payments.length})
-            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0 text-white">
+                <i className="bi bi-credit-card me-2" style={{ color: '#C8A24A' }}></i>
+                My Bookings & Payments ({payments.length})
+              </h5>
+              {selectedItems.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="btn btn-danger btn-sm"
+                >
+                  <i className="bi bi-trash me-2"></i>Delete Selected ({selectedItems.size})
+                </button>
+              )}
+            </div>
 
             {payments.length === 0 ? (
               <div className="text-center py-5">
-                <p className="style={{ color: '#D4A437' }}">No booking payments made yet.</p>
+                <p style={{ color: '#D4A437' }}>No booking payments made yet.</p>
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <table className="table table-dark table-hover bg-transparent" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                   <thead>
                     <tr>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Property</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Date</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Booking Amount</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Remaining Amount</th>
-                      <th style={{ color: '#0F172A', fontWeight: '600' }}>Status</th>
+                      <th style={{ width: '40px', background: 'transparent', color: '#fff' }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                          checked={selectedItems.size === payments.length && payments.length > 0}
+                          onChange={() => handleSelectAll(payments)}
+                        />
+                      </th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Property</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Date</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Booking Amount</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Remaining Amount</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Status</th>
+                      <th style={{ background: 'transparent', color: '#fff', fontWeight: '600' }}>Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.map(pay => (
                       <tr key={pay.id}>
-                        <td style={{ color: '#0F172A', fontWeight: '500' }}>{pay.property ? pay.property.title : 'Property Deleted'}</td>
-                        <td style={{ color: '#64748B' }}>{formatDate(pay.createdAt)}</td>
-                        <td style={{ color: '#10B981', fontWeight: '600' }}>₹{pay.amount}</td>
-                        <td style={{ color: '#DC2626', fontWeight: 'bold' }}>₹{pay.remainingAmount}</td>
-                        <td>
+                        <td style={{ background: 'transparent' }}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            style={{ backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)', accentColor: '#C8A24A' }}
+                            checked={selectedItems.has(pay.id)}
+                            onChange={() => handleSelectItem(pay.id)}
+                          />
+                        </td>
+                        <td style={{ background: 'transparent', fontWeight: '500' }}>
+                          {pay.property ? <Link to={`/property/${pay.property.id}`} className="text-decoration-none text-white">{pay.property.name || pay.property.title}</Link> : <span className="text-white-50">Property Deleted</span>}
+                        </td>
+                        <td style={{ background: 'transparent', color: 'rgba(255,255,255,0.7)' }}>{formatDate(pay.createdAt)}</td>
+                        <td style={{ background: 'transparent', color: '#10B981', fontWeight: '600' }}>₹{pay.amount}</td>
+                        <td style={{ background: 'transparent', color: '#F87171', fontWeight: 'bold' }}>₹{pay.remainingAmount}</td>
+                        <td style={{ background: 'transparent' }}>
                           <span style={{
                             padding: '4px 12px',
                             borderRadius: '6px',
                             fontSize: '0.8rem',
                             fontWeight: '600',
-                            background: pay.status === 'SUCCESS' ? '#D1FAE5' : '#FEE2E2',
-                            color: pay.status === 'SUCCESS' ? '#059669' : '#DC2626'
+                            background: pay.status === 'SUCCESS' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: pay.status === 'SUCCESS' ? '#34D399' : '#F87171'
                           }}>
                             {pay.status}
                           </span>
+                        </td>
+                        <td style={{ background: 'transparent' }}>
+                          {pay.pdfUrl ? (
+                            <a href={pay.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" title="Download Receipt" style={{ borderColor: 'rgba(59, 130, 246, 0.5)', color: '#60A5FA' }}>
+                              <i className="bi bi-file-earmark-arrow-down"></i>
+                            </a>
+                          ) : (
+                            <span className="text-white-50 small">-</span>
+                          )}
                         </td>
                       </tr>
                     ))}

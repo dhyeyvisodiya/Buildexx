@@ -14,11 +14,8 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final com.buildex.service.EmailService emailService;
-
-    public PaymentController(PaymentService paymentService, EmailService emailService) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.emailService = emailService;
     }
 
     @PostMapping("/create-order")
@@ -41,32 +38,6 @@ public class PaymentController {
             String signature = payload.get("razorpay_signature");
 
             Payment payment = paymentService.verifyPayment(orderId, paymentIdValue, signature);
-
-            // Send Emails AFTER transaction commit (if successful)
-            try {
-                if (payment.getUser() != null && payment.getProperty() != null) {
-                    emailService.sendPaymentSuccessEmail(
-                            payment.getUser().getEmail(),
-                            payment.getUser().getFullName(),
-                            payment.getProperty().getTitle(),
-                            payment.getAmount().toString(),
-                            paymentIdValue);
-                }
-                if (payment.getProperty() != null && payment.getProperty().getBuilder() != null) {
-                    com.buildex.entity.User builder = payment.getProperty().getBuilder();
-                    String payerName = (payment.getUser() != null) ? payment.getUser().getFullName() : "Customer";
-                    emailService.sendPaymentReceivedEmail(
-                            builder.getEmail(),
-                            builder.getCompanyName(),
-                            payment.getProperty().getTitle(),
-                            payment.getAmount().toString(),
-                            payerName);
-                }
-            } catch (Exception ex) {
-                // Don't fail the verification if emails fail
-                System.err.println("Error sending payment emails: " + ex.getMessage());
-            }
-
             return ResponseEntity.ok(payment);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
@@ -88,9 +59,24 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.getAllPayments());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getPaymentById(@PathVariable Long id) {
+        return ResponseEntity.ok(paymentService.getPaymentById(id));
+    }
+
     @GetMapping("/check-booking")
     public ResponseEntity<?> checkBookingStatus(@RequestParam Long userId, @RequestParam Long propertyId) {
         boolean isBooked = paymentService.hasUserBookedProperty(userId, propertyId);
         return ResponseEntity.ok(Map.of("isBooked", isBooked));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deletePayment(@PathVariable Long id) {
+        try {
+            paymentService.deletePayment(id);
+            return ResponseEntity.ok(Map.of("message", "Payment deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

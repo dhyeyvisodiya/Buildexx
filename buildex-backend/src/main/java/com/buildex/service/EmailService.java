@@ -6,6 +6,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +42,7 @@ public class EmailService {
         private static final String SENDER_ADMIN = "Buildex Admin <admin@buildexx.app>";
 
         private final RestTemplate restTemplate = new RestTemplate();
+        private final JavaMailSender javaMailSender;
 
         // Premium Template Wrapper with Theme Support
         private String wrapHtmlContent(String heading, String content, String themeColor, String ctaText,
@@ -421,8 +427,7 @@ public class EmailService {
     /**
      * 12. Complaint/Report Notification (To Admin/Builder)
      */
-    @Async
-        public void sendComplaintNotificationEmail(String recipientEmail, String recipientName, String propertyName,
+    public void sendComplaintNotificationEmail(String recipientEmail, String recipientName, String propertyName,
                         String issueType, String description) {
                 String content = "<p>Dear " + recipientName + ",</p>" +
                                 "<p>A new report/complaint has been filed for <strong>" + propertyName + "</strong>.</p>" +
@@ -439,4 +444,26 @@ public class EmailService {
                                 "https://buildexx.app/admin/complaints");
                 sendResendEmail(SENDER_ADMIN, recipientEmail, "Report for " + propertyName + " – Buildex", html);
         }
+
+    public void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String attachmentName) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            helper.setFrom(SENDER_NOTIFICATIONS);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body, true);
+
+            if (attachment != null && attachmentName != null) {
+                helper.addAttachment(attachmentName, new ByteArrayResource(attachment));
+            }
+
+            javaMailSender.send(message);
+        } catch (MessagingException e) {
+            System.err.println("Failed to send email via SMTP: " + e.getMessage());
+            // Fallback to Resend API without attachment? Or just log.
+            // For now, just log and continue.
+        }
+    }
 }

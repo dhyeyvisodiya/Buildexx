@@ -23,6 +23,7 @@ public class RentRequestService {
         this.emailService = emailService;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public RentRequest createRentRequest(RentRequest rentRequest) {
         RentRequest savedRequest = rentRequestRepository.save(rentRequest);
 
@@ -57,6 +58,12 @@ public class RentRequestService {
             }
         });
 
+        if (savedRequest.getProperty() != null) {
+            org.hibernate.Hibernate.initialize(savedRequest.getProperty());
+            if (savedRequest.getProperty().getBuilder() != null) {
+                org.hibernate.Hibernate.initialize(savedRequest.getProperty().getBuilder());
+            }
+        }
         return savedRequest;
     }
 
@@ -64,12 +71,20 @@ public class RentRequestService {
         return rentRequestRepository.findByBuilderId(builderId);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public Optional<RentRequest> updateRentRequestStatus(Long id, RentRequest.Status status) {
         Optional<RentRequest> rentRequestOpt = rentRequestRepository.findById(id);
         if (rentRequestOpt.isPresent()) {
             RentRequest rentRequest = rentRequestOpt.get();
             rentRequest.setStatus(status);
-            return Optional.of(rentRequestRepository.save(rentRequest));
+            RentRequest savedRequest = rentRequestRepository.save(rentRequest);
+            if (savedRequest.getProperty() != null) {
+                org.hibernate.Hibernate.initialize(savedRequest.getProperty());
+                if (savedRequest.getProperty().getBuilder() != null) {
+                    org.hibernate.Hibernate.initialize(savedRequest.getProperty().getBuilder());
+                }
+            }
+            return Optional.of(savedRequest);
         }
         return Optional.empty();
     }

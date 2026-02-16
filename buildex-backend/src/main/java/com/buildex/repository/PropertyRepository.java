@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Long> {
@@ -63,6 +64,9 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
        @Query("SELECT DISTINCT p.city FROM Property p WHERE p.city IS NOT NULL ORDER BY p.city")
        List<String> findAllCities();
 
-       @Query(value = "SELECT image_url FROM property_images WHERE property_id = :propertyId LIMIT 1", nativeQuery = true)
+       @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE p.id = :id")
+       Optional<Property> findByIdWithBuilder(@Param("id") Long id);
+
+       @Query(value = "SELECT COALESCE(p.image_url, (SELECT gallery_image_url FROM property_gallery_images WHERE property_id = p.id LIMIT 1)) FROM properties p WHERE p.id = :propertyId", nativeQuery = true)
        String findThumbnail(@Param("propertyId") Long propertyId);
 }

@@ -36,14 +36,17 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnoreProperties({"properties", "password"})
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "property_id", nullable = false)
+    @JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "payments", "complaints", "enquiries", "hibernateLazyInitializer", "handler" })
     private Property property;
 
     @ManyToOne
     @JoinColumn(name = "builder_id")
+    @JsonIgnoreProperties({"properties", "password"})
     private User builder; // Builder is now a User with role='builder'
 
     @Enumerated(EnumType.STRING)
@@ -58,6 +61,21 @@ public class Payment {
 
     @Column(name = "remaining_amount")
     private BigDecimal remainingAmount; // Calculated as Total - Booking
+
+    @Column(name = "payment_date")
+    private LocalDateTime paymentDate;
+
+    @Column(name = "rent_month")
+    private String rentMonth; // e.g., "January 2026"
+
+    @Column(name = "next_due_date")
+    private java.time.LocalDate nextDueDate;
+
+    @Column(name = "transaction_id")
+    private String transactionId;
+
+    @Column(name = "pdf_url")
+    private String pdfUrl;
 
     @Column(name = "payment_type")
     @Enumerated(EnumType.STRING)

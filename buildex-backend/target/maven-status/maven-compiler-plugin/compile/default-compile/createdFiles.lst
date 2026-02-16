@@ -1,13 +1,17 @@
 com\buildex\controller\WithdrawalController.class
 com\buildex\repository\PaymentRepository.class
+com\buildex\dto\BuilderSummaryDTO$BuilderSummaryDTOBuilder.class
 com\buildex\entity\Complaint$ComplaintBuilder.class
 com\buildex\entity\Enquiry.class
 com\buildex\entity\User.class
 com\buildex\BuildexApplication.class
+com\buildex\entity\Property$RentalStatus.class
 com\buildex\controller\ImageController.class
 com\buildex\entity\Payment$PaymentType.class
 com\buildex\repository\UserRepository.class
+com\buildex\service\CloudinaryService.class
 com\buildex\service\EnquiryService.class
+com\buildex\service\PdfService.class
 com\buildex\entity\User$VerificationStatus.class
 com\buildex\repository\EnquiryRepository.class
 com\buildex\service\OtpService.class
@@ -41,6 +45,7 @@ com\buildex\entity\Property$ConstructionStatus.class
 com\buildex\entity\Enquiry$EnquiryType.class
 com\buildex\config\FileUploadConfig.class
 com\buildex\controller\TestEmailController.class
+com\buildex\config\CloudinaryConfig.class
 com\buildex\controller\AuthController$LoginRequest.class
 com\buildex\entity\Payment.class
 com\buildex\model\PropertySummary.class

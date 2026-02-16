@@ -48,10 +48,27 @@ public class Property {
     @Column(name = "purpose")
     private Purpose purpose; // BUY or RENT
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rental_status")
+    private RentalStatus rentalStatus = RentalStatus.AVAILABLE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "buyer_id")
+    @JsonIgnore
+    private User buyer;
+
+    @Column(name = "sold_date")
+    private LocalDateTime soldDate;
+
+    public enum RentalStatus {
+        AVAILABLE, RENTED
+    }
+
     @Column(name = "price") // For buy
     private BigDecimal price;
 
     @Column(name = "rent_amount") // For rent
+    @com.fasterxml.jackson.annotation.JsonProperty("rent_amount")
     private BigDecimal rentAmount;
 
     @Column(name = "deposit_amount")
@@ -66,7 +83,7 @@ public class Property {
     @Column(name = "bathrooms")
     private Integer bathrooms;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "property_amenities", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "amenity")
     @org.hibernate.annotations.BatchSize(size = 50)
@@ -77,6 +94,7 @@ public class Property {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "construction_status")
+    @com.fasterxml.jackson.annotation.JsonProperty("construction_status")
     private ConstructionStatus constructionStatus;
 
     @Enumerated(EnumType.STRING)
@@ -92,37 +110,45 @@ public class Property {
     private String area;
 
     @Column(name = "google_map_link", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonProperty("google_map_link")
     private String googleMapLink;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Column(name = "brochure_url", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonProperty("brochure_url")
     private String brochureUrl;
 
     @Column(name = "virtual_tour_link", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonProperty("virtual_tour_link")
     private String virtualTourLink;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "property_images", joinColumns = @JoinColumn(name = "property_id"))
-    @Column(name = "image_url", columnDefinition = "TEXT")
-    @OrderColumn(name = "image_order")
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "property_gallery_images", joinColumns = @JoinColumn(name = "property_id"))
+    @Column(name = "gallery_image_url", columnDefinition = "TEXT")
+    @OrderColumn(name = "gallery_order")
     @org.hibernate.annotations.BatchSize(size = 50)
-    private List<String> imageUrls;
+    private List<String> galleryImages;
 
-    @Column(name = "legal_document_path", columnDefinition = "TEXT")
-    private String legalDocumentPath;
+    @Column(name = "legal_document_url", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonProperty("legal_document_url")
+    private String legalDocumentUrl;
 
     @Column(name = "is_verified")
     @Builder.Default
     private Boolean isVerified = false;
 
-    @Column(name = "panorama_image_path", columnDefinition = "TEXT")
-    private String panoramaImagePath;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "property_panorama_images", joinColumns = @JoinColumn(name = "property_id"))
     @Column(name = "panorama_image_url", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonProperty("panorama_image_url")
+    private String panoramaImageUrl;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "property_panorama_images", joinColumns = @JoinColumn(name = "property_id"))
+    @Column(name = "panorama_url", columnDefinition = "TEXT")
     @OrderColumn(name = "image_order")
     @org.hibernate.annotations.BatchSize(size = 50)
-    @JsonProperty("panorama_images")
+    @com.fasterxml.jackson.annotation.JsonProperty("panorama_images")
     private List<String> panoramaImages;
 
     @Column(name = "latitude")
@@ -192,7 +218,7 @@ public class Property {
 
     @JsonProperty("images")
     public List<String> getImages() {
-        return imageUrls;
+        return galleryImages;
     }
 
     @JsonProperty("area")
@@ -220,40 +246,21 @@ public class Property {
         return rentAmount;
     }
 
-    @JsonProperty("rent_amount")
-    public BigDecimal getRentAmountAlias() {
-        return rentAmount;
-    }
+    // @JsonProperty("rent_amount") - REMOVED, handled by field annotation
 
     @JsonProperty("type")
     public PropertyType getType() {
         return propertyType;
     }
 
-    @JsonProperty("construction_status")
-    public ConstructionStatus getConstructionStatusAlias() {
-        return constructionStatus;
-    }
+    // @JsonProperty("construction_status") - REMOVED, handled by field annotation
 
-    @JsonProperty("brochure_url")
-    public String getBrochureUrlAlias() {
-        return brochureUrl;
-    }
+    // @JsonProperty("brochure_url") - REMOVED, handled by field annotation
 
-    @JsonProperty("google_map_link")
-    public String getGoogleMapLinkAlias() {
-        return googleMapLink;
-    }
+    // @JsonProperty("google_map_link") - REMOVED, handled by field annotation
 
-    @JsonProperty("virtual_tour_link")
-    public String getVirtualTourLinkAlias() {
-        return virtualTourLink;
-    }
+    // @JsonProperty("virtual_tour_link") - REMOVED, handled by field annotation
 
-    @JsonProperty("panorama_image_path")
-    public String getPanoramaImagePathAlias() {
-        return panoramaImagePath;
-    }
 
     @JsonProperty("builder_id")
     public Long getBuilderId() {
@@ -271,10 +278,6 @@ public class Property {
         return builder.getUsername();
     }
 
-    @JsonProperty("virtualTours")
-    public List<String> getVirtualTours() {
-        return panoramaImages;
-    }
 
     // Add explicit getter for panoramaImages for serialization if needed,
     // but @Data usually handles field-based serialization if not hidden.
@@ -298,42 +301,43 @@ public class Property {
         this.possessionYear = possessionYear;
     }
 
-    @JsonProperty("rent_amount")
-    public void setRentAmountAlias(BigDecimal rentAmount) {
-        this.rentAmount = rentAmount;
+    // @JsonProperty("rent_amount") - REMOVED, handled by field annotation
+
+    // @JsonProperty("construction_status") - REMOVED, handled by field annotation
+
+    // @JsonProperty("brochure_url") - REMOVED, handled by field annotation
+
+    // @JsonProperty("google_map_link") - REMOVED, handled by field annotation
+
+    // @JsonProperty("virtual_tour_link") - REMOVED, handled by field annotation
+
+
+    public RentalStatus getRentalStatus() {
+        return rentalStatus;
     }
 
-    @JsonProperty("construction_status")
-    public void setConstructionStatusAlias(ConstructionStatus constructionStatus) {
-        this.constructionStatus = constructionStatus;
+    public void setRentalStatus(RentalStatus rentalStatus) {
+        this.rentalStatus = rentalStatus;
     }
 
-    @JsonProperty("brochure_url")
-    public void setBrochureUrlAlias(String brochureUrl) {
-        this.brochureUrl = brochureUrl;
+    public User getBuyer() {
+        return buyer;
     }
 
-    @JsonProperty("google_map_link")
-    public void setGoogleMapLinkAlias(String googleMapLink) {
-        this.googleMapLink = googleMapLink;
+    public void setBuyer(User buyer) {
+        this.buyer = buyer;
     }
 
-    @JsonProperty("virtual_tour_link")
-    public void setVirtualTourLinkAlias(String virtualTourLink) {
-        this.virtualTourLink = virtualTourLink;
+    public LocalDateTime getSoldDate() {
+        return soldDate;
     }
 
-    @JsonProperty("panorama_image_path")
-    public void setPanoramaImagePathAlias(String panoramaImagePath) {
-        this.panoramaImagePath = panoramaImagePath;
+    public void setSoldDate(LocalDateTime soldDate) {
+        this.soldDate = soldDate;
     }
 
     @JsonProperty("images")
     public void setImagesAlias(List<String> images) {
-        this.imageUrls = images;
-    }
-
-    public List<String> getPanoramaImages() {
-        return panoramaImages;
+        this.galleryImages = images;
     }
 }
