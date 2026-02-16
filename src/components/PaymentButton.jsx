@@ -24,10 +24,9 @@ const PaymentButton = ({
     // Get Razorpay key from environment
     const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demo';
 
-    // Determine amount based on payment type
     // Token amount is 5% of the total price/rent
     const totalAmount = paymentType === 'RENT'
-        ? (property.min_rent_amount || property.rent_amount || property.rent || 0)
+        ? (property.min_rent_amount || property.rent_amount || property.rentAmount || property.rent || property.price || 0)
         : (property.price || 0);
 
     const numericTotal = typeof totalAmount === 'string'

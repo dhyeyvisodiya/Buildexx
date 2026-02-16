@@ -38,6 +38,7 @@ public class User {
 
     @OneToMany(mappedBy = "builder", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnoreProperties("builder")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Property> properties;
 
     // --- Builder Specific Fields ---

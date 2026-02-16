@@ -708,7 +708,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 </div>
                 <PaymentButton
                   property={property}
-                  paymentType={property.purpose === 'Rent' ? 'RENT' : 'BUY'}
+                  paymentType={(property.purpose || '').toUpperCase() === 'RENT' ? 'RENT' : 'BUY'}
                   onSuccess={(data) => {
                     navigate(`/payment/success/${data.id}`);
                   }}

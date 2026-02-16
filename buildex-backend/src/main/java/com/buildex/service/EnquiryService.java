@@ -74,10 +74,12 @@ public class EnquiryService {
         return savedEnquiry;
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Enquiry> getEnquiriesByPropertyId(Long propertyId) {
         return enquiryRepository.findByPropertyId(propertyId);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Enquiry> getEnquiriesByBuilderId(Long builderId) {
         return enquiryRepository.findByBuilderId(builderId);
     }

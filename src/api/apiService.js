@@ -298,12 +298,12 @@ export const uploadLegalDocument = async (file) => {
             body: formData
         });
 
-        // The backend returns the filename as a plain string, not JSON
         if (response.ok) {
             const fileName = await response.text();
             return { success: true, data: fileName };
         } else {
-            throw new Error('Upload failed');
+            const errorText = await response.text();
+            throw new Error(`Upload failed: ${errorText}`);
         }
     } catch (error) {
         console.error('Error uploading document:', error);

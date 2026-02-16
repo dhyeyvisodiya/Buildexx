@@ -67,29 +67,24 @@ public class PropertyController {
     }
 
     @PostMapping("/upload-images")
-    public ResponseEntity<String[]> uploadPropertyImages(@RequestParam("files") MultipartFile[] files) {
+    public ResponseEntity<?> uploadPropertyImages(@RequestParam("files") MultipartFile[] files) {
         try {
-            // Upload all images in PARALLEL for speed
-            List<java.util.concurrent.CompletableFuture<String>> futures = java.util.Arrays.stream(files)
-                    .map(file -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return cloudinaryService.uploadImage(file);
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to upload: " + file.getOriginalFilename(), e);
-                        }
-                    }))
-                    .collect(java.util.stream.Collectors.toList());
-
-            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
-
-            List<String> urls = futures.stream()
-                    .map(java.util.concurrent.CompletableFuture::join)
-                    .collect(java.util.stream.Collectors.toList());
-
-            return ResponseEntity.ok(urls.toArray(new String[0]));
+            List<String> urls = new ArrayList<>();
+            for (MultipartFile file : files) {
+                try {
+                    String url = cloudinaryService.uploadImage(file);
+                    urls.add(url);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body("Failed to upload " + file.getOriginalFilename() + ": " + e.getMessage());
+                }
+            }
+            return ResponseEntity.ok(urls);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Upload error: " + e.getMessage());
         }
     }
 
@@ -182,7 +177,7 @@ public class PropertyController {
             return ResponseEntity.ok(url);
         } catch (Exception e) {
             e.printStackTrace(); // Log error for debugging
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Upload failed: " + e.getMessage());
         }
     }
 
@@ -193,7 +188,7 @@ public class PropertyController {
             return ResponseEntity.ok(url);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Upload failed: " + e.getMessage());
         }
     }
 

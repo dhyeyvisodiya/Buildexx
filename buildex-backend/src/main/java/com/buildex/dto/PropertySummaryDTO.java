@@ -18,6 +18,7 @@ public class PropertySummaryDTO {
     private Long id;
     private String title;
     private BigDecimal price;
+    @com.fasterxml.jackson.annotation.JsonProperty("rent_amount")
     private BigDecimal rentAmount; // Include rent for rental properties
     private String city;
     @com.fasterxml.jackson.annotation.JsonProperty("locality")

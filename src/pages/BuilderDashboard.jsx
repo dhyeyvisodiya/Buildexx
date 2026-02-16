@@ -174,7 +174,14 @@ const BuilderDashboard = () => {
     setLoading(true);
     try {
       const result = await getPropertiesByBuilder(currentUser.id);
-      if (result.success) setProperties(result.data);
+      if (result.success) {
+        console.log('[BuilderDashboard] Properties received:', result.data.map(p => ({
+          id: p.id, name: p.name, purpose: p.purpose,
+          price: p.price, rent: p.rent, rentAmount: p.rentAmount,
+          rent_amount: p.rent_amount, min_rent_amount: p.min_rent_amount
+        })));
+        setProperties(result.data);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -1584,7 +1591,7 @@ const BuilderDashboard = () => {
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Type</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Area</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>City</th>
-                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Price</th>
+                        <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Price/Rent</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Availability</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Approval Status</th>
                         <th style={{ color: 'var(--primary-text)', fontWeight: '600' }}>Actions</th>
@@ -1605,7 +1612,10 @@ const BuilderDashboard = () => {
                           <td style={{ color: '#94A3B8' }}>{property.type}</td>
                           <td style={{ color: '#94A3B8' }}>{property.locality || '-'}</td>
                           <td style={{ color: '#94A3B8' }}>{property.city || '-'}</td>
-                          <td style={{ color: '#C8A24A', fontWeight: '600' }}>{property.price || property.rent}</td>
+                          <td style={{ color: '#C8A24A', fontWeight: '600' }}>
+                            {property.price || property.rent || property.rentAmount || property.rent_amount || '-'}
+                            {(property.purpose || '').toUpperCase() === 'RENT' && (property.rent || property.rentAmount || property.rent_amount) ? '/mo' : ''}
+                          </td>
                           <td>
                             <select
                               className="form-select form-select-sm"

@@ -69,6 +69,7 @@ public class Property {
 
     @Column(name = "rent_amount") // For rent
     @com.fasterxml.jackson.annotation.JsonProperty("rent_amount")
+    @com.fasterxml.jackson.annotation.JsonAlias({"rent", "rentAmount"})
     private BigDecimal rentAmount;
 
     @Column(name = "deposit_amount")
