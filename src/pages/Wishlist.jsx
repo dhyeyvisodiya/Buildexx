@@ -1,7 +1,9 @@
-import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
 
-const Wishlist = ({ wishlist, removeFromWishlist, navigateTo }) => {
+const Wishlist = ({ wishlist, removeFromWishlist }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="wishlist-page animate__animated animate__fadeIn" style={{ minHeight: '100vh', background: 'var(--charcoal-slate)' }}>
       <div className="container-fluid py-4">
@@ -36,7 +38,7 @@ const Wishlist = ({ wishlist, removeFromWishlist, navigateTo }) => {
               </div>
               <button
                 className="btn"
-                onClick={() => navigateTo('property-list')}
+                onClick={() => navigate('/properties')}
                 style={{
                   background: 'rgba(255,255,255,0.2)',
                   color: '#FFFFFF',
@@ -76,7 +78,7 @@ const Wishlist = ({ wishlist, removeFromWishlist, navigateTo }) => {
             </p>
             <button
               className="btn"
-              onClick={() => navigateTo('property-list')}
+              onClick={() => navigate('/properties')}
               style={{
                 background: 'linear-gradient(135deg, var(--construction-gold), var(--deep-bronze))',
                 color: 'var(--primary-text)',
@@ -100,7 +102,6 @@ const Wishlist = ({ wishlist, removeFromWishlist, navigateTo }) => {
                 <div className="position-relative">
                   <PropertyCard
                     property={property}
-                    navigateTo={navigateTo}
                     addToCompare={() => { }}
                     addToWishlist={() => { }}
                   />
