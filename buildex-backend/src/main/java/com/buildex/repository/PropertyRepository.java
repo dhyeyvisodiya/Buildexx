@@ -37,28 +37,40 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
-                     "(:city IS NULL OR p.city = :city) AND " +
-                     "(:area IS NULL OR p.area = :area) AND " +
+                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND " +
+                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND " +
                      "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
+                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
                      "(p.isVerified = true)")
        List<Property> findByFilters(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,
                      @Param("area") String area,
-                     @Param("availabilityStatus") AvailabilityStatus availabilityStatus);
+                     @Param("availabilityStatus") AvailabilityStatus availabilityStatus,
+                     @Param("search") String search);
 
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
-                     "(:city IS NULL OR p.city = :city) AND " +
-                     "(:area IS NULL OR p.area = :area) AND " +
+                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND " +
+                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND " +
                      "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
+                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
                      "(p.isVerified = true)")
        org.springframework.data.domain.Page<Property> findByFiltersPaginated(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,
                      @Param("area") String area,
                      @Param("availabilityStatus") AvailabilityStatus availabilityStatus,
+                     @Param("search") String search,
                      org.springframework.data.domain.Pageable pageable);
 
        @Query("SELECT DISTINCT p.city FROM Property p WHERE p.city IS NOT NULL ORDER BY p.city")

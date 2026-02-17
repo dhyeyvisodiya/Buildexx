@@ -15,6 +15,7 @@ com\buildex\service\PdfService.class
 com\buildex\entity\User$VerificationStatus.class
 com\buildex\repository\EnquiryRepository.class
 com\buildex\service\OtpService.class
+com\buildex\config\WebConfig$StringToPurposeConverter.class
 com\buildex\controller\PaymentController.class
 com\buildex\entity\Property$PropertyBuilder.class
 com\buildex\dto\BuilderSummaryDTO.class
@@ -28,6 +29,7 @@ com\buildex\controller\AdminController.class
 com\buildex\service\impl\FileStorageService.class
 com\buildex\controller\HealthController.class
 com\buildex\controller\PropertyController.class
+com\buildex\config\WebConfig$StringToPropertyTypeConverter.class
 com\buildex\controller\AuthController.class
 com\buildex\repository\ComplaintRepository.class
 com\buildex\dto\PropertySummaryDTO$PropertySummaryDTOBuilder.class
@@ -47,6 +49,7 @@ com\buildex\config\FileUploadConfig.class
 com\buildex\controller\TestEmailController.class
 com\buildex\config\CloudinaryConfig.class
 com\buildex\controller\AuthController$LoginRequest.class
+com\buildex\config\WebConfig$StringToAvailabilityStatusConverter.class
 com\buildex\entity\Payment.class
 com\buildex\model\PropertySummary.class
 com\buildex\controller\ComplaintController.class

@@ -163,10 +163,11 @@ public class PropertyController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String area,
             @RequestParam(required = false) Property.AvailabilityStatus availabilityStatus,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         org.springframework.data.domain.Page<PropertySummaryDTO> properties = propertyService.searchPropertiesSummariesPaginated(
-                purpose, propertyType, city, area, availabilityStatus, page, size);
+                purpose, propertyType, city, area, availabilityStatus, search, page, size);
         return ResponseEntity.ok(properties);
     }
 

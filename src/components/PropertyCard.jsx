@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { getImageUrl } from '../utils/imageUtils';
 
-const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
+const PropertyCard = ({ property, addToCompare, addToWishlist, index = 0 }) => {
   const navigate = useNavigate();
 
   const formatCurrency = (value) => {
@@ -12,8 +13,8 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
     if (isNaN(num)) return value;
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
   };
-  const getAvailabilityClass = (availability) => {
-    const status = (availability || '').toLowerCase();
+  const getAvailabilityClass = (availability, property) => {
+    const status = (availability || property?.availabilityStatus || property?.availability_status || '').toLowerCase();
     switch (status) {
       case 'available': return 'badge-available';
       case 'booked': return 'badge-booked';
@@ -23,14 +24,14 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
     }
   };
 
-  const getAvailabilityText = (availability) => {
-    const status = (availability || '').toLowerCase();
+  const getAvailabilityText = (availability, property) => {
+    const status = (availability || property?.availabilityStatus || property?.availability_status || '').toLowerCase();
     switch (status) {
       case 'available': return 'Available';
       case 'booked': return '🔄 Under Process';
       case 'sold': return 'Sold';
       case 'rented': return 'Rented';
-      default: return availability || 'Unknown';
+      default: return availability || property?.availabilityStatus || 'Unknown';
     }
   };
 
@@ -56,8 +57,12 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
   };
 
   return (
-    <div
-      className="property-card card h-100 animate__animated animate__fadeInUp"
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20, delay: index * 0.05 }}
+      className="property-card card h-100"
       style={{ cursor: 'pointer' }}
       onMouseEnter={prefetchDetails}
       onMouseLeave={cancelPrefetch}
@@ -65,12 +70,14 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
       <div className="position-relative">
         <div className="property-image-wrapper" style={{ height: '250px', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
           {property.thumbnail || (property.images && property.images.length > 0) ? (
-            <img
+            <motion.img
               src={getImageUrl(property.thumbnail || property.images[0])}
               className="property-image card-img-top"
               alt={property.name}
               style={{ height: '100%', width: '100%', objectFit: 'cover' }}
               loading="lazy"
+              whileHover={{ scale: 1.1 }}
+              transition={{ type: 'tween', duration: 0.4 }}
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.style.display = 'none';
@@ -83,8 +90,8 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
             </div>
           )}
         </div>
-        <span className={`availability-badge ${getAvailabilityClass(property.availability)}`}>
-          {getAvailabilityText(property.availability)}
+        <span className={`availability-badge ${getAvailabilityClass(property.availability, property)}`}>
+          {getAvailabilityText(property.availability, property)}
         </span>
         {/* Verified Badge */}
         {(property.is_verified || property.isVerified) && (
@@ -109,7 +116,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
       </div>
 
       <div className="card-body d-flex flex-column">
-        <h5 className="card-title">{property.name}</h5>
+        <h5 className="card-title">{property.title || property.name}</h5>
         <p className="card-text small">
           {[property.locality, property.city].filter(Boolean).length > 0 ? [property.locality, property.city].filter(Boolean).join(', ') : 'Location N/A'}
           {/* Builder name with verified indicator */}
@@ -127,19 +134,24 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
         <div className="mt-auto">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="fw-bold fs-5">
-              {(property.purpose || '').toUpperCase() === 'BUY'
-                ? (formatCurrency(property.price) || 'Price on Request')
-                : (formatCurrency(property.rent || property.rentAmount || property.rent_amount || property.price)
-                  ? `${formatCurrency(property.rent || property.rentAmount || property.rent_amount || property.price)}/mo`
-                  : 'Rent on Request')}
+              {(property.purpose || '').toLowerCase() === 'rent'
+                ? (() => {
+                  const rentValue = property.rent || property.rentAmount || property.rent_amount;
+                  const rentNum = rentValue ? parseFloat(String(rentValue).replace(/[^0-9.]/g, '')) : 0;
+                  return rentNum > 0 ? `${formatCurrency(rentNum)}/mo` : 'Rent on Request';
+                })()
+                : formatCurrency(property.price || 0)}
             </span>
             <span className="badge" style={{ backgroundColor: 'var(--construction-gold)', color: 'var(--primary-text)' }}>{property.type}</span>
           </div>
 
           <div className="d-flex justify-content-between mt-3">
-            <button
+            <motion.button
               className="btn btn-primary"
               onClick={() => navigate(`/property/${property.id}`)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               style={{
                 background: 'linear-gradient(90deg, var(--construction-gold), var(--deep-bronze))',
                 border: 'none',
@@ -150,17 +162,15 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
               }}
               onMouseEnter={(e) => {
                 e.target.style.background = 'var(--deep-bronze)';
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(158, 124, 47, 0.3)';
+                e.target.style.boxShadow = '0 4px 12px rgba(158, 124, 47, 0.4)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.background = 'linear-gradient(90deg, var(--construction-gold), var(--deep-bronze))';
-                e.target.style.transform = 'translateY(0)';
                 e.target.style.boxShadow = '0 4px 12px rgba(158, 124, 47, 0.3)';
               }}
             >
               View Details
-            </button>
+            </motion.button>
             <div className="btn-group" role="group">
               <button
                 type="button"
@@ -262,7 +272,7 @@ const PropertyCard = ({ property, addToCompare, addToWishlist }) => {
           </div>
         </div>
       </div>
-    </div >
+    </motion.div >
   );
 };
 

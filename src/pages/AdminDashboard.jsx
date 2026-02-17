@@ -598,8 +598,8 @@ const AdminDashboard = () => {
                       <tr key={builder.id}>
                         <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{builder.full_name || builder.username}</td>
                         <td style={{ color: '#64748B' }}>{builder.email}</td>
-                        <td style={{ color: '#64748B' }}>{builder.phone || '-'}</td>
-                        <td style={{ color: '#64748B' }}>{builder.property_count || 0}</td>
+                        <td style={{ color: '#64748B' }}>{builder.phoneNumber || builder.phone || '-'}</td>
+                        <td style={{ color: '#64748B' }}>{builder.activeListings || builder.property_count || 0}</td>
                         <td>
                           <span style={{
                             padding: '4px 12px',
@@ -742,12 +742,13 @@ const AdminDashboard = () => {
                         <td style={{ color: '#64748B' }}>{property.type}</td>
                         <td style={{ color: '#64748B' }}>{property.city || '-'}</td>
                         <td style={{ color: '#64748B' }}>
-                          {property.legal_document_path ? (
+                          {property.legalDocumentUrl || property.legal_document_url || property.legal_document_path ? (
                             <a
-                              href={getApiUrl(`/api/properties/${property.id}/legal-doc?userId=${currentUser.id}`)}
+                              href={`https://docs.google.com/gviewer?url=${encodeURIComponent(property.legalDocumentUrl || property.legal_document_url || property.legal_document_path)}&embedded=true`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary text-decoration-none"
+                              title="Click to view PDF"
                             >
                               <i className="bi bi-file-earmark-pdf me-1"></i> View
                             </a>
@@ -1107,7 +1108,7 @@ const AdminDashboard = () => {
                       <tr key={p.id}>
                         <td style={{ color: 'var(--primary-text)' }}>{p.property?.title || '-'}</td>
                         <td style={{ color: '#64748B' }}>{p.user?.fullName || '-'}</td>
-                        <td style={{ color: '#64748B' }}>{p.builder?.companyName || '-'}</td>
+                        <td style={{ color: '#64748B' }}>{p.builder?.companyName || p.builder?.fullName || p.property?.builder?.companyName || p.property?.builder?.fullName || p.property?.builder?.username || '-'}</td>
                         <td style={{ color: '#10B981', fontWeight: 'bold' }}>₹{p.amount}</td>
                         <td style={{ color: '#64748B' }}>{formatDate(p.createdAt)}</td>
                       </tr>

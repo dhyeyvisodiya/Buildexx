@@ -47,7 +47,7 @@ public class AdminController {
 
     @GetMapping("/payments")
     public ResponseEntity<List<Payment>> getAllPayments() {
-        return ResponseEntity.ok(paymentRepository.findAll());
+        return ResponseEntity.ok(paymentRepository.findAllWithDetails());
     }
 
     @GetMapping("/withdrawals")

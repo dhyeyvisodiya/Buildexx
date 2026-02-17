@@ -587,13 +587,21 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
         {/* Property Header */}
         <div className="row mb-4 animate__animated animate__fadeInUp">
           <div className="col-md-8">
-            <h1>{property.name}</h1>
+            <h1>{property.title || property.name}</h1>
             <p style={{ color: 'var(--secondary-text)' }}>
               {property.locality ? `${property.locality}, ` : ''}{property.city} • <span className="badge bg-secondary">{property.builder_name || 'Builder/Owner'}</span>
             </p>
           </div>
           <div className="col-md-4 text-md-end">
-            <h2 style={{ color: '#C8A24A' }}>{property.purpose?.toLowerCase() === 'rent' ? `${formatCurrency(property.rent || property.rent_amount)}/mo` : formatCurrency(property.price)}</h2>
+            <h2 className="text-secondary fw-bold mb-0" style={{ color: '#0F172A' }}>
+              {(property.purpose || '').toLowerCase() === 'rent'
+                ? (() => {
+                  const rentValue = property.rent || property.rentAmount || property.rent_amount;
+                  const rentNum = rentValue ? parseFloat(String(rentValue).replace(/[^0-9.]/g, '')) : 0;
+                  return rentNum > 0 ? `${formatCurrency(rentNum)}/mo` : 'Rent on Request';
+                })()
+                : formatCurrency(property.price)}
+            </h2>
             <span className={`badge ${getAvailabilityClass(property.availability_status || property.availability)} fs-6`}>
               {getAvailabilityText(property.availability_status || property.availability)}
             </span>
@@ -794,9 +802,9 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             >
               <i className="bi bi-share me-1"></i> Share
             </button>
-            {property.brochure_url ? (
+            {property.brochure_url || property.brochureUrl ? (
               <a
-                href={`${getApiUrl()}/api/properties/${property.id}/brochure`}
+                href={`https://docs.google.com/gviewer?url=${encodeURIComponent(property.brochure_url || property.brochureUrl)}&embedded=true`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-outline-primary"
@@ -817,7 +825,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 }}
               >
                 <i className="bi bi-file-earmark-arrow-down me-2"></i>
-                Download Brochure
+                View Brochure
               </a>
             ) : (
               <button
@@ -1047,47 +1055,6 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                               </div>
                               <textarea className="form-control mb-2" placeholder="Message" name="message" value={rentForm.message} onChange={handleRentChange} required rows="3" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
                               <button type="submit" className="btn btn-primary w-100" style={{ background: 'linear-gradient(90deg, #C8A24A, #9E7C2F)', border: 'none', color: '#0B1220' }} disabled={submitting}>Submit Request</button>
-                            </form>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      <button
-                        className="btn w-100 mb-2"
-                        onClick={() => toggleForm('visit')}
-                        style={{
-                          borderRadius: '8px',
-                          fontWeight: '600',
-                          padding: '12px',
-                          transition: 'all 0.3s ease',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid #334155',
-                          color: '#F8FAFC'
-                        }}
-                      >
-                        <i className="bi bi-calendar-check me-2"></i>
-                        {showVisitForm ? 'Cancel Visit' : 'Schedule a Visit'}
-                      </button>
-                      <AnimatePresence>
-                        {showVisitForm && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            style={{ overflow: 'hidden' }}
-                          >
-                            <form onSubmit={handleVisitSubmit} className="p-3 mb-3" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--section-divider)' }}>
-                              {message.text && (
-                                <div className={`alert ${message.type === 'success' ? 'alert-success' : 'alert-danger'} py-2`}>
-                                  {message.text}
-                                </div>
-                              )}
-                              <input className="form-control mb-2" placeholder="Full Name" name="fullName" value={visitForm.fullName} onChange={(e) => setVisitForm({ ...visitForm, fullName: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
-                              <input className="form-control mb-2" placeholder="Email" name="email" value={visitForm.email} onChange={(e) => setVisitForm({ ...visitForm, email: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
-                              <input className="form-control mb-2" placeholder="Phone" name="phone" value={visitForm.phone} onChange={(e) => setVisitForm({ ...visitForm, phone: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
-                              <input type="datetime-local" className="form-control mb-2" placeholder="Visit Date & Time" name="visitDate" value={visitForm.visitDate} onChange={(e) => setVisitForm({ ...visitForm, visitDate: e.target.value })} required style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }} />
-                              <textarea className="form-control mb-2" placeholder="Message (Optional)" name="message" value={visitForm.message} onChange={(e) => setVisitForm({ ...visitForm, message: e.target.value })} rows="2" style={{ background: '#1E293B', border: '1px solid #334155', color: '#F8FAFC' }}></textarea>
-                              <button type="submit" className="btn btn-primary w-100" style={{ background: 'linear-gradient(90deg, #3B82F6, #2563EB)', border: 'none', color: '#FFFFFF' }} disabled={submitting}>Confirm Visit</button>
                             </form>
                           </motion.div>
                         )}

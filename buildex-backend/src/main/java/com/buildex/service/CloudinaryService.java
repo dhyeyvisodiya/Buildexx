@@ -34,10 +34,13 @@ public class CloudinaryService {
     }
 
     public String uploadPdf(byte[] fileBytes, String fileName) throws IOException {
+        // Remove .pdf extension from fileName since Cloudinary will add it when resource_type is raw
+        String publicId = fileName.endsWith(".pdf") ? fileName.substring(0, fileName.length() - 4) : fileName;
+        
         Map uploadResult = cloudinary.uploader().upload(fileBytes,
                 ObjectUtils.asMap("folder", "payments/receipts",
                         "resource_type", "raw",
-                        "public_id", fileName));
+                        "public_id", publicId));
         return uploadResult.get("secure_url").toString();
     }
 

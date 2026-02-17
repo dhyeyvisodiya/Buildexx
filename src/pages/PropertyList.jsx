@@ -116,10 +116,21 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   const loadProperties = async (pageNum = 0) => {
     setLoading(true);
     try {
+      // Map property type values to RESIDENTIAL or COMMERCIAL
+      const mapPropertyType = (type) => {
+        if (!type) return null;
+        const residentialTypes = ['Apartment', 'Villa', 'House', 'Farmhouse', 'Guest House', 'Plot'];
+        const commercialTypes = ['Commercial', 'Commercial Space', 'Office', 'Office Space', 'Industrial', 'Warehouse', 'Agricultural Land'];
+
+        if (residentialTypes.includes(type)) return 'RESIDENTIAL';
+        if (commercialTypes.includes(type)) return 'COMMERCIAL';
+        return null;
+      };
+
       // Map frontend filters to API filters
       const apiFilters = {
         purpose: filters.purpose === 'Sale' ? 'BUY' : (filters.purpose === 'Rent' ? 'RENT' : null),
-        propertyType: filters.type || null,
+        propertyType: mapPropertyType(filters.type),
         city: filters.city || null,
         area: filters.locality || null,
         search: filters.search || null
@@ -128,12 +139,18 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
       const result = await searchProperties(apiFilters, pageNum, pageSize);
 
       if (result.success) {
-        // Filter out sold/rented properties — they shouldn't appear in listings
-        const activeProperties = result.data.filter(p => {
-          const status = (p.availability_status || p.availability || '').toUpperCase();
-          return status !== 'SOLD' && status !== 'RENTED';
+        // Map and filter: only show verified properties (include sold properties for portfolio showcasing)
+        const properties = result.data.map(p => ({
+          ...p,
+          // Ensure availability is populated for PropertyCard
+          availability: p.availability || p.availabilityStatus || p.availability_status
+        })).filter(p => {
+          const verified = p.is_verified ?? p.isVerified ?? false;
+          return (verified === true || verified === 'true');
         });
-        setFilteredProperties(activeProperties);
+
+        setFilteredProperties(properties);
+        // Keep server pagination values but page content is filtered client-side
         setTotalPages(result.totalPages);
         setTotalElements(result.totalElements);
         setPage(pageNum);
@@ -172,15 +189,22 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
       const result = await getProperties();
 
       if (result.success) {
-        setProperties(result.data);
-        setFilteredProperties(result.data);
+        // Filter out unverified and sold properties (protect against stale/deleted items)
+        const visible = result.data.filter(p => {
+          const verified = p.is_verified ?? p.isVerified ?? false;
+          const availability = (p.availability_status || p.availability || p.availabilityStatus || '').toString().toLowerCase();
+          return (verified === true || verified === 'true') && availability !== 'sold';
+        });
 
-        // Cache the data 
-        cachedPropertiesRef.current = result.data;
+        setProperties(visible);
+        setFilteredProperties(visible);
+
+        // Cache the data (only visible ones)
+        cachedPropertiesRef.current = visible;
         dataLoadedRef.current = true;
 
         // Cache a trimmed version to save session storage space
-        const summaryData = result.data.map(p => ({
+        const summaryData = (result.data || []).map(p => ({
           id: p.id,
           name: p.name,
           title: p.title,
@@ -228,10 +252,10 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           }
         }
 
-        // Fallback: If cities array is empty (API failed), extract from properties
+        // Fallback: If cities array is empty (API failed), extract from visible properties
         setCities(prev => {
           if (prev.length === 0) {
-            return [...new Set(result.data.map(p => p.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            return [...new Set(visible.map(p => p.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
           }
           return prev;
         });
@@ -253,7 +277,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     try {
       const result = await getNearbyProperties(lat, lng, radius);
       if (result.success) {
-        setFilteredProperties(result.data);
+        // Filter nearby results to verified
+        const nearbyVisible = (result.data || []).filter(p => {
+          const verified = p.is_verified ?? p.isVerified ?? false;
+          return (verified === true || verified === 'true');
+        });
+        setFilteredProperties(nearbyVisible);
       } else {
         setFilteredProperties([]);
       }
@@ -304,9 +333,9 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         setFilters(prev => ({ ...prev, city: location.city }));
       }
     } else {
-      // Clear was clicked, reset to all properties
+      // Clear was clicked, reset to all properties (force refresh)
       setNearbyMode(false);
-      fetchProperties();
+      refreshProperties();
     }
   };
 
@@ -322,6 +351,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
   };
 
   const clearFilters = () => {
+    // Clear UI filters and cached property list, then reload verified properties
     setFilters({
       type: '',
       purpose: '',
@@ -332,7 +362,14 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     });
     setLocalities([]);
     setNearbyMode(false);
-    fetchProperties();
+    try { sessionStorage.removeItem('propertiesCache'); } catch (e) { }
+    loadProperties(0);
+  };
+
+  const refreshProperties = () => {
+    // Force refresh from server and clear client cache
+    try { sessionStorage.removeItem('propertiesCache'); } catch (e) { }
+    loadProperties(0);
   };
 
   const handleMarkerClick = (property) => {
@@ -665,7 +702,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
             </button>
             <button
               className="btn"
-              onClick={fetchProperties}
+              onClick={refreshProperties}
               style={{
                 background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
                 color: '#0F172A',

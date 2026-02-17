@@ -184,7 +184,14 @@ public class Property {
     private LocalDateTime createdAt;
 
     public enum PropertyType {
-        RESIDENTIAL, COMMERCIAL
+        // Residential
+        APARTMENT, VILLA, HOUSE, FARMHOUSE, GUEST_HOUSE,
+        // Commercial
+        COMMERCIAL, OFFICE, INDUSTRIAL, WAREHOUSE,
+        // Land
+        PLOT, AGRICULTURAL_LAND,
+        // Legacy support
+        RESIDENTIAL, COMMERCIAL_SPACE
     }
 
     public enum Purpose {

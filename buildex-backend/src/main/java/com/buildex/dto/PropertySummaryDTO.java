@@ -39,4 +39,6 @@ public class PropertySummaryDTO {
     private String legalDocumentUrl;
     @com.fasterxml.jackson.annotation.JsonProperty("panorama_image_url")
     private String panoramaImageUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("brochure_url")
+    private String brochureUrl;
 }

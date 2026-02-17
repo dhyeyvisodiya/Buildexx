@@ -129,19 +129,22 @@ public class PropertyService {
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
                 .legalDocumentUrl(property.getLegalDocumentUrl())
+                .panoramaImageUrl(property.getPanoramaImageUrl())
+                .brochureUrl(property.getBrochureUrl())
                 .build();
     }
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    @Cacheable(value = "properties_search", key = "{#purpose, #propertyType, #city, #area, #availabilityStatus, #page, #size}")
+    @Cacheable(value = "properties_search", key = "{#purpose, #propertyType, #city, #area, #availabilityStatus, #search, #page, #size}")
     public org.springframework.data.domain.Page<PropertySummaryDTO> searchPropertiesSummariesPaginated(
             Property.Purpose purpose,
             Property.PropertyType propertyType,
             String city,
             String area,
             Property.AvailabilityStatus availabilityStatus,
+            String search,
             int page, int size) {
-        return propertyRepository.findByFiltersPaginated(purpose, propertyType, city, area, availabilityStatus,
+        return propertyRepository.findByFiltersPaginated(purpose, propertyType, city, area, availabilityStatus, search,
                 org.springframework.data.domain.PageRequest.of(page, size,
                         org.springframework.data.domain.Sort.by("createdAt").descending()))
                 .map(this::convertToSummaryDTO);
@@ -260,7 +263,7 @@ public class PropertyService {
             String city,
             String area,
             Property.AvailabilityStatus availabilityStatus) {
-        return propertyRepository.findByFilters(purpose, propertyType, city, area, availabilityStatus);
+        return propertyRepository.findByFilters(purpose, propertyType, city, area, availabilityStatus, null);
     }
 
     public org.springframework.data.domain.Page<Property> searchProperties(Property.Purpose purpose,
@@ -269,7 +272,7 @@ public class PropertyService {
             String area,
             Property.AvailabilityStatus availabilityStatus,
             int page, int size) {
-        return propertyRepository.findByFiltersPaginated(purpose, propertyType, city, area, availabilityStatus,
+        return propertyRepository.findByFiltersPaginated(purpose, propertyType, city, area, availabilityStatus, null,
                 org.springframework.data.domain.PageRequest.of(page, size,
                         org.springframework.data.domain.Sort.by("createdAt").descending()));
     }

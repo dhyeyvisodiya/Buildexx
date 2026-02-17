@@ -13,6 +13,9 @@ import org.springframework.data.repository.query.Param;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByUserId(Long userId);
 
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Payment p LEFT JOIN FETCH p.user LEFT JOIN FETCH p.property prop LEFT JOIN FETCH prop.builder LEFT JOIN FETCH p.builder")
+    List<Payment> findAllWithDetails();
+
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("DELETE FROM Payment p WHERE p.property.id = :propertyId")
     void deleteByPropertyId(@Param("propertyId") Long propertyId);
