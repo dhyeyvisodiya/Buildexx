@@ -2,13 +2,16 @@ package com.buildex.service;
 
 import com.buildex.entity.Payment;
 import com.buildex.entity.Property;
+import com.buildex.entity.RentRequest;
+import com.buildex.entity.RentSubscription;
 import com.buildex.entity.User;
 import com.buildex.repository.PaymentRepository;
 import com.buildex.repository.PropertyRepository;
+import com.buildex.repository.RentRequestRepository;
+import com.buildex.repository.RentSubscriptionRepository;
 import com.buildex.repository.UserRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
-import com.razorpay.RazorpayException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.Hibernate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PaymentService {
@@ -25,6 +30,8 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
+    private final RentRequestRepository rentRequestRepository;
+    private final RentSubscriptionRepository rentSubscriptionRepository;
     private final EmailService emailService;
     private final PdfService pdfService;
     private final CloudinaryService cloudinaryService;
@@ -36,10 +43,14 @@ public class PaymentService {
     private String razorpayKeySecret;
 
     public PaymentService(PaymentRepository paymentRepository, PropertyRepository propertyRepository,
-            UserRepository userRepository, EmailService emailService, PdfService pdfService, CloudinaryService cloudinaryService) {
+            UserRepository userRepository, RentRequestRepository rentRequestRepository,
+            RentSubscriptionRepository rentSubscriptionRepository, EmailService emailService,
+            PdfService pdfService, CloudinaryService cloudinaryService) {
         this.paymentRepository = paymentRepository;
         this.propertyRepository = propertyRepository;
         this.userRepository = userRepository;
+        this.rentRequestRepository = rentRequestRepository;
+        this.rentSubscriptionRepository = rentSubscriptionRepository;
         this.emailService = emailService;
         this.pdfService = pdfService;
         this.cloudinaryService = cloudinaryService;
@@ -128,6 +139,29 @@ public class PaymentService {
                 // Rent specific updates
                 payment.setRentMonth(payment.getPaymentDate().getMonth().name() + " " + payment.getPaymentDate().getYear());
                 payment.setNextDueDate(payment.getPaymentDate().toLocalDate().plusMonths(1));
+                
+                // create or update Rent Subscription
+                RentSubscription subscription = rentSubscriptionRepository.findByUserIdAndPropertyId(payment.getUser().getId(), property.getId())
+                        .orElse(new RentSubscription());
+                
+                subscription.setUser(payment.getUser());
+                subscription.setProperty(property);
+                subscription.setBuilder(property.getBuilder());
+                subscription.setMonthlyRent(property.getRentAmount());
+                if (subscription.getStartDate() == null) {
+                    subscription.setStartDate(LocalDate.now());
+                }
+                subscription.setNextPaymentDue(LocalDate.now().plusMonths(1));
+                subscription.setLastPaymentId(payment.getId());
+                subscription.setActive(true);
+                rentSubscriptionRepository.save(subscription);
+                
+                // Approve corresponding Rent Request
+                Optional<RentRequest> rentRequest = rentRequestRepository.findByPropertyIdAndEmail(property.getId(), payment.getUser().getEmail());
+                rentRequest.ifPresent(req -> {
+                    req.setStatus(RentRequest.Status.APPROVED);
+                    rentRequestRepository.save(req);
+                });
                 
             } else if (payment.getPaymentType() == Payment.PaymentType.BUY) {
                 property.setBuyer(payment.getUser());
@@ -244,3 +278,4 @@ public class PaymentService {
         }
     }
 }
+

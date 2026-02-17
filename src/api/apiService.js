@@ -422,12 +422,32 @@ export const getUserPayments = async (userId) => {
 };
 
 export const fetchUserRentSubscriptions = async (userId) => {
-    // Mock
-    return { success: true, data: [] };
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rent-subscriptions/user/${userId}`);
+        const data = await handleResponse(response);
+
+        // Normalize property data inside subscriptions
+        const normalized = (data || []).map(sub => ({
+            ...sub,
+            property: sub.property ? normalizeProperty(sub.property) : null,
+            // Map backend fields to frontend expectation if needed (e.g. snack_case to camelCase)
+            rent_amount: sub.monthlyRent,
+            next_payment_due: sub.nextPaymentDue,
+            city: sub.property?.city,
+            area: sub.property?.locality,
+            property_name: sub.property?.title || sub.property?.name
+        }));
+
+        return { success: true, data: normalized };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
 };
 
 export const payRent = async (subscriptionId, amount) => {
-    // Mock
+    // Determine target URL - leveraging existing payment flow or specific rent payment
+    // For now, we can reuse the create-order flow if we have propertyId, or implement specific logic
+    // But since the UI calls this, let's just use a placeholder success for now as the main payment flow is via PaymentButton
     return { success: true };
 };
 
@@ -688,10 +708,16 @@ export const createEnquiry = async (data) => {
 
 export const createRentRequest = async (data) => {
     try {
+        // Fix for backend expecting nested property object
+        const payload = { ...data };
+        if (payload.propertyId && !payload.property) {
+            payload.property = { id: payload.propertyId };
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/rent-requests`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
         const result = await handleResponse(response);
         return { success: true, data: result };

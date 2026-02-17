@@ -28,6 +28,22 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showReportModal, setShowReportModal] = useState(false);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
   // Caching refs to prevent repeated API calls
   const loadedPropertyIdRef = useRef(null);
   const cachedPropertyRef = useRef(null);
@@ -852,7 +868,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
         <div className="row">
           {/* Details Section */}
           <div className="col-lg-8">
-            <div className="details-section mb-5 animate__animated animate__fadeInUp animate__delay-2s">
+            <motion.div variants={itemVariants} className="details-section mb-5">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h3 className="mb-0">Property Details</h3>
               </div>
@@ -891,15 +907,19 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
               <h4 className="mt-4">Amenities</h4>
               <div className="row g-2">
                 {property.amenities && property.amenities.map((amenity, index) => (
-                  <div className="col-auto" key={index}>
+                  <motion.div
+                    variants={itemVariants}
+                    className="col-auto"
+                    key={index}
+                  >
                     <span className="badge" style={{ backgroundColor: '#C8A24A', color: '#0B1220' }}>{amenity}</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Map Section - Using OpenStreetMap */}
-            <div className="map-section mb-5 animate__animated animate__fadeInUp animate__delay-3s">
+            <motion.div variants={itemVariants} className="map-section mb-5">
               <h3>
                 <i className="bi bi-geo-alt-fill me-2" style={{ color: 'var(--construction-gold)' }}></i>
                 Property Location
@@ -940,15 +960,15 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
 
             {/* Nearby Places Section */}
-            <div className="nearby-section mb-5 animate__animated animate__fadeInUp animate__delay-3s">
+            <motion.div variants={itemVariants} className="nearby-section mb-5">
               <NearbyPlaces property={property} height="350px" />
-            </div>
+            </motion.div>
 
             {/* 360° Virtual Tour Section - Using Pannellum */}
-            <div className="view-section mb-5 animate__animated animate__fadeInUp animate__delay-4s">
+            <motion.div variants={itemVariants} className="view-section mb-5">
               <h3>
                 <i className="bi bi-badge-vr me-2" style={{ color: 'var(--construction-gold)' }}></i>
                 360° Virtual Tour
@@ -959,7 +979,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 title={`360° View - ${property.name}`}
                 height="450px"
               />
-            </div>
+            </motion.div>
           </div>
 
           {/* Action Panel */}

@@ -19,4 +19,6 @@ public interface RentRequestRepository extends JpaRepository<RentRequest, Long> 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("DELETE FROM RentRequest r WHERE r.property.id = :propertyId")
     void deleteByPropertyId(@Param("propertyId") Long propertyId);
+
+    java.util.Optional<RentRequest> findByPropertyIdAndEmail(Long propertyId, String email);
 }
