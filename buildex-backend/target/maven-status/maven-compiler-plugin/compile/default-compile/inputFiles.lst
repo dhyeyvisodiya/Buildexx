@@ -18,7 +18,6 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\co
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\ShareController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\TestEmailController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\UserController.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\WishlistController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\controller\WithdrawalController.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\dto\BuilderSummaryDTO.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\dto\PropertySummaryDTO.java
@@ -29,7 +28,6 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\en
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\RentRequest.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\RentSubscription.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\User.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Wishlist.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\entity\Withdrawal.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\GlobalExceptionHandler.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\exception\ResourceNotFoundException.java
@@ -41,7 +39,6 @@ C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\re
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\RentRequestRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\RentSubscriptionRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\UserRepository.java
-C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\WishlistRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\repository\WithdrawalRepository.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\CloudinaryService.java
 C:\Users\Desktop\Documents\Buildexx\buildex-backend\src\main\java\com\buildex\service\ComplaintService.java

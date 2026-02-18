@@ -57,6 +57,11 @@ public class EnquiryController {
         return ResponseEntity.ok(enquiries);
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Enquiry>> getEnquiriesByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(enquiryService.getEnquiriesByUserId(userId));
+    }
+
     @GetMapping("/all")
     public ResponseEntity<List<Enquiry>> getAllEnquiries() {
         return ResponseEntity.ok(enquiryService.getAllEnquiries());

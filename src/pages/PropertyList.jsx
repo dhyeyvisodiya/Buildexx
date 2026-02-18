@@ -136,7 +136,9 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         search: filters.search || null
       };
 
-      const result = await searchProperties(apiFilters, pageNum, pageSize);
+      // Use larger page size for map view to show all properties
+      const currentSize = viewMode === 'map' ? 1000 : pageSize;
+      const result = await searchProperties(apiFilters, pageNum, currentSize);
 
       if (result.success) {
         // Map and filter: only show verified properties (include sold properties for portfolio showcasing)
@@ -172,7 +174,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
     if (!nearbyMode) {
       loadProperties(0);
     }
-  }, [filters.type, filters.purpose, filters.city, filters.locality, filters.search, nearbyMode]);
+  }, [filters.type, filters.purpose, filters.city, filters.locality, filters.search, nearbyMode, viewMode]);
 
   // Handle location from search or geolocation
   useEffect(() => {
@@ -728,7 +730,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
               fontWeight: '700',
               fontSize: '1.1rem'
             }}>
-              {filteredProperties.length}
+              {nearbyMode ? filteredProperties.length : totalElements}
             </span>
             <div className="d-flex flex-column">
               <h5 className="mb-0" style={{ color: '#0F172A' }}>

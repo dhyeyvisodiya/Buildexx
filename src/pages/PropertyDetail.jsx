@@ -820,7 +820,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
             </button>
             {property.brochure_url || property.brochureUrl ? (
               <a
-                href={`https://docs.google.com/gviewer?url=${encodeURIComponent(property.brochure_url || property.brochureUrl)}&embedded=true`}
+                href={`https://docs.google.com/gviewer?url=${encodeURIComponent(getImageUrl(property.brochure_url || property.brochureUrl))}&embedded=true`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-outline-primary"

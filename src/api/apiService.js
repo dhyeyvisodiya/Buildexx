@@ -405,7 +405,22 @@ export const getUserRentHistory = async (userId) => {
     try {
         const response = await fetch(`${API_BASE_URL}/api/rent-requests/user/${userId}`);
         const data = await handleResponse(response);
-        return { success: true, data };
+
+        let requests = [];
+        if (Array.isArray(data)) {
+            requests = data;
+        } else if (data && data.content) {
+            requests = data.content;
+        } else if (data && data.data) {
+            requests = data.data;
+        }
+
+        const normalized = requests.map(req => ({
+            ...req,
+            property: req.property ? normalizeProperty(req.property) : null
+        }));
+
+        return { success: true, data: normalized };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -752,7 +767,8 @@ export const createPaymentOrder = async (userId, propertyId) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, propertyId })
         });
-        return handleResponse(response);
+        const data = await handleResponse(response);
+        return { success: true, data };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -765,7 +781,8 @@ export const verifyPayment = async (data) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        return handleResponse(response);
+        const result = await handleResponse(response);
+        return { success: true, data: result };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -775,10 +792,10 @@ export const checkBookingStatus = async (userId, propertyId) => {
     try {
         const response = await fetch(`${API_BASE_URL}/api/payments/check-booking?userId=${userId}&propertyId=${propertyId}`);
         const result = await handleResponse(response);
-        return result; // Backend returns { isBooked: boolean }
+        return { success: true, ...result }; // Backend returns { isBooked: boolean }
     } catch (error) {
         console.error("Error checking booking status:", error);
-        return { isBooked: false };
+        return { success: false, isBooked: false, error: error.message };
     }
 };
 

@@ -22,6 +22,7 @@ import {
 } from '../api/apiService';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { getApiUrl } from '../config';
+import { getImageUrl } from '../utils/imageUtils';
 import '../DashboardStyles.css';
 import { color } from 'framer-motion';
 
@@ -744,7 +745,7 @@ const AdminDashboard = () => {
                         <td style={{ color: '#64748B' }}>
                           {property.legalDocumentUrl || property.legal_document_url || property.legal_document_path ? (
                             <a
-                              href={`https://docs.google.com/gviewer?url=${encodeURIComponent(property.legalDocumentUrl || property.legal_document_url || property.legal_document_path)}&embedded=true`}
+                              href={`https://docs.google.com/gviewer?url=${encodeURIComponent(getImageUrl(property.legalDocumentUrl || property.legal_document_url || property.legal_document_path))}&embedded=true`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-primary text-decoration-none"

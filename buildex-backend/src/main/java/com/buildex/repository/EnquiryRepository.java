@@ -20,4 +20,6 @@ public interface EnquiryRepository extends JpaRepository<Enquiry, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("DELETE FROM Enquiry e WHERE e.property.id = :propertyId")
     void deleteByPropertyId(Long propertyId);
+
+    List<Enquiry> findByEmail(String email);
 }

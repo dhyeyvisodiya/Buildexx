@@ -18,7 +18,8 @@ public class Enquiry {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "hibernateLazyInitializer", "handler" })
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages",
+            "panorama_images", "virtualTours", "images", "hibernateLazyInitializer", "handler" })
     private Property property;
 
     @Column(nullable = false)
@@ -42,6 +43,7 @@ public class Enquiry {
 
     @CreationTimestamp
     @Column(name = "created_at")
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     public enum EnquiryType {

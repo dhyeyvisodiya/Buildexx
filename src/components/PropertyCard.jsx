@@ -60,10 +60,10 @@ const PropertyCard = ({ property, addToCompare, addToWishlist, index = 0 }) => {
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{ y: -8, scale: 1.02, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
       transition={{ type: 'spring', stiffness: 300, damping: 20, delay: index * 0.05 }}
       className="property-card card h-100"
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', overflow: 'hidden' }}
       onMouseEnter={prefetchDetails}
       onMouseLeave={cancelPrefetch}
     >

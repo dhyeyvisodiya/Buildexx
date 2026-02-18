@@ -13,10 +13,13 @@ public class EnquiryService {
 
     private final EnquiryRepository enquiryRepository;
     private final EmailService emailService;
+    private final com.buildex.repository.UserRepository userRepository;
 
-    public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService) {
+    public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService,
+            com.buildex.repository.UserRepository userRepository) {
         this.enquiryRepository = enquiryRepository;
         this.emailService = emailService;
+        this.userRepository = userRepository;
     }
 
     @org.springframework.transaction.annotation.Transactional
@@ -82,6 +85,19 @@ public class EnquiryService {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Enquiry> getEnquiriesByBuilderId(Long builderId) {
         return enquiryRepository.findByBuilderId(builderId);
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<Enquiry> getEnquiriesByUserId(Long userId) {
+        com.buildex.entity.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        List<Enquiry> enquiries = enquiryRepository.findByEmail(user.getEmail());
+        enquiries.forEach(e -> {
+            if (e.getProperty() != null) {
+                org.hibernate.Hibernate.initialize(e.getProperty());
+            }
+        });
+        return enquiries;
     }
 
     public Optional<Enquiry> getEnquiryById(Long id) {

@@ -35,7 +35,6 @@ com\buildex\config\WebConfig$StringToPropertyTypeConverter.class
 com\buildex\controller\AuthController.class
 com\buildex\repository\ComplaintRepository.class
 com\buildex\dto\PropertySummaryDTO$PropertySummaryDTOBuilder.class
-com\buildex\entity\Wishlist.class
 com\buildex\controller\ComplaintController$ComplaintRequest.class
 com\buildex\service\PropertyService.class
 com\buildex\service\RentRequestService.class
@@ -46,7 +45,6 @@ com\buildex\entity\Property$Purpose.class
 com\buildex\repository\WithdrawalRepository.class
 com\buildex\service\EmailService.class
 com\buildex\entity\RentSubscription.class
-com\buildex\controller\WishlistController.class
 com\buildex\config\SchemaFixer.class
 com\buildex\entity\Property$ConstructionStatus.class
 com\buildex\entity\Enquiry$EnquiryType.class
@@ -77,4 +75,3 @@ com\buildex\entity\Property.class
 com\buildex\controller\RentRequestController.class
 com\buildex\controller\AuthController$VerifyRequest.class
 com\buildex\entity\Complaint.class
-com\buildex\repository\WishlistRepository.class
