@@ -72,7 +72,7 @@ const ReportListing = ({ propertyId, propertyName, onSubmit, onClose, isOpen }) 
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     style={{
-                        background: '#112A46',
+                        background: 'var(--card-bg)',
                         borderRadius: '20px',
                         padding: '32px',
                         maxWidth: '500px',

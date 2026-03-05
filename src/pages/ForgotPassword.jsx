@@ -89,9 +89,9 @@ const ForgotPassword = ({ navigateTo }) => {
                                     margin: '0 auto 20px',
                                     boxShadow: '0 10px 30px rgba(59,130,246,0.3)'
                                 }}>
-                                    <i className="bi bi-key fs-1" style={{ color: '#FFFFFF' }}></i>
+                                    <i className="bi bi-key fs-1" style={{ color: 'var(--primary-text)' }}></i>
                                 </div>
-                                <h2 className="fw-bold" style={{ color: '#FFFFFF', marginBottom: '8px' }}>Forgot Password?</h2>
+                                <h2 className="fw-bold" style={{ color: 'var(--primary-text)', marginBottom: '8px' }}>Forgot Password?</h2>
                                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem' }}>
                                     No worries, we'll send you reset instructions
                                 </p>
@@ -156,7 +156,7 @@ const ForgotPassword = ({ navigateTo }) => {
                                         border: 'none',
                                         borderRadius: '12px',
                                         padding: '14px',
-                                        color: '#FFFFFF',
+                                        color: 'var(--primary-text)',
                                         fontWeight: '700',
                                         fontSize: '1rem',
                                         transition: 'all 0.3s ease',

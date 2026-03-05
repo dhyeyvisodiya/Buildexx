@@ -181,7 +181,7 @@ function AppContent() {
             bottom: '20px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'linear-gradient(135deg, #112A46, #0F1E33)',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '16px 24px',
             display: 'flex',
@@ -206,7 +206,7 @@ function AppContent() {
                     {prop.images && prop.images[0] ? (
                       <img src={getImageUrl(prop.images[0])} alt={prop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', background: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '100%', height: '100%', background: 'var(--section-divider, #1E3A5F)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <i className="bi bi-building" style={{ color: '#64748B' }}></i>
                       </div>
                     )}
@@ -220,9 +220,9 @@ function AppContent() {
                       width: '20px',
                       height: '20px',
                       background: '#EF4444',
-                      border: '2px solid #0F1E33',
+                      border: '2px solid var(--primary-bg)',
                       borderRadius: '50%',
-                      color: 'white',
+                      color: 'var(--primary-text)',
                       fontSize: '12px',
                       cursor: 'pointer',
                       display: 'flex',

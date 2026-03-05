@@ -5,8 +5,68 @@ INSERT INTO "public"."properties" (
     "construction_status", "availability_status", "city", "area", 
     "google_map_link", "image_url", "brochure_url", "virtual_tour_link", 
     "legal_document_url", "panorama_image_url", "is_verified", 
-    "latitude", "longitude", "builder_id", "created_at", "rental_status", "sold_date", "buyer_id"
+    "latitude", "longitude", "builder_id", "created_at"
 ) VALUES 
+-- 1. Green Valley Apartments (BUY)
+(
+    1, 
+    'Green Valley Apartments', 
+    'Spacious 3BHK apartment with modern amenities and lush green surroundings.', 
+    'APARTMENT', 
+    'BUY', 
+    5500000, NULL, NULL, -- Price, Rent, Deposit
+    1450, 3, 3, 2024, -- Area, Beds, Baths, Possession
+    'READY', 'AVAILABLE', 'Ahmedabad', 'Satellite', 
+    NULL, NULL, NULL, NULL, NULL, -- URLs
+    true, 23.0338, 72.5850, -- Verified, Lat, Lon
+    (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
+    CURRENT_TIMESTAMP
+),
+-- 2. Blue Ridge Villa (RENT)
+(
+    2, 
+    'Blue Ridge Villa', 
+    'Luxury 4BHK villa with private garden and pool access.', 
+    'VILLA', 
+    'RENT', 
+    NULL, 45000, 200000, -- Price, Rent (Est), Deposit (Est)
+    3200, 4, 4, 2023, 
+    'READY', 'AVAILABLE', 'Pune', 'Kalyani Nagar', 
+    NULL, NULL, NULL, NULL, NULL, 
+    true, 18.5482, 73.9030, 
+    (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
+    CURRENT_TIMESTAMP
+),
+-- 3. Skyline Towers (BUY)
+(
+    3, 
+    'Skyline Towers', 
+    'Premium high-rise apartment with panoramic city views.', 
+    'APARTMENT', 
+    'BUY', 
+    8500000, NULL, NULL, 
+    1800, 3, 3, 2025, 
+    'UNDER_CONSTRUCTION', 'AVAILABLE', 'Delhi', 'Dwarka', 
+    NULL, NULL, NULL, NULL, NULL, 
+    true, 28.5823, 77.0500, 
+    (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
+    CURRENT_TIMESTAMP
+),
+-- 4. Ocean Breeze (RENT)
+(
+    4, 
+    'Ocean Breeze', 
+    'Sea-facing 2BHK apartment in a prime location.', 
+    'APARTMENT', 
+    'RENT', 
+    NULL, 60000, 300000, 
+    1100, 2, 2, 2022, 
+    'READY', 'AVAILABLE', 'Mumbai', 'Worli', 
+    NULL, NULL, NULL, NULL, NULL, 
+    true, 19.0167, 72.8167, 
+    (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
+    CURRENT_TIMESTAMP
+),
 -- 5. Lakeview Apartments (BUY)
 (
     5, 
@@ -20,7 +80,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, -- URLs
     true, 22.3039, 70.8022, -- Verified, Lat, Lon
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 6. Urban Nest Residency (RENT)
 (
@@ -35,7 +95,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 19.1136, 72.8697, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 7. Palm Grove Homes (BUY)
 (
@@ -50,7 +110,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 18.5913, 73.7389, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 8. Silver Oak Residency (RENT)
 (
@@ -65,7 +125,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 22.7196, 75.8577, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 9. Orchid Elite Towers (BUY)
 (
@@ -80,7 +140,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 12.9716, 77.5946, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 10. Sunrise Residency (RENT)
 (
@@ -95,7 +155,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 26.9124, 75.7873, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 11. Sapphire Enclave (BUY)
 (
@@ -110,7 +170,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 30.7333, 76.7794, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 12. Harmony Heights (RENT)
 (
@@ -125,7 +185,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 23.2599, 77.4126, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 13. Golden Meadows Villa (BUY)
 (
@@ -140,7 +200,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 17.3850, 78.4867, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 14. City Square Residency (RENT)
 (
@@ -155,7 +215,7 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 26.8467, 80.9462, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 ),
 -- 15. Prestige Park View (BUY)
 (
@@ -170,11 +230,19 @@ INSERT INTO "public"."properties" (
     NULL, NULL, NULL, NULL, NULL, NULL, 
     true, 13.0827, 80.2707, 
     (SELECT id FROM users WHERE role IN ('builder', 'BUILDER') LIMIT 1), 
-    CURRENT_TIMESTAMP, 'AVAILABLE', NULL, NULL
+    CURRENT_TIMESTAMP
 );
 
 -- Insert Property Amenities
 INSERT INTO "public"."property_amenities" ("property_id", "amenity") VALUES 
+-- 1. Green Valley Apartments
+(1, 'Parking'), (1, 'Garden'), (1, 'Security'), (1, 'Clubhouse'), (1, 'Gym'),
+-- 2. Blue Ridge Villa
+(2, 'Swimming Pool'), (2, 'Private Garden'), (2, 'Parking'), (2, 'Security'), (2, 'Servant Quarter'),
+-- 3. Skyline Towers
+(3, 'Lift'), (3, 'Gym'), (3, 'Clubhouse'), (3, 'Power Backup'), (3, 'CCTV'),
+-- 4. Ocean Breeze
+(4, 'Sea View'), (4, 'Lift'), (4, 'Security'), (4, 'Parking'), (4, 'Intercom'),
 -- 5. Lakeview Apartments
 (5, 'Parking'), (5, 'Security'), (5, 'Garden'), (5, 'CCTV'),
 -- 6. Urban Nest Residency

@@ -58,6 +58,16 @@ public class User {
     public enum VerificationStatus {
         PENDING, VERIFIED
     }
+
+    // --- Subscription Fields ---
+    @Column(name = "subscription_status")
+    private String subscriptionStatus = "Not Subscribed"; // "Not Subscribed" or "Active"
+
+    @Column(name = "subscription_date")
+    private LocalDateTime subscriptionDate;
+
+    @Column(name = "property_limit")
+    private Integer propertyLimit = 1;
     // ----------------------------
 
     @CreationTimestamp
@@ -186,5 +196,29 @@ public class User {
 
     public void setProperties(List<Property> properties) {
         this.properties = properties;
+    }
+
+    public String getSubscriptionStatus() {
+        return subscriptionStatus;
+    }
+
+    public void setSubscriptionStatus(String subscriptionStatus) {
+        this.subscriptionStatus = subscriptionStatus;
+    }
+
+    public LocalDateTime getSubscriptionDate() {
+        return subscriptionDate;
+    }
+
+    public void setSubscriptionDate(LocalDateTime subscriptionDate) {
+        this.subscriptionDate = subscriptionDate;
+    }
+
+    public Integer getPropertyLimit() {
+        return propertyLimit;
+    }
+
+    public void setPropertyLimit(Integer propertyLimit) {
+        this.propertyLimit = propertyLimit;
     }
 }

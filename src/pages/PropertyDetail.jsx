@@ -852,7 +852,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                   borderRadius: '8px',
                   fontWeight: '600',
                   border: '1px solid #94A3B8',
-                  color: '#94A3B8',
+                  color: 'var(--muted-text)',
                   background: 'transparent',
                   cursor: 'not-allowed',
                   opacity: 0.6
@@ -1138,7 +1138,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
                         : 'linear-gradient(135deg, #8B5CF6, #6366F1)',
                       border: 'none',
-                      color: '#FFFFFF'
+                      color: 'var(--primary-text)'
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.transform = 'translateY(-2px)';
@@ -1225,7 +1225,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         onClick={() => handleShare('whatsapp')}
                         style={{
                           background: '#25D366',
-                          color: 'white',
+                          color: 'var(--primary-text)',
                           borderRadius: '8px',
                           padding: '10px',
                           border: 'none'
@@ -1238,7 +1238,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         onClick={() => handleShare('facebook')}
                         style={{
                           background: '#1877F2',
-                          color: 'white',
+                          color: 'var(--primary-text)',
                           borderRadius: '8px',
                           padding: '10px',
                           border: 'none'
@@ -1251,7 +1251,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         onClick={() => handleShare('twitter')}
                         style={{
                           background: '#1DA1F2',
-                          color: 'white',
+                          color: 'var(--primary-text)',
                           borderRadius: '8px',
                           padding: '10px',
                           border: 'none'
@@ -1264,7 +1264,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                         onClick={() => handleShare('copy')}
                         style={{
                           background: copied ? '#10B981' : '#64748B',
-                          color: 'white',
+                          color: 'var(--primary-text)',
                           borderRadius: '8px',
                           padding: '10px',
                           border: 'none',

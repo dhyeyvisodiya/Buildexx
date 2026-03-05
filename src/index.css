@@ -58,7 +58,35 @@ body {
   --warning-color: #F39C12;
   --danger-color: #E74C3C;
   --info-color: #3498DB;
+
+  /* Fallbacks for variables used in components */
+  --primary-bg: #0A1B2E;
+  --nav-bg: #0B1C30;
 }
+
+/* Light Theme Variables */
+[data-theme='light'] {
+  --charcoal-slate: #F8FAFC;
+  --off-white: #F1F5F9;
+  --card-bg: #FFFFFF;
+  --primary-bg: #FFFFFF;
+  --nav-bg: #FFFFFF;
+  --section-divider: #E2E8F0;
+
+  --primary-text: #0F172A;
+  --secondary-text: #475569;
+  --muted-text: #94A3B8;
+
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --card-border: 1px solid rgba(226, 232, 240, 0.6);
+  --dashboard-card-bg: #FFFFFF;
+}
+
+[data-theme='light'] body {
+  background-color: var(--off-white);
+  color: var(--primary-text);
+}
+
 
 /* Global Heading Styles */
 h1,
@@ -384,7 +412,7 @@ footer button.btn-link:hover {
 .text-gradient-gold {
   background: linear-gradient(135deg, #FFE1A1 0%, #C8A24A 100%);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-fill-color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s infinite linear;
 }

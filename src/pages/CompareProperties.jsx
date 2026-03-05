@@ -4,6 +4,7 @@ import PropertyCard from '../components/PropertyCard';
 
 import { useState, useEffect } from 'react';
 import { getPropertyById } from '../api/apiService';
+import { getImageUrl } from '../utils/imageUtils';
 
 const CompareProperties = ({ compareList, removeFromCompare }) => {
   const navigate = useNavigate();
@@ -115,7 +116,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
               onClick={() => navigate('/property-list')}
               style={{
                 background: 'linear-gradient(135deg, var(--construction-gold), var(--deep-bronze))',
-                color: '#FFFFFF',
+                color: 'var(--primary-text)',
                 padding: '12px 32px',
                 borderRadius: '12px',
                 fontWeight: '600',
@@ -166,7 +167,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
 
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <h1 className="fw-bold mb-2" style={{ color: '#FFFFFF' }}>
+                <h1 className="fw-bold mb-2" style={{ color: 'var(--primary-text)' }}>
                   <i className="bi bi-arrow-left-right me-3"></i>
                   Compare Properties
                 </h1>
@@ -179,7 +180,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                 onClick={() => navigate('/property-list')}
                 style={{
                   background: 'rgba(255, 255, 255, 0.1)',
-                  color: '#FFFFFF',
+                  color: 'var(--primary-text)',
                   padding: '10px 20px',
                   borderRadius: '10px',
                   fontWeight: '600',
@@ -195,55 +196,43 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
         </div>
 
         {/* Comparison Table */}
-        <div style={{
-          background: 'var(--card-bg)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          border: '1px solid var(--section-divider)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-        }}>
+        <div className="card shadow-lg border-0" style={{ background: 'var(--card-bg)', borderRadius: '20px', overflow: 'hidden' }}>
           <div className="table-responsive">
-            <table className="table mb-0" style={{ borderCollapse: 'separate', background: '#1E293B' }}>
-              <thead>
-                <tr style={{ background: 'var(--card-bg)', borderBottom: '2px solid var(--section-divider)' }}>
-                  <th style={{
-                    color: 'var(--primary-text)',
-                    fontWeight: '700',
-                    padding: '24px',
-                    fontSize: '1rem',
+            <table className="table mb-0" style={{ borderCollapse: 'separate', background: 'var(--card-bg)' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                <tr style={{ background: 'var(--nav-bg)' }}>
+                  <th className="py-4 px-4" style={{
+                    width: '250px',
                     borderBottom: '2px solid var(--section-divider)',
-                    minWidth: '150px',
-                    background: '#1E293B'
+                    verticalAlign: 'middle',
+                    background: 'var(--construction-gold)'
                   }}>
-                    Feature
+                    <h4 className="mb-0 fw-bold" style={{ color: '#0F172A', fontWeight: '800' }}>Comparison</h4>
                   </th>
                   {displayList.map(property => (
-                    <th key={property.id} className="text-center" style={{
-                      minWidth: '220px',
-                      padding: '24px',
+                    <td key={property.id} className="py-4 px-3 text-center" style={{
                       borderBottom: '2px solid var(--section-divider)',
-                      background: '#1E293B'
+                      background: 'var(--card-bg)',
+                      minWidth: '280px'
                     }}>
-                      <div className="d-flex flex-column align-items-center">
+                      <div className="position-relative">
                         <button
-                          className="btn btn-sm mb-3"
                           onClick={() => removeFromCompare(property.id)}
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.2)',
-                            color: '#F87171',
-                            borderRadius: '8px',
-                            fontWeight: '600',
-                            padding: '6px 16px',
-                            fontSize: '0.85rem',
-                            border: '1px solid #EF4444',
-                            transition: 'all 0.2s'
-                          }}
+                          className="btn position-absolute top-0 end-0 p-1"
+                          style={{ color: '#ef4444', zIndex: 1, background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%' }}
                         >
-                          <i className="bi bi-x-lg me-1"></i>Remove
+                          <i className="bi bi-x-lg"></i>
                         </button>
-                        <span style={{ color: 'var(--primary-text)', fontWeight: '700', fontSize: '1.2rem' }}>{property.name}</span>
+                        <img
+                          src={getImageUrl(property.thumbnail || (property.images && property.images[0])) || 'https://via.placeholder.com/400x250'}
+                          alt={property.name}
+                          className="img-fluid rounded mb-3"
+                          style={{ height: '160px', width: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                        />
+                        <h5 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>{property.name}</h5>
+                        <p className="small mb-0" style={{ color: '#C8A24A' }}>{property.city || 'N/A'}</p>
                       </div>
-                    </th>
+                    </td>
                   ))}
                 </tr>
               </thead>
@@ -287,7 +276,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                       padding: '20px 24px',
                       borderBottom: '1px solid var(--section-divider)',
                       verticalAlign: 'middle',
-                      background: idx % 2 === 0 ? '#1E293B' : '#0F172A'
+                      background: idx % 2 === 0 ? 'var(--card-bg)' : 'var(--nav-bg)'
                     }}>
                       {row.label}
                     </th>
@@ -296,7 +285,7 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                         padding: '20px',
                         borderBottom: '1px solid var(--section-divider)',
                         verticalAlign: 'middle',
-                        background: idx % 2 === 0 ? '#1E293B' : '#0F172A'
+                        background: idx % 2 === 0 ? 'var(--card-bg)' : 'var(--nav-bg)'
                       }}>
                         {loading ? (
                           <span className="placeholder-glow">
@@ -327,23 +316,23 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                     ))}
                   </tr>
                 ))}
-                <tr style={{ background: '#1E293B' }}>
+                <tr style={{ background: 'var(--card-bg)' }}>
                   <th style={{
                     color: 'var(--primary-text)',
                     fontWeight: '600',
                     padding: '20px 24px',
-                    background: '#1E293B'
+                    background: 'var(--card-bg)'
                   }}>
                     Actions
                   </th>
                   {displayList.map(property => (
-                    <td key={property.id} className="text-center" style={{ padding: '20px', background: '#1E293B' }}>
+                    <td key={property.id} className="text-center" style={{ padding: '20px', background: 'var(--card-bg)' }}>
                       <button
                         className="btn"
                         onClick={() => navigate(`/property/${property.id}`)}
                         style={{
                           background: 'linear-gradient(135deg, var(--construction-gold), var(--deep-bronze))',
-                          color: '#FFFFFF',
+                          color: 'var(--primary-text)',
                           padding: '10px 24px',
                           borderRadius: '10px',
                           fontWeight: '600',
@@ -355,12 +344,12 @@ const CompareProperties = ({ compareList, removeFromCompare }) => {
                     </td>
                   ))}
                 </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+              </tbody >
+            </table >
+          </div >
+        </div >
+      </div >
+    </div >
   );
 };
 

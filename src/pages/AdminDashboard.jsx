@@ -211,11 +211,11 @@ const AdminDashboard = () => {
   // Handle Withdrawal Approval
   const handleApproveWithdrawal = async (id, amount) => {
     // ... same content ...
-    // Simulating simple logic: 5% commission
-    const commission = amount * 0.05;
+    // Simulating simple logic: 1% commission
+    const commission = amount * 0.01;
     const payout = amount - commission;
 
-    if (window.confirm(`Approve withdrawal of ₹${amount}? \nSystem Commission (5%): ₹${commission} \nBuilder Payout: ₹${payout}`)) {
+    if (window.confirm(`Approve withdrawal of ₹${amount}? \nSystem Commission (1%): ₹${commission} \nBuilder Payout: ₹${payout}`)) {
       try {
         const result = await updateWithdrawalStatus(id, 'approved', commission, payout);
         if (result.success) {
@@ -1132,18 +1132,18 @@ const AdminDashboard = () => {
               <table className="table table-hover" style={{ background: 'transparent' }}>
                 <thead>
                   <tr>
-                    <th style={{ color: '#FFFFFF' }}>Builder</th>
-                    <th style={{ color: '#FFFFFF' }}>Requested Amount</th>
-                    <th style={{ color: '#FFFFFF' }}>Commission (System)</th>
-                    <th style={{ color: '#FFFFFF' }}>Payout</th>
-                    <th style={{ color: '#FFFFFF' }}>Status</th>
-                    <th style={{ color: '#FFFFFF' }}>Actions</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Builder</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Requested Amount</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Commission (System)</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Payout</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Status</th>
+                    <th style={{ color: 'var(--primary-text)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {withdrawals.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-4" style={{ color: '#FFFFFF' }}>
+                      <td colSpan="6" className="text-center py-4" style={{ color: 'var(--primary-text)' }}>
                         No withdrawal requests found.
                       </td>
                     </tr>
@@ -1152,19 +1152,19 @@ const AdminDashboard = () => {
                       // Calculate projected values for display if pending
                       const displayCommission = w.status === 'approved'
                         ? w.commissionAmount
-                        : (w.amount * 0.05).toFixed(2);
+                        : (w.amount * 0.01).toFixed(2);
 
                       const displayPayout = w.status === 'approved'
                         ? w.payoutAmount
-                        : (w.amount * 0.95).toFixed(2);
+                        : (w.amount * 0.99).toFixed(2);
 
                       return (
                         <tr key={w.id}>
-                          <td style={{ color: '#FFFFFF' }}>
-                            <span style={{ color: '#FFFFFF' }} className="fw-bold">{w.builder?.companyName}</span>
-                            <span className="d-block small" style={{ color: '#FFFFFF' }}>{w.builder?.fullName}</span>
+                          <td style={{ color: 'var(--primary-text)' }}>
+                            <span style={{ color: 'var(--primary-text)' }} className="fw-bold">{w.builder?.companyName}</span>
+                            <span className="d-block small" style={{ color: 'var(--primary-text)' }}>{w.builder?.fullName}</span>
                           </td>
-                          <td style={{ color: '#FFFFFF', fontWeight: 'bold' }}>₹{w.amount}</td>
+                          <td style={{ color: 'var(--primary-text)', fontWeight: 'bold' }}>₹{w.amount}</td>
                           <td style={{ color: '#EF4444' }}>
                             ₹{displayCommission}
                             {w.status?.toLowerCase() === 'pending' && <small className="text-muted fst-italic ms-1">(Est.)</small>}

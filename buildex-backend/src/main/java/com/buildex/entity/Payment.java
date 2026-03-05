@@ -36,17 +36,18 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"properties", "password"})
+    @JsonIgnoreProperties({ "properties", "password" })
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "property_id", nullable = false)
-    @JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images", "payments", "complaints", "enquiries", "hibernateLazyInitializer", "handler" })
+    @JsonIgnoreProperties({ "amenities", "galleryImages", "panoramaImages", "panorama_images", "virtualTours", "images",
+            "payments", "complaints", "enquiries", "hibernateLazyInitializer", "handler" })
     private Property property;
 
     @ManyToOne
     @JoinColumn(name = "builder_id")
-    @JsonIgnoreProperties({"properties", "password"})
+    @JsonIgnoreProperties({ "properties", "password" })
     private User builder; // Builder is now a User with role='builder'
 
     @Enumerated(EnumType.STRING)

@@ -51,6 +51,17 @@ public class PropertyService {
                     if (!"builder".equalsIgnoreCase(user.getRole())) {
                         throw new IllegalArgumentException("User is not a builder");
                     }
+
+                    // Check Subscription and Property Limit
+                    int currentPropertyCount = propertyRepository.countByBuilder_Id(userId);
+                    int allowedLimit = user.getPropertyLimit() != null ? user.getPropertyLimit() : 1;
+
+                    if (!"Active".equalsIgnoreCase(user.getSubscriptionStatus())
+                            && currentPropertyCount >= allowedLimit) {
+                        throw new IllegalStateException(
+                                "SUBSCRIPTION_REQUIRED: Property limit reached. Please subscribe to add more properties.");
+                    }
+
                     property.setBuilder(user);
                     property.setIsVerified(false); // Force manual verification by admin
                     return propertyRepository.save(property);
@@ -67,14 +78,18 @@ public class PropertyService {
     @Cacheable(value = "property_details", key = "#id")
     public Optional<Property> getPropertyByIdEager(Long id) {
         Optional<Property> propertyOpt = propertyRepository.findByIdWithBuilder(id);
-        
+
         propertyOpt.ifPresent(property -> {
-            if (property.getGalleryImages() != null) property.getGalleryImages().size();
-            if (property.getAmenities() != null) property.getAmenities().size();
-            if (property.getPanoramaImages() != null) property.getPanoramaImages().size();
-            if (property.getBuilder() != null) property.getBuilder().getEmail();
+            if (property.getGalleryImages() != null)
+                property.getGalleryImages().size();
+            if (property.getAmenities() != null)
+                property.getAmenities().size();
+            if (property.getPanoramaImages() != null)
+                property.getPanoramaImages().size();
+            if (property.getBuilder() != null)
+                property.getBuilder().getEmail();
         });
-        
+
         return propertyOpt;
     }
 
@@ -160,11 +175,15 @@ public class PropertyService {
         List<Property> properties = propertyRepository.findByBuilder_Id(builderId);
         // Initialize lazy collections
         properties.forEach(p -> {
-            if (p.getAmenities() != null) p.getAmenities().size();
-            if (p.getGalleryImages() != null) p.getGalleryImages().size();
-            if (p.getPanoramaImages() != null) p.getPanoramaImages().size();
+            if (p.getAmenities() != null)
+                p.getAmenities().size();
+            if (p.getGalleryImages() != null)
+                p.getGalleryImages().size();
+            if (p.getPanoramaImages() != null)
+                p.getPanoramaImages().size();
             // Initialize User proxy (builder) - Access non-ID field to force load
-            if (p.getBuilder() != null) p.getBuilder().getEmail();
+            if (p.getBuilder() != null)
+                p.getBuilder().getEmail();
         });
         return properties;
     }
@@ -213,15 +232,19 @@ public class PropertyService {
             }
 
             Property saved = propertyRepository.save(existingProperty);
-            
+
             // Initialize lazy collections
-            if (saved.getAmenities() != null) saved.getAmenities().size();
-            if (saved.getGalleryImages() != null) saved.getGalleryImages().size();
-            if (saved.getPanoramaImages() != null) saved.getPanoramaImages().size();
-            
+            if (saved.getAmenities() != null)
+                saved.getAmenities().size();
+            if (saved.getGalleryImages() != null)
+                saved.getGalleryImages().size();
+            if (saved.getPanoramaImages() != null)
+                saved.getPanoramaImages().size();
+
             // Initialize User proxy (builder) - Access non-ID field to force load
-            if (saved.getBuilder() != null) saved.getBuilder().getEmail();
-            
+            if (saved.getBuilder() != null)
+                saved.getBuilder().getEmail();
+
             return saved;
         });
     }
@@ -286,14 +309,19 @@ public class PropertyService {
         return propertyRepository.findById(id).map(property -> {
             property.setIsVerified(isVerified);
             Property saved = propertyRepository.save(property);
-            
-            // Initialize lazy collections to avoid LazyInitializationException during serialization
-            if (saved.getAmenities() != null) saved.getAmenities().size();
-            if (saved.getGalleryImages() != null) saved.getGalleryImages().size();
-            if (saved.getPanoramaImages() != null) saved.getPanoramaImages().size();
+
+            // Initialize lazy collections to avoid LazyInitializationException during
+            // serialization
+            if (saved.getAmenities() != null)
+                saved.getAmenities().size();
+            if (saved.getGalleryImages() != null)
+                saved.getGalleryImages().size();
+            if (saved.getPanoramaImages() != null)
+                saved.getPanoramaImages().size();
             // Initialize User proxy (builder) - Access non-ID field to force load
-            if (saved.getBuilder() != null) saved.getBuilder().getEmail();
-            
+            if (saved.getBuilder() != null)
+                saved.getBuilder().getEmail();
+
             return saved;
         });
     }

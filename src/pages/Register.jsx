@@ -147,7 +147,7 @@ const Register = () => {
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: '12px',
     padding: '14px 16px',
-    color: '#FFF',
+    color: 'var(--primary-text)',
     fontSize: '0.95rem',
     width: '100%',
     transition: 'all 0.3s ease'
@@ -331,7 +331,7 @@ const Register = () => {
                 style={{
                   background: 'rgba(255,255,255,0.1)',
                   border: '1px solid rgba(255,255,255,0.2)',
-                  color: '#FFF',
+                  color: 'var(--primary-text)',
                   padding: '12px',
                   borderRadius: '12px',
                   fontWeight: '600'
@@ -435,7 +435,7 @@ const Register = () => {
                   style={{
                     background: 'transparent',
                     border: '1px solid rgba(255,255,255,0.2)',
-                    color: '#FFF',
+                    color: 'var(--primary-text)',
                     padding: '12px',
                     borderRadius: '12px',
                     fontWeight: '600'

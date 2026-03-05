@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,13 +8,26 @@ const Header = ({ compareCount, wishlistCount }) => {
   const location = useLocation();
   const { currentUser, logout } = useAuth();
 
+  // Theme state management
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   const isActive = (path) => {
     return location.pathname === path;
   };
 
   return (
     <header className="shadow-sm" style={{
-      backgroundColor: '#0A1B2E',
+      backgroundColor: 'var(--primary-bg)',
       borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
       position: 'sticky',
       top: 0,
@@ -46,7 +59,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                 }}
               />
               <div className="d-flex flex-column align-items-start">
-                <h2 className="mb-0" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: '1.3rem' }}>Buildex</h2>
+                <h2 className="mb-0" style={{ color: 'var(--primary-text)', fontWeight: '700', fontSize: '1.3rem' }}>Buildex</h2>
                 <small className="d-none d-md-block" style={{ fontSize: '0.75rem', color: '#C8A24A', lineHeight: '1', fontWeight: '600' }}>Verified New Schemes & Smart Rental</small>
               </div>
             </button>
@@ -71,13 +84,13 @@ const Header = ({ compareCount, wishlistCount }) => {
                   <button
                     className={`nav-link btn btn-link text-decoration-none ${isActive('/') ? 'fw-bold' : ''}`}
                     style={{
-                      color: isActive('/') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)',
+                      color: isActive('/') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)'),
                       position: 'relative',
                       transition: 'all 0.3s ease'
                     }}
                     onClick={() => { navigate('/'); setIsMenuOpen(false); }}
-                    onMouseEnter={(e) => e.target.style.color = '#C8A24A'}
-                    onMouseLeave={(e) => e.target.style.color = isActive('/') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)'}
+                    onMouseEnter={(e) => e.target.style.color = (theme === 'dark' ? '#C8A24A' : '#9E7C2F')}
+                    onMouseLeave={(e) => e.target.style.color = isActive('/') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)')}
                   >
                     Home
                     {isActive('/') && (
@@ -98,13 +111,13 @@ const Header = ({ compareCount, wishlistCount }) => {
                   <button
                     className={`nav-link btn btn-link text-decoration-none ${isActive('/property-list') ? 'fw-bold' : ''}`}
                     style={{
-                      color: isActive('/property-list') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)',
+                      color: isActive('/property-list') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)'),
                       position: 'relative',
                       transition: 'all 0.3s ease'
                     }}
                     onClick={() => { navigate('/property-list'); setIsMenuOpen(false); }}
-                    onMouseEnter={(e) => e.target.style.color = '#C8A24A'}
-                    onMouseLeave={(e) => e.target.style.color = isActive('/property-list') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)'}
+                    onMouseEnter={(e) => e.target.style.color = (theme === 'dark' ? '#C8A24A' : '#9E7C2F')}
+                    onMouseLeave={(e) => e.target.style.color = isActive('/property-list') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)')}
                   >
                     Properties
                     {isActive('/property-list') && (
@@ -125,13 +138,13 @@ const Header = ({ compareCount, wishlistCount }) => {
                   <button
                     className={`nav-link btn btn-link text-decoration-none ${isActive('/compare') ? 'fw-bold' : ''}`}
                     style={{
-                      color: isActive('/compare') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)',
+                      color: isActive('/compare') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)'),
                       position: 'relative',
                       transition: 'all 0.3s ease'
                     }}
                     onClick={() => { navigate('/compare'); setIsMenuOpen(false); }}
-                    onMouseEnter={(e) => e.target.style.color = '#C8A24A'}
-                    onMouseLeave={(e) => e.target.style.color = isActive('/compare') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)'}
+                    onMouseEnter={(e) => e.target.style.color = (theme === 'dark' ? '#C8A24A' : '#9E7C2F')}
+                    onMouseLeave={(e) => e.target.style.color = isActive('/compare') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)')}
                   >
                     Compare {compareCount > 0 && <span className="badge bg-primary" style={{ backgroundColor: '#C8A24A' }}>{compareCount}</span>}
                     {isActive('/compare') && (
@@ -152,13 +165,13 @@ const Header = ({ compareCount, wishlistCount }) => {
                   <button
                     className={`nav-link btn btn-link text-decoration-none ${isActive('/wishlist') ? 'fw-bold' : ''}`}
                     style={{
-                      color: isActive('/wishlist') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)',
+                      color: isActive('/wishlist') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)'),
                       position: 'relative',
                       transition: 'all 0.3s ease'
                     }}
                     onClick={() => { navigate('/wishlist'); setIsMenuOpen(false); }}
-                    onMouseEnter={(e) => e.target.style.color = '#C8A24A'}
-                    onMouseLeave={(e) => e.target.style.color = isActive('/wishlist') ? '#C8A24A' : 'rgba(255, 255, 255, 0.9)'}
+                    onMouseEnter={(e) => e.target.style.color = (theme === 'dark' ? '#C8A24A' : '#9E7C2F')}
+                    onMouseLeave={(e) => e.target.style.color = isActive('/wishlist') ? (theme === 'dark' ? '#C8A24A' : '#9E7C2F') : (theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)')}
                   >
                     Wishlist {wishlistCount > 0 && <span className="badge bg-primary" style={{ backgroundColor: '#C8A24A' }}>{wishlistCount}</span>}
                     {isActive('/wishlist') && (
@@ -177,14 +190,31 @@ const Header = ({ compareCount, wishlistCount }) => {
                 </li>
               </ul>
 
-              <ul className="navbar-nav gap-3 align-items-lg-center">
+              <div className="d-flex align-items-center gap-2 mt-4 mt-lg-0 pb-3 pb-lg-0 border-top border-lg-0 border-dark pt-3 pt-lg-0">
+
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                  style={{
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'var(--primary-text)'
+                  }}
+                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                >
+                  <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon-stars'}`}></i>
+                </button>
+
                 {currentUser ? (
                   // User is logged in
                   <li className="nav-item dropdown">
                     <button
                       className="nav-link dropdown-toggle btn btn-link text-decoration-none d-flex align-items-center"
                       data-bs-toggle="dropdown"
-                      style={{ color: 'rgba(255, 255, 255, 0.9)', padding: '4px 8px' }}
+                      style={{ color: 'var(--primary-text)', padding: '4px 8px' }}
                     >
                       <i className="bi bi-person-circle me-1 fs-5"></i>
                       <span className="ms-1 fw-semibold">{currentUser.full_name || currentUser.fullName || currentUser.username}</span>
@@ -305,7 +335,7 @@ const Header = ({ compareCount, wishlistCount }) => {
 
                 {/* Dashboards dropdown - only shown when user is logged in and is admin */}
 
-              </ul>
+              </div>
             </div>
           </div>
         </nav>

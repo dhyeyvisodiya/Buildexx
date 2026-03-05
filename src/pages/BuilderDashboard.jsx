@@ -30,8 +30,9 @@ import { getImageUrl } from '../utils/imageUtils';
 import '../DashboardStyles.css';
 
 const BuilderDashboard = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState(localStorage.getItem('builderActiveTab') || 'overview');
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('builderActiveTab', activeTab);
@@ -560,10 +561,15 @@ const BuilderDashboard = () => {
       resetForm();
     } catch (error) {
       console.error('Submission failed:', error);
-      setFormMessage({ type: 'error', text: 'Failed to save property: ' + error.message });
+      if (error.message.includes('SUBSCRIPTION_REQUIRED')) {
+        setFormMessage({ type: 'error', text: 'You have reached the maximum number of properties for free users. Please subscribe to add more properties.' });
+        setShowSubscriptionModal(true);
+      } else {
+        setFormMessage({ type: 'error', text: 'Failed to save property: ' + error.message });
+      }
     } finally {
       setLoading(false);
-      setTimeout(() => setFormMessage({ type: '', text: '' }), 5000);
+      setTimeout(() => setFormMessage({ type: '', text: '' }), 7000);
     }
   };
 
@@ -764,7 +770,7 @@ const BuilderDashboard = () => {
                   <i className="bi bi-person-workspace fs-1" style={{ color: 'var(--charcoal-slate)' }}></i>
                 </div>
                 <div>
-                  <h2 className="fw-bold mb-1" style={{ color: '#FFFFFF' }}>
+                  <h2 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
                     Builder Dashboard
                   </h2>
                   <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
@@ -881,6 +887,49 @@ const BuilderDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Subscription Section */}
+            <div className="col-12 mt-4">
+              <div style={{
+                background: 'var(--card-bg)',
+                borderRadius: '16px',
+                padding: '24px',
+                border: '1px solid rgba(226, 232, 240, 0.1)',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
+                      <i className="bi bi-star-fill me-2" style={{ color: '#C8A24A' }}></i>
+                      Subscription Status
+                    </h5>
+                    <p style={{ color: 'var(--secondary-text)', margin: 0 }}>
+                      Current Plan: <span className="fw-bold text-success">{currentUser?.subscriptionStatus || 'Not Subscribed'}</span>
+                    </p>
+                  </div>
+                  <div>
+                    {(currentUser?.subscriptionStatus !== 'Active') && (
+                      <button
+                        onClick={() => setShowSubscriptionModal(true)}
+                        className="btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #10B981, #059669)',
+                          color: 'var(--primary-text)',
+                          padding: '10px 20px',
+                          borderRadius: '12px',
+                          fontWeight: '600',
+                          border: 'none',
+                          boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)'
+                        }}
+                      >
+                        <i className="bi bi-rocket-takeoff me-2"></i>Upgrade to Pro
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -911,591 +960,611 @@ const BuilderDashboard = () => {
             </div>
 
             {formMessage.text && (
-              <div className={`alert ${formMessage.type === 'success' ? 'alert-success' : 'alert-danger'} mb - 4`} style={{ borderRadius: '12px' }}>
+              <div className={`alert ${formMessage.type === 'success' ? 'alert-success' : 'alert-danger'} mb-4`} style={{ borderRadius: '12px' }}>
                 {formMessage.text}
               </div>
             )}
 
-            <form onSubmit={handleSubmitProperty}>
-              <div className="row g-4">
-                {/* Property Name */}
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={propertyForm.name}
-                    onChange={handleInputChange}
-                    className="form-control"
-                    placeholder="Enter property name"
-                    style={inputStyle}
-                  />
+            {!editMode && currentUser?.subscriptionStatus !== 'Active' && properties.length >= (currentUser?.propertyLimit || 1) ? (
+              <div className="text-center py-5">
+                <div style={{ width: '100px', height: '100px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <i className="bi bi-lock-fill" style={{ fontSize: '3.5rem', color: '#EF4444' }}></i>
                 </div>
+                <h4 className="fw-bold mb-3" style={{ color: 'var(--primary-text)' }}>Property Limit Reached</h4>
+                <p style={{ color: 'var(--secondary-text)', maxWidth: '450px', margin: '0 auto 30px', fontSize: '1.1rem' }}>
+                  Free builders can only list 1 property. Upgrade to our Premium plan to list unlimited properties and reach more buyers.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="btn"
+                  style={{ background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFF', padding: '14px 28px', borderRadius: '12px', fontWeight: 'bold', border: 'none', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)', fontSize: '1.1rem', transition: 'all 0.3s ease' }}
+                >
+                  <i className="bi bi-rocket-takeoff-fill me-2"></i>Upgrade to Premium
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitProperty}>
+                <div className="row g-4">
+                  {/* Property Name */}
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={propertyForm.name}
+                      onChange={handleInputChange}
+                      className="form-control"
+                      placeholder="Enter property name"
+                      style={inputStyle}
+                    />
+                  </div>
 
-                {/* Property Type */}
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Type *</label>
-                  <select
-                    name="type"
-                    value={propertyForm.type}
-                    onChange={handleInputChange}
-                    className="form-select"
-                    style={inputStyle}
-                  >
-                    <option value="" style={{ color: 'black' }}>Select Type</option>
-                    <option value="Apartment" style={{ color: 'black' }}>Apartment</option>
-                    <option value="Villa" style={{ color: 'black' }}>Villa</option>
-                    <option value="House" style={{ color: 'black' }}>House</option>
-                    <option value="Plot" style={{ color: 'black' }}>Plot</option>
-                    <option value="Commercial" style={{ color: 'black' }}>Commercial</option>
-                    <option value="Office" style={{ color: 'black' }}>Office Space</option>
-                    <option value="Farmhouse" style={{ color: 'black' }}>Farmhouse</option>
-                    <option value="Guest House" style={{ color: 'black' }}>Guest House</option>
-                    <option value="Industrial" style={{ color: 'black' }}>Industrial</option>
-                    <option value="Warehouse" style={{ color: 'black' }}>Warehouse</option>
-                  </select>
-                </div>
-
-                <AnimatePresence>
-                  {propertyForm.type && (
-                    <motion.div
-                      className="col-12 row g-4 m-0 p-0"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.5 }}
+                  {/* Property Type */}
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Type *</label>
+                    <select
+                      name="type"
+                      value={propertyForm.type}
+                      onChange={handleInputChange}
+                      className="form-select"
+                      style={inputStyle}
                     >
+                      <option value="" style={{ color: 'black' }}>Select Type</option>
+                      <option value="Apartment" style={{ color: 'black' }}>Apartment</option>
+                      <option value="Villa" style={{ color: 'black' }}>Villa</option>
+                      <option value="House" style={{ color: 'black' }}>House</option>
+                      <option value="Plot" style={{ color: 'black' }}>Plot</option>
+                      <option value="Commercial" style={{ color: 'black' }}>Commercial</option>
+                      <option value="Office" style={{ color: 'black' }}>Office Space</option>
+                      <option value="Farmhouse" style={{ color: 'black' }}>Farmhouse</option>
+                      <option value="Guest House" style={{ color: 'black' }}>Guest House</option>
+                      <option value="Industrial" style={{ color: 'black' }}>Industrial</option>
+                      <option value="Warehouse" style={{ color: 'black' }}>Warehouse</option>
+                    </select>
+                  </div>
+
+                  <AnimatePresence>
+                    {propertyForm.type && (
+                      <motion.div
+                        className="col-12 row g-4 m-0 p-0"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
 
 
-                      {/* Purpose */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Purpose *</label>
-                        <select
-                          name="purpose"
-                          value={propertyForm.purpose}
-                          onChange={handleInputChange}
-                          className="form-select"
-                          style={inputStyle}
-                        >
-                          <option value="" style={{ color: 'black' }}>Select Purpose</option>
-                          <option value="Buy" style={{ color: 'black' }}>For Sale</option>
-                          {/* Disable Rent for Land types */}
-                          {!['Plot', 'Agricultural Land'].includes(propertyForm.type) && (
-                            <option value="Rent" style={{ color: 'black' }}>For Rent</option>
-                          )}
-                        </select>
-                        {/* Warning hint for uncommon combinations */}
-                        {propertyForm.type === 'Guest House' && propertyForm.purpose === 'Buy' && (
-                          <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
-                            <i className="bi bi-info-circle me-1"></i>
-                            Guest houses are typically listed for rent
-                          </small>
-                        )}
-                        {propertyForm.type === 'Industrial' && propertyForm.purpose === 'Rent' && (
-                          <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
-                            <i className="bi bi-info-circle me-1"></i>
-                            Industrial properties are usually sold or leased
-                          </small>
-                        )}
-                      </div>
-
-                      {/* Price/Rent */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
-                          {propertyForm.purpose === 'Rent' ? 'Monthly Rent *' : 'Price *'}
-                        </label>
-                        <input
-                          type="text"
-                          name={propertyForm.purpose === 'Rent' ? 'rent' : 'price'}
-                          value={propertyForm.purpose === 'Rent' ? propertyForm.rent : propertyForm.price}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder={propertyForm.purpose === 'Rent' ? '₹ Monthly rent' : '₹ Enter price'}
-                          style={inputStyle}
-                        />
-                      </div>
-
-                      {/* Area */}
-                      <div className="col-md-4">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Area (sq.ft)</label>
-                        <input
-                          type="text"
-                          name="area"
-                          value={propertyForm.area}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder="e.g., 1200"
-                          style={inputStyle}
-                        />
-                      </div>
-
-                      {/* Bedrooms - Residential Only */}
-                      {(isResidential) && (
-                        <motion.div
-                          className="col-md-4"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                        >
-                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Bedrooms</label>
+                        {/* Purpose */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Purpose *</label>
                           <select
-                            name="bedrooms"
-                            value={propertyForm.bedrooms}
+                            name="purpose"
+                            value={propertyForm.purpose}
                             onChange={handleInputChange}
                             className="form-select"
                             style={inputStyle}
                           >
-                            <option value="" style={{ color: 'black' }}>Select</option>
-                            <option value="1" style={{ color: 'black' }}>1 BHK</option>
-                            <option value="2" style={{ color: 'black' }}>2 BHK</option>
-                            <option value="3" style={{ color: 'black' }}>3 BHK</option>
-                            <option value="4" style={{ color: 'black' }}>4 BHK</option>
-                            <option value="5" style={{ color: 'black' }}>5+ BHK</option>
+                            <option value="" style={{ color: 'black' }}>Select Purpose</option>
+                            <option value="Buy" style={{ color: 'black' }}>For Sale</option>
+                            {/* Disable Rent for Land types */}
+                            {!['Plot', 'Agricultural Land'].includes(propertyForm.type) && (
+                              <option value="Rent" style={{ color: 'black' }}>For Rent</option>
+                            )}
                           </select>
-                        </motion.div>
-                      )}
+                          {/* Warning hint for uncommon combinations */}
+                          {propertyForm.type === 'Guest House' && propertyForm.purpose === 'Buy' && (
+                            <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
+                              <i className="bi bi-info-circle me-1"></i>
+                              Guest houses are typically listed for rent
+                            </small>
+                          )}
+                          {propertyForm.type === 'Industrial' && propertyForm.purpose === 'Rent' && (
+                            <small style={{ color: '#F59E0B', display: 'block', marginTop: '4px' }}>
+                              <i className="bi bi-info-circle me-1"></i>
+                              Industrial properties are usually sold or leased
+                            </small>
+                          )}
+                        </div>
 
-                      {/* Bathrooms - Residential & Commercial */}
-                      {(!isLand) && (
-                        <motion.div
-                          className="col-md-4"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                        >
+                        {/* Price/Rent */}
+                        <div className="col-md-6">
                           <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
-                            {isCommercial ? 'Washrooms' : 'Bathrooms'}
+                            {propertyForm.purpose === 'Rent' ? 'Monthly Rent *' : 'Price *'}
                           </label>
+                          <input
+                            type="text"
+                            name={propertyForm.purpose === 'Rent' ? 'rent' : 'price'}
+                            value={propertyForm.purpose === 'Rent' ? propertyForm.rent : propertyForm.price}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder={propertyForm.purpose === 'Rent' ? '₹ Monthly rent' : '₹ Enter price'}
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        {/* Area */}
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Area (sq.ft)</label>
+                          <input
+                            type="text"
+                            name="area"
+                            value={propertyForm.area}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder="e.g., 1200"
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        {/* Bedrooms - Residential Only */}
+                        {(isResidential) && (
+                          <motion.div
+                            className="col-md-4"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                          >
+                            <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Bedrooms</label>
+                            <select
+                              name="bedrooms"
+                              value={propertyForm.bedrooms}
+                              onChange={handleInputChange}
+                              className="form-select"
+                              style={inputStyle}
+                            >
+                              <option value="" style={{ color: 'black' }}>Select</option>
+                              <option value="1" style={{ color: 'black' }}>1 BHK</option>
+                              <option value="2" style={{ color: 'black' }}>2 BHK</option>
+                              <option value="3" style={{ color: 'black' }}>3 BHK</option>
+                              <option value="4" style={{ color: 'black' }}>4 BHK</option>
+                              <option value="5" style={{ color: 'black' }}>5+ BHK</option>
+                            </select>
+                          </motion.div>
+                        )}
+
+                        {/* Bathrooms - Residential & Commercial */}
+                        {(!isLand) && (
+                          <motion.div
+                            className="col-md-4"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                          >
+                            <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
+                              {isCommercial ? 'Washrooms' : 'Bathrooms'}
+                            </label>
+                            <select
+                              name="bathrooms"
+                              value={propertyForm.bathrooms}
+                              onChange={handleInputChange}
+                              className="form-select"
+                              style={inputStyle}
+                            >
+                              <option value="" style={{ color: 'black' }}>Select</option>
+                              <option value="1" style={{ color: 'black' }}>1</option>
+                              <option value="2" style={{ color: 'black' }}>2</option>
+                              <option value="3" style={{ color: 'black' }}>3</option>
+                              <option value="4" style={{ color: 'black' }}>4+</option>
+                            </select>
+                          </motion.div>
+                        )}
+
+                        {/* City */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>City</label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={propertyForm.city}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder="Enter city"
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        {/* Locality */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Locality</label>
+                          <input
+                            type="text"
+                            name="locality"
+                            value={propertyForm.locality}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder="Enter locality/area"
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        {/* Possession Year */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Possession Year</label>
+                          <input
+                            type="number"
+                            name="possession"
+                            value={propertyForm.possession}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder="e.g. 2025"
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        {/* Construction Status */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Construction Status</label>
                           <select
-                            name="bathrooms"
-                            value={propertyForm.bathrooms}
+                            name="constructionStatus"
+                            value={propertyForm.constructionStatus}
                             onChange={handleInputChange}
                             className="form-select"
                             style={inputStyle}
                           >
-                            <option value="" style={{ color: 'black' }}>Select</option>
-                            <option value="1" style={{ color: 'black' }}>1</option>
-                            <option value="2" style={{ color: 'black' }}>2</option>
-                            <option value="3" style={{ color: 'black' }}>3</option>
-                            <option value="4" style={{ color: 'black' }}>4+</option>
+                            <option value="" style={{ color: 'black' }}>Select Status</option>
+                            <option value="Completed" style={{ color: 'black' }}>Completed</option>
+                            <option value="Under Construction" style={{ color: 'black' }}>Under Construction</option>
+                            <option value="New Launch" style={{ color: 'black' }}>New Launch</option>
                           </select>
-                        </motion.div>
-                      )}
+                        </div>
 
-                      {/* City */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>City</label>
-                        <input
-                          type="text"
-                          name="city"
-                          value={propertyForm.city}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder="Enter city"
-                          style={inputStyle}
-                        />
-                      </div>
+                        {/* Availability Status */}
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Availability Status</label>
+                          <select
+                            name="availability"
+                            value={propertyForm.availability}
+                            onChange={handleInputChange}
+                            className="form-select"
+                            style={inputStyle}
+                          >
+                            <option value="available" style={{ color: 'black' }}>Available</option>
+                            <option value="booked" style={{ color: 'black' }}>Booked</option>
+                            {/* Show Rented for Rent purpose, Sold for Buy purpose */}
+                            {propertyForm.purpose === 'Rent' ? (
+                              <option value="rented" style={{ color: 'black' }}>Rented</option>
+                            ) : (
+                              <option value="sold" style={{ color: 'black' }}>Sold</option>
+                            )}
+                          </select>
+                          <small style={{ color: '#64748B', display: 'block', marginTop: '4px' }}>
+                            {propertyForm.purpose === 'Rent'
+                              ? 'Available → Booked → Rented'
+                              : 'Available → Booked → Sold'
+                            }
+                          </small>
+                        </div>
 
-                      {/* Locality */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Locality</label>
-                        <input
-                          type="text"
-                          name="locality"
-                          value={propertyForm.locality}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder="Enter locality/area"
-                          style={inputStyle}
-                        />
-                      </div>
+                        {/* Brochure Upload */}
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
+                            <i className="bi bi-file-pdf me-1" style={{ color: '#DC2626' }}></i>
+                            Brochure (PDF)
+                          </label>
+                          <div className="d-flex flex-column gap-2">
+                            {/* File Upload */}
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                type="file"
+                                accept=".pdf,application/pdf"
+                                id="brochureUpload"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    if (file.type !== 'application/pdf') {
+                                      alert('Please upload a PDF file');
+                                      return;
+                                    }
+                                    if (file.size > 10 * 1024 * 1024) {
+                                      alert('File size must be less than 10MB');
+                                      return;
+                                    }
+                                    // Store the File object for later upload to Cloudinary
+                                    setPropertyForm(prev => ({
+                                      ...prev,
+                                      brochureUrl: 'pending-upload',
+                                      brochureFile: file
+                                    }));
+                                  }
+                                }}
+                                className="form-control"
+                                style={{
+                                  ...inputStyle,
+                                  cursor: 'pointer'
+                                }}
+                              />
+                            </div>
+                            {/* Or URL input */}
+                            <div className="d-flex align-items-center gap-2">
+                              <span style={{ color: '#64748B', fontSize: '0.8rem' }}>or paste URL:</span>
+                              <input
+                                type="text"
+                                name="brochureUrl"
+                                value={propertyForm.brochureUrl === 'pending-upload' || propertyForm.brochureUrl?.startsWith('data:') ? '' : propertyForm.brochureUrl}
+                                onChange={handleInputChange}
+                                className="form-control"
+                                placeholder="https://..."
+                                style={{ ...inputStyle, flex: 1, padding: '8px 12px' }}
+                              />
+                            </div>
 
-                      {/* Possession Year */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Possession Year</label>
-                        <input
-                          type="number"
-                          name="possession"
-                          value={propertyForm.possession}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder="e.g. 2025"
-                          style={inputStyle}
-                        />
-                      </div>
+                            {propertyForm.brochureUrl && (
+                              <div className="d-flex align-items-center gap-2 mt-1">
+                                <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
+                                <span style={{ color: '#10B981', fontSize: '0.85rem' }}>
+                                  {propertyForm.brochureUrl === 'pending-upload' ? 'PDF ready to upload' : propertyForm.brochureUrl.startsWith('data:') ? 'PDF uploaded' : 'URL set'}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  onClick={() => setPropertyForm(prev => ({ ...prev, brochureUrl: '', brochureFile: null }))}
+                                  style={{ color: '#DC2626', background: 'transparent', border: 'none', padding: '2px 8px' }}
+                                >
+                                  <i className="bi bi-x-circle"></i> Remove
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
-                      {/* Construction Status */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Construction Status</label>
-                        <select
-                          name="constructionStatus"
-                          value={propertyForm.constructionStatus}
-                          onChange={handleInputChange}
-                          className="form-select"
-                          style={inputStyle}
-                        >
-                          <option value="" style={{ color: 'black' }}>Select Status</option>
-                          <option value="Completed" style={{ color: 'black' }}>Completed</option>
-                          <option value="Under Construction" style={{ color: 'black' }}>Under Construction</option>
-                          <option value="New Launch" style={{ color: 'black' }}>New Launch</option>
-                        </select>
-                      </div>
-
-                      {/* Availability Status */}
-                      <div className="col-md-6">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Availability Status</label>
-                        <select
-                          name="availability"
-                          value={propertyForm.availability}
-                          onChange={handleInputChange}
-                          className="form-select"
-                          style={inputStyle}
-                        >
-                          <option value="available" style={{ color: 'black' }}>Available</option>
-                          <option value="booked" style={{ color: 'black' }}>Booked</option>
-                          {/* Show Rented for Rent purpose, Sold for Buy purpose */}
-                          {propertyForm.purpose === 'Rent' ? (
-                            <option value="rented" style={{ color: 'black' }}>Rented</option>
-                          ) : (
-                            <option value="sold" style={{ color: 'black' }}>Sold</option>
-                          )}
-                        </select>
-                        <small style={{ color: '#64748B', display: 'block', marginTop: '4px' }}>
-                          {propertyForm.purpose === 'Rent'
-                            ? 'Available → Booked → Rented'
-                            : 'Available → Booked → Sold'
-                          }
-                        </small>
-                      </div>
-
-                      {/* Brochure Upload */}
-                      <div className="col-md-4">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
-                          <i className="bi bi-file-pdf me-1" style={{ color: '#DC2626' }}></i>
-                          Brochure (PDF)
-                        </label>
-                        <div className="d-flex flex-column gap-2">
-                          {/* File Upload */}
-                          <div style={{ position: 'relative' }}>
+                        {/* Legal Document Upload */}
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
+                            <i className="bi bi-shield-check me-1" style={{ color: '#10B981' }}></i>
+                            Legal Document (PDF)
+                          </label>
+                          <div className="d-flex flex-column gap-2">
                             <input
                               type="file"
                               accept=".pdf,application/pdf"
-                              id="brochureUpload"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files[0];
                                 if (file) {
                                   if (file.type !== 'application/pdf') {
                                     alert('Please upload a PDF file');
                                     return;
                                   }
-                                  if (file.size > 10 * 1024 * 1024) {
-                                    alert('File size must be less than 10MB');
-                                    return;
+                                  setLoading(true);
+                                  const result = await uploadLegalDocument(file);
+                                  setLoading(false);
+                                  if (result.success) {
+                                    setPropertyForm(prev => ({ ...prev, legalDocumentPath: result.data }));
+                                    alert('Legal document uploaded successfully!');
+                                  } else {
+                                    alert('Failed to upload document');
                                   }
-                                  // Store the File object for later upload to Cloudinary
+                                }
+                              }}
+                              className="form-control"
+                              style={inputStyle}
+                            />
+                            {uploadingDoc && (
+                              <div className="d-flex align-items-center gap-2 mt-1">
+                                <div className="spinner-border spinner-border-sm text-success" role="status"></div>
+                                <span className="text-success small">Uploading...</span>
+                              </div>
+                            )}
+                            {propertyForm.legalDocumentPath && !uploadingDoc && (
+                              <div className="text-success small">
+                                <i className="bi bi-check-circle-fill me-1"></i>
+                                Document Uploaded
+                              </div>
+                            )}
+                            <small className="text-muted" style={{ fontSize: '0.75rem', color: 'var(--muted-text)' }}>
+                              * Visible only to Admin for verification
+                            </small>
+                          </div>
+                        </div>
+
+                        {/* Multi-360 Image Upload */}
+                        <div className="col-md-12">
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
+                            <i className="bi bi-camera-reels me-1" style={{ color: '#3B82F6' }}></i>
+                            360° Panorama Images (Walkthrough)
+                          </label>
+                          <div className="d-flex flex-column gap-3">
+                            <div className="d-flex gap-2 align-items-center">
+                              <input
+                                type="file"
+                                multiple
+                                accept=".jpg,.jpeg,.png"
+                                id="panorama-upload"
+                                onChange={handlePanoramaUpload}
+                                className="form-control"
+                                style={{ display: 'none' }}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={() => document.getElementById('panorama-upload').click()}
+                                disabled={uploadingPanorama}
+                                style={{ border: '1px dashed #3B82F6', color: '#3B82F6', borderRadius: '10px' }}
+                              >
+                                {uploadingPanorama ? (
+                                  <><div className="spinner-border spinner-border-sm me-2" role="status"></div>Uploading...</>
+                                ) : (
+                                  <><i className="bi bi-cloud-upload me-2"></i> Upload 360° Images</>
+                                )}
+                              </button>
+                            </div>
+                            <div className="d-flex flex-column">
+                              <small className="text-muted">Upload multiple images to create a walkthrough.</small>
+                              <small style={{ color: '#F8FAFC', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', marginTop: '4px', width: 'fit-content' }}>
+                                <i className="bi bi-info-circle me-1" style={{ color: '#3B82F6' }}></i>
+                                Note: Please upload 360° images with <strong>2:1 aspect ratio</strong> (e.g. 6000x3000 or 4000x2000).
+                              </small>
+                            </div>
+
+                            {/* Panorama Preview Grid */}
+                            {propertyForm.panoramaImages && propertyForm.panoramaImages.length > 0 && (
+                              <div className="d-flex flex-wrap gap-2 mt-2">
+                                {propertyForm.panoramaImages.map((imgUrl, index) => (
+                                  <div key={index} className="position-relative" style={{ width: '100px', height: '60px' }}>
+                                    <img
+                                      src={getImageUrl(imgUrl)}
+                                      alt={`Panorama ${index + 1}`}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #334155' }}
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iNjAiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzMzQxNTUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0YTNiOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkltYWdlIEVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                                      }}
+                                    />
+                                    < button
+                                      type="button"
+                                      className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center"
+                                      style={{ width: '18px', height: '18px', borderRadius: '50%', transform: 'translate(30%, -30%)' }}
+                                      onClick={() => {
+                                        setPropertyForm(prev => ({
+                                          ...prev,
+                                          panoramaImages: prev.panoramaImages.filter((_, i) => i !== index)
+                                        }));
+                                      }}
+                                    >
+                                      <i className="bi bi-x" style={{ fontSize: '12px' }}></i>
+                                    </button >
+                                    <div className="position-absolute bottom-0 start-0 bg-dark text-white px-1 rounded-1" style={{ fontSize: '10px', opacity: 0.8 }}>
+                                      {index + 1}
+                                    </div>
+                                  </div >
+                                ))}
+                              </div >
+                            )}
+                          </div >
+                        </div >
+
+                        {/* Property Location Section */}
+                        < div className="col-12" >
+                          <div style={{
+                            background: 'rgba(200,162,74,0.05)',
+                            border: '1px solid rgba(200,162,74,0.2)',
+                            borderRadius: '16px',
+                            padding: '24px',
+                            marginTop: '16px'
+                          }}>
+                            <h5 className="fw-bold mb-3" style={{ color: 'var(--primary-text)' }}>
+                              <i className="bi bi-geo-alt-fill me-2" style={{ color: 'var(--construction-gold)' }}></i>
+                              Property Location (Map Pin)
+                            </h5>
+                            <p style={{ color: 'var(--secondary-text)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                              Pin your property location on the map. Users will see this pin when viewing your property.
+                            </p>
+                            <MapLocationPicker
+                              initialPosition={propertyForm.latitude && propertyForm.longitude ? {
+                                lat: parseFloat(propertyForm.latitude),
+                                lng: parseFloat(propertyForm.longitude)
+                              } : null}
+                              onLocationChange={(location) => {
+                                if (location) {
                                   setPropertyForm(prev => ({
                                     ...prev,
-                                    brochureUrl: 'pending-upload',
-                                    brochureFile: file
+                                    latitude: location.latitude,
+                                    longitude: location.longitude,
+                                    googleMapLink: location.mapLink || prev.googleMapLink
                                   }));
                                 }
                               }}
-                              className="form-control"
-                              style={{
-                                ...inputStyle,
-                                cursor: 'pointer'
-                              }}
+                              height="300px"
                             />
                           </div>
-                          {/* Or URL input */}
-                          <div className="d-flex align-items-center gap-2">
-                            <span style={{ color: '#64748B', fontSize: '0.8rem' }}>or paste URL:</span>
-                            <input
-                              type="text"
-                              name="brochureUrl"
-                              value={propertyForm.brochureUrl === 'pending-upload' || propertyForm.brochureUrl?.startsWith('data:') ? '' : propertyForm.brochureUrl}
-                              onChange={handleInputChange}
-                              className="form-control"
-                              placeholder="https://..."
-                              style={{ ...inputStyle, flex: 1, padding: '8px 12px' }}
-                            />
-                          </div>
+                        </div >
 
-                          {propertyForm.brochureUrl && (
-                            <div className="d-flex align-items-center gap-2 mt-1">
-                              <i className="bi bi-check-circle-fill" style={{ color: '#10B981' }}></i>
-                              <span style={{ color: '#10B981', fontSize: '0.85rem' }}>
-                                {propertyForm.brochureUrl === 'pending-upload' ? 'PDF ready to upload' : propertyForm.brochureUrl.startsWith('data:') ? 'PDF uploaded' : 'URL set'}
-                              </span>
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                onClick={() => setPropertyForm(prev => ({ ...prev, brochureUrl: '', brochureFile: null }))}
-                                style={{ color: '#DC2626', background: 'transparent', border: 'none', padding: '2px 8px' }}
-                              >
-                                <i className="bi bi-x-circle"></i> Remove
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Legal Document Upload */}
-                      <div className="col-md-4">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
-                          <i className="bi bi-shield-check me-1" style={{ color: '#10B981' }}></i>
-                          Legal Document (PDF)
-                        </label>
-                        <div className="d-flex flex-column gap-2">
-                          <input
-                            type="file"
-                            accept=".pdf,application/pdf"
-                            onChange={async (e) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                if (file.type !== 'application/pdf') {
-                                  alert('Please upload a PDF file');
-                                  return;
-                                }
-                                setLoading(true);
-                                const result = await uploadLegalDocument(file);
-                                setLoading(false);
-                                if (result.success) {
-                                  setPropertyForm(prev => ({ ...prev, legalDocumentPath: result.data }));
-                                  alert('Legal document uploaded successfully!');
-                                } else {
-                                  alert('Failed to upload document');
-                                }
-                              }
-                            }}
+                        {/* Description */}
+                        < div className="col-12" >
+                          <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Description</label>
+                          <textarea
+                            name="description"
+                            value={propertyForm.description}
+                            onChange={handleInputChange}
                             className="form-control"
+                            rows="4"
+                            placeholder="Describe the property features, location advantages, nearby facilities..."
                             style={inputStyle}
                           />
-                          {uploadingDoc && (
-                            <div className="d-flex align-items-center gap-2 mt-1">
-                              <div className="spinner-border spinner-border-sm text-success" role="status"></div>
-                              <span className="text-success small">Uploading...</span>
-                            </div>
-                          )}
-                          {propertyForm.legalDocumentPath && !uploadingDoc && (
-                            <div className="text-success small">
-                              <i className="bi bi-check-circle-fill me-1"></i>
-                              Document Uploaded
-                            </div>
-                          )}
-                          <small className="text-muted" style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
-                            * Visible only to Admin for verification
-                          </small>
-                        </div>
-                      </div>
+                        </div >
 
-                      {/* Multi-360 Image Upload */}
-                      <div className="col-md-12">
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>
-                          <i className="bi bi-camera-reels me-1" style={{ color: '#3B82F6' }}></i>
-                          360° Panorama Images (Walkthrough)
-                        </label>
-                        <div className="d-flex flex-column gap-3">
-                          <div className="d-flex gap-2 align-items-center">
+                        {/* Amenities */}
+                        < div className="col-12" >
+                          <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Amenities</label>
+                          <input
+                            type="text"
+                            name="amenities"
+                            value={propertyForm.amenities}
+                            onChange={handleInputChange}
+                            className="form-control"
+                            placeholder="Enter amenities separated by commas (e.g., Pool, Gym, Parking, Garden)"
+                            style={inputStyle}
+                          />
+                        </div >
+
+                        {/* Images */}
+                        < div className="col-12" >
+                          <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Images</label>
+                          <div className="mb-3">
                             <input
                               type="file"
                               multiple
-                              accept=".jpg,.jpeg,.png"
-                              id="panorama-upload"
-                              onChange={handlePanoramaUpload}
-                              className="form-control"
-                              style={{ display: 'none' }}
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="form-control mb-2"
+                              style={{ background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
                             />
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary"
-                              onClick={() => document.getElementById('panorama-upload').click()}
-                              disabled={uploadingPanorama}
-                              style={{ border: '1px dashed #3B82F6', color: '#3B82F6', borderRadius: '10px' }}
-                            >
-                              {uploadingPanorama ? (
-                                <><div className="spinner-border spinner-border-sm me-2" role="status"></div>Uploading...</>
-                              ) : (
-                                <><i className="bi bi-cloud-upload me-2"></i> Upload 360° Images</>
-                              )}
-                            </button>
+                            {uploadingImages && (
+                              <div className="d-flex align-items-center gap-2 mt-1">
+                                <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                <span className="text-primary small">Uploading images...</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="d-flex flex-column">
-                            <small className="text-muted">Upload multiple images to create a walkthrough.</small>
-                            <small style={{ color: '#F8FAFC', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', marginTop: '4px', width: 'fit-content' }}>
-                              <i className="bi bi-info-circle me-1" style={{ color: '#3B82F6' }}></i>
-                              Note: Please upload 360° images with <strong>2:1 aspect ratio</strong> (e.g. 6000x3000 or 4000x2000).
-                            </small>
-                          </div>
-
-                          {/* Panorama Preview Grid */}
-                          {propertyForm.panoramaImages && propertyForm.panoramaImages.length > 0 && (
-                            <div className="d-flex flex-wrap gap-2 mt-2">
-                              {propertyForm.panoramaImages.map((imgUrl, index) => (
-                                <div key={index} className="position-relative" style={{ width: '100px', height: '60px' }}>
-                                  <img
-                                    src={getImageUrl(imgUrl)}
-                                    alt={`Panorama ${index + 1}`}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #334155' }}
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iNjAiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzMzQxNTUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0YTNiOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiPkltYWdlIEVycm9yPC90ZXh0Pjwvc3ZnPg==';
-                                    }}
-                                  />
-                                  < button
-                                    type="button"
-                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center"
-                                    style={{ width: '18px', height: '18px', borderRadius: '50%', transform: 'translate(30%, -30%)' }}
-                                    onClick={() => {
-                                      setPropertyForm(prev => ({
-                                        ...prev,
-                                        panoramaImages: prev.panoramaImages.filter((_, i) => i !== index)
-                                      }));
-                                    }}
-                                  >
-                                    <i className="bi bi-x" style={{ fontSize: '12px' }}></i>
-                                  </button >
-                                  <div className="position-absolute bottom-0 start-0 bg-dark text-white px-1 rounded-1" style={{ fontSize: '10px', opacity: 0.8 }}>
-                                    {index + 1}
-                                  </div>
-                                </div >
-                              ))}
-                            </div >
-                          )}
-                        </div >
-                      </div >
-
-                      {/* Property Location Section */}
-                      < div className="col-12" >
-                        <div style={{
-                          background: 'rgba(200,162,74,0.05)',
-                          border: '1px solid rgba(200,162,74,0.2)',
-                          borderRadius: '16px',
-                          padding: '24px',
-                          marginTop: '16px'
-                        }}>
-                          <h5 className="fw-bold mb-3" style={{ color: 'var(--primary-text)' }}>
-                            <i className="bi bi-geo-alt-fill me-2" style={{ color: 'var(--construction-gold)' }}></i>
-                            Property Location (Map Pin)
-                          </h5>
-                          <p style={{ color: 'var(--secondary-text)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                            Pin your property location on the map. Users will see this pin when viewing your property.
-                          </p>
-                          <MapLocationPicker
-                            initialPosition={propertyForm.latitude && propertyForm.longitude ? {
-                              lat: parseFloat(propertyForm.latitude),
-                              lng: parseFloat(propertyForm.longitude)
-                            } : null}
-                            onLocationChange={(location) => {
-                              if (location) {
-                                setPropertyForm(prev => ({
-                                  ...prev,
-                                  latitude: location.latitude,
-                                  longitude: location.longitude,
-                                  googleMapLink: location.mapLink || prev.googleMapLink
-                                }));
-                              }
-                            }}
-                            height="300px"
-                          />
-                        </div>
-                      </div >
-
-                      {/* Description */}
-                      < div className="col-12" >
-                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Description</label>
-                        <textarea
-                          name="description"
-                          value={propertyForm.description}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          rows="4"
-                          placeholder="Describe the property features, location advantages, nearby facilities..."
-                          style={inputStyle}
-                        />
-                      </div >
-
-                      {/* Amenities */}
-                      < div className="col-12" >
-                        <label className="form-label fw-semibold" style={{ color: '#0F172A' }}>Amenities</label>
-                        <input
-                          type="text"
-                          name="amenities"
-                          value={propertyForm.amenities}
-                          onChange={handleInputChange}
-                          className="form-control"
-                          placeholder="Enter amenities separated by commas (e.g., Pool, Gym, Parking, Garden)"
-                          style={inputStyle}
-                        />
-                      </div >
-
-                      {/* Images */}
-                      < div className="col-12" >
-                        <label className="form-label fw-semibold" style={{ color: 'var(--primary-text)' }}>Property Images</label>
-                        <div className="mb-3">
                           <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="form-control mb-2"
-                            style={{ background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
+                            style={{ borderRadius: '10px', padding: '12px 16px', background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
+                            readOnly
+                            value={Array.isArray(propertyForm.images) ? `${propertyForm.images.length} images uploaded` : ''}
                           />
-                          {uploadingImages && (
-                            <div className="d-flex align-items-center gap-2 mt-1">
-                              <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
-                              <span className="text-primary small">Uploading images...</span>
-                            </div>
-                          )}
-                        </div>
-                        <input
-                          style={{ borderRadius: '10px', padding: '12px 16px', background: 'var(--off-white)', color: 'var(--primary-text)', border: 'none' }}
-                          readOnly
-                          value={Array.isArray(propertyForm.images) ? `${propertyForm.images.length} images uploaded` : ''}
-                        />
-                      </div >
-                    </motion.div >
-                  )}
-                </AnimatePresence >
-              </div >
+                        </div >
+                      </motion.div >
+                    )}
+                  </AnimatePresence >
+                </div >
 
-              <div className="mt-4 pt-3 d-flex gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <button
-                  type="submit"
-                  className="btn"
-                  disabled={loading}
-                  style={{
-                    background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                    color: '#0F172A',
-                    padding: '14px 32px',
-                    borderRadius: '12px',
-                    fontWeight: '600',
-                    border: 'none'
-                  }}
-                >
-                  {loading ? 'Saving...' : editMode ? (
-                    <><i className="bi bi-check-circle me-2"></i>Update Property</>
-                  ) : (
-                    <><i className="bi bi-plus-circle me-2"></i>Add Property</>
-                  )}
-                </button>
-                {editMode && (
+                <div className="mt-4 pt-3 d-flex gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                   <button
-                    type="button"
-                    onClick={resetForm}
+                    type="submit"
                     className="btn"
+                    disabled={loading}
                     style={{
-                      background: '#F1F5F9',
-                      color: '#64748B',
+                      background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+                      color: '#0F172A',
                       padding: '14px 32px',
                       borderRadius: '12px',
                       fontWeight: '600',
-                      border: '1px solid #E2E8F0'
+                      border: 'none'
                     }}
                   >
-                    Cancel
+                    {loading ? 'Saving...' : editMode ? (
+                      <><i className="bi bi-check-circle me-2"></i>Update Property</>
+                    ) : (
+                      <><i className="bi bi-plus-circle me-2"></i>Add Property</>
+                    )}
                   </button>
-                )}
-              </div>
-            </form >
+                  {editMode && (
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="btn"
+                      style={{
+                        background: '#F1F5F9',
+                        color: '#64748B',
+                        padding: '14px 32px',
+                        borderRadius: '12px',
+                        fontWeight: '600',
+                        border: '1px solid #E2E8F0'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form >
+            )}
           </div >
         )
         }
@@ -1556,7 +1625,7 @@ const BuilderDashboard = () => {
                     <i className="bi bi-building" style={{ fontSize: '3rem', color: '#C8A24A' }}></i>
                   </div>
                   <h5 style={{ color: 'var(--primary-text)' }}>No properties listed yet</h5>
-                  <p style={{ color: '#94A3B8', maxWidth: '400px', margin: '0 auto' }}>
+                  <p style={{ color: 'var(--muted-text)', maxWidth: '400px', margin: '0 auto' }}>
                     Start by adding your first property to get it listed on the platform
                   </p>
                   <button
@@ -1609,9 +1678,9 @@ const BuilderDashboard = () => {
                             />
                           </td>
                           <td style={{ color: 'var(--primary-text)', fontWeight: '500' }}>{property.name}</td>
-                          <td style={{ color: '#94A3B8' }}>{property.type}</td>
-                          <td style={{ color: '#94A3B8' }}>{property.locality || '-'}</td>
-                          <td style={{ color: '#94A3B8' }}>{property.city || '-'}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{property.type}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{property.locality || '-'}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{property.city || '-'}</td>
                           <td style={{ color: '#C8A24A', fontWeight: '600' }}>
                             {property.price || property.rent || property.rentAmount || property.rent_amount || '-'}
                             {(property.purpose || '').toUpperCase() === 'RENT' && (property.rent || property.rentAmount || property.rent_amount) ? '/mo' : ''}
@@ -1720,7 +1789,7 @@ const BuilderDashboard = () => {
                     <i className="bi bi-envelope-open" style={{ fontSize: '3rem', color: '#60A5FA' }}></i>
                   </div>
                   <h5 style={{ color: 'var(--primary-text)' }}>No enquiries yet</h5>
-                  <p style={{ color: '#94A3B8' }}>
+                  <p style={{ color: 'var(--muted-text)' }}>
                     When buyers show interest in your properties, their enquiries will appear here
                   </p>
                 </div>
@@ -1756,8 +1825,8 @@ const BuilderDashboard = () => {
                             />
                           </td>
                           <td style={{ color: 'var(--primary-text)' }}>{enquiry.property?.title || 'Deleted Property'}</td>
-                          <td style={{ color: '#94A3B8' }}>{enquiry.name}</td>
-                          <td style={{ color: '#94A3B8' }}>{formatDate(enquiry.createdAt)}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{enquiry.name}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{formatDate(enquiry.createdAt)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1840,7 +1909,7 @@ const BuilderDashboard = () => {
                     <i className="bi bi-key" style={{ fontSize: '3rem', color: '#A78BFA' }}></i>
                   </div>
                   <h5 style={{ color: 'var(--primary-text)' }}>No rent requests</h5>
-                  <p style={{ color: '#94A3B8' }}>
+                  <p style={{ color: 'var(--muted-text)' }}>
                     Rental requests for your properties will appear here
                   </p>
                 </div>
@@ -1876,8 +1945,8 @@ const BuilderDashboard = () => {
                             />
                           </td>
                           <td style={{ color: 'var(--primary-text)' }}>{request.property?.title || 'Deleted Property'}</td>
-                          <td style={{ color: '#94A3B8' }}>{request.applicantName}</td>
-                          <td style={{ color: '#94A3B8' }}>{formatDate(request.createdAt)}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{request.applicantName}</td>
+                          <td style={{ color: 'var(--muted-text)' }}>{formatDate(request.createdAt)}</td>
                           <td>
                             <span style={{
                               padding: '4px 12px',
@@ -1987,11 +2056,11 @@ const BuilderDashboard = () => {
                         const status = (w.status || '').toLowerCase();
                         const displayCommission = status === 'approved'
                           ? w.commissionAmount
-                          : (w.amount * 0.05).toFixed(2);
+                          : (w.amount * 0.01).toFixed(2);
 
                         const displayPayout = status === 'approved'
                           ? w.payoutAmount
-                          : (w.amount * 0.95).toFixed(2);
+                          : (w.amount * 0.99).toFixed(2);
 
                         return (
                           <tr key={w.id}>
@@ -2048,7 +2117,7 @@ const BuilderDashboard = () => {
                   <tbody>
                     {payments.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="text-center py-4" style={{ color: '#94A3B8' }}>
+                        <td colSpan="4" className="text-center py-4" style={{ color: 'var(--muted-text)' }}>
                           No transactions found yet.
                         </td>
                       </tr>
@@ -2073,6 +2142,156 @@ const BuilderDashboard = () => {
             </div>
           )
         }
+
+        {/* Subscription Modal */}
+        {showSubscriptionModal && (
+          <div className="d-flex align-items-center justify-content-center" style={{ zIndex: 9999, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="modal-dialog modal-dialog-centered"
+              style={{ minWidth: '450px' }}
+            >
+              <div className="modal-content overflow-hidden" style={{
+                background: 'var(--card-bg)',
+                borderRadius: '24px',
+                border: '1px solid var(--section-divider)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                position: 'relative',
+                zIndex: 10000,
+                opacity: 1
+              }}>
+                {/* Decorative Header */}
+                <div style={{ background: 'linear-gradient(135deg, rgba(200, 162, 74, 0.1) 0%, rgba(200, 162, 74, 0) 100%)', padding: '30px 30px 20px', position: 'relative' }}>
+                  <button type="button" className="btn-close position-absolute top-0 end-0 m-3" onClick={() => setShowSubscriptionModal(false)} style={{ filter: 'var(--invert-close-icon, invert(0))' }}></button>
+                  <div className="text-center">
+                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #FFE1A1 0%, #C8A24A 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 20px rgba(200, 162, 74, 0.3)' }}>
+                      <i className="bi bi-gem" style={{ color: '#0F172A', fontSize: '2rem' }}></i>
+                    </div>
+                    <h4 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
+                      Buildexx Premium
+                    </h4>
+                    <p style={{ color: 'var(--construction-gold)', fontWeight: '600', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Exclusive Builder Plan</p>
+                  </div>
+                </div>
+
+                <div className="modal-body text-center px-5 pb-5 pt-0">
+                  <div className="mb-4 pt-3" style={{ borderTop: '1px solid rgba(226, 232, 240, 0.1)' }}>
+                    <div className="d-flex align-items-start justify-content-center mb-1">
+                      <span className="fw-bold mt-2 me-1" style={{ color: 'var(--secondary-text)', fontSize: '1.5rem' }}>₹</span>
+                      <h1 className="fw-bold mb-0" style={{ color: 'var(--primary-text)', fontSize: '3.5rem', letterSpacing: '-1px' }}>9,999</h1>
+                    </div>
+                    <span style={{ color: 'var(--muted-text)', fontSize: '0.9rem' }}>per year</span>
+                  </div>
+
+                  <ul className="list-unstyled text-start mb-5 mx-auto" style={{ maxWidth: '300px' }}>
+                    <li className="mb-3 d-flex align-items-center">
+                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>List <strong style={{ color: 'var(--primary-text)' }}>Unlimited</strong> Properties</span>
+                    </li>
+                    <li className="mb-3 d-flex align-items-center">
+                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Reach verified buyers instantly</span>
+                    </li>
+                    <li className="mb-3 d-flex align-items-center">
+                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Premium Builder Badge</span>
+                    </li>
+                    <li className="d-flex align-items-center">
+                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Priority 24/7 Support</span>
+                    </li>
+                  </ul>
+
+                  <button
+                    className="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFFFFF', padding: '16px 20px', borderRadius: '16px', fontSize: '1.1rem', border: 'none', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        // 1. Load Razorpay Script
+                        const loadRazorpayScript = () => {
+                          return new Promise((resolve) => {
+                            if (window.Razorpay) return resolve(true);
+                            const script = document.createElement('script');
+                            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                            script.onload = () => resolve(true);
+                            script.onerror = () => resolve(false);
+                            document.body.appendChild(script);
+                          });
+                        };
+
+                        const scriptLoaded = await loadRazorpayScript();
+                        if (!scriptLoaded) throw new Error("Could not load payment gateway. Please check your internet connection.");
+
+                        // 2. Configure Razorpay Options
+                        const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demokey';
+                        const paymentOptions = {
+                          key: RAZORPAY_KEY,
+                          amount: 9999 * 100, // Amount in paisa
+                          currency: 'INR',
+                          name: 'Buildexx Premium',
+                          description: '1 Year Builder Pro Subscription',
+                          image: '/favicon.ico', // fallback
+                          prefill: {
+                            name: currentUser?.fullName || currentUser?.companyName || 'Builder',
+                            email: currentUser?.email || '',
+                            contact: currentUser?.phone || ''
+                          },
+                          theme: { color: '#059669' },
+                          handler: async function (paymentResponse) {
+                            try {
+                              setLoading(true);
+                              const res = await fetch(`${getApiUrl()}/api/users/${currentUser.id}/subscribe`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                              });
+                              if (res.ok) {
+                                await refreshUser(currentUser.id);
+                                toast.success(`Premium Subscription Activated! Txn ID: ${paymentResponse.razorpay_payment_id}`);
+                                setShowSubscriptionModal(false);
+                                // Optional: setTimeout(() => window.location.reload(), 1500); -> NO LONGER NEEDED with refreshUser
+                              } else {
+                                toast.error('Payment succeeded but subscription activation failed. Contact support.');
+                              }
+                            } catch (err) {
+                              toast.error('Server error during activation.');
+                            } finally {
+                              setLoading(false);
+                            }
+                          }
+                        };
+
+                        const razorpay = new window.Razorpay(paymentOptions);
+                        razorpay.on('payment.failed', function (response) {
+                          toast.error(response.error.description || 'Payment Failed');
+                          setLoading(false);
+                        });
+                        razorpay.open();
+                      } catch (error) {
+                        toast.error(error.message || 'Error initializing payment gateway');
+                        setLoading(false);
+                      }
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 20px rgba(16, 185, 129, 0.3)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(16, 185, 129, 0.25)'; }}
+                  >
+                    {loading ? (
+                      <div className="spinner-border spinner-border-sm" role="status"></div>
+                    ) : (
+                      <><i className="bi bi-credit-card-fill"></i> Activate Premium Now</>
+                    )}
+                  </button>
+                  <p className="mt-3 mb-0" style={{ color: 'var(--muted-text)', fontSize: '0.8rem' }}>
+                    <i className="bi bi-shield-lock-fill me-1"></i> Secured by Razorpay
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
       </div >
     </div >
   );

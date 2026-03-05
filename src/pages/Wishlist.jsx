@@ -41,7 +41,7 @@ const Wishlist = ({ wishlist, removeFromWishlist }) => {
                 onClick={() => navigate('/properties')}
                 style={{
                   background: 'rgba(255,255,255,0.2)',
-                  color: '#FFFFFF',
+                  color: 'var(--primary-text)',
                   padding: '10px 20px',
                   borderRadius: '10px',
                   fontWeight: '600',
@@ -124,7 +124,7 @@ const Wishlist = ({ wishlist, removeFromWishlist }) => {
                     }}
                     onClick={() => removeFromWishlist(property.id)}
                   >
-                    <i className="bi bi-x-lg" style={{ color: '#FFFFFF', fontSize: '1rem' }}></i>
+                    <i className="bi bi-x-lg" style={{ color: 'var(--primary-text)', fontSize: '1rem' }}></i>
                   </button>
                 </div>
               </div>

@@ -493,7 +493,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                   disabled={geoLoading}
                   style={{
                     background: nearbyMode ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                    color: 'white',
+                    color: 'var(--primary-text)',
                     padding: '0 16px',
                     borderRadius: '0 8px 8px 0',
                     fontWeight: '600',
@@ -550,8 +550,8 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                   onClick={() => setViewMode('list')}
                   style={{
                     background: viewMode === 'list' ? 'var(--construction-gold)' : 'transparent',
-                    border: viewMode === 'list' ? 'none' : '1px solid rgba(200,162,74,0.5)',
-                    color: viewMode === 'list' ? '#0F172A' : '#F8FAFC',
+                    border: viewMode === 'list' ? 'none' : '1px solid var(--section-divider)',
+                    color: viewMode === 'list' ? '#0F172A' : 'var(--primary-text)',
                     height: '100%'
                   }}
                 >
@@ -563,8 +563,8 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                   onClick={() => setViewMode('map')}
                   style={{
                     background: viewMode === 'map' ? 'var(--construction-gold)' : 'transparent',
-                    border: viewMode === 'map' ? 'none' : '1px solid rgba(200,162,74,0.5)',
-                    color: viewMode === 'map' ? '#0F172A' : '#F8FAFC',
+                    border: viewMode === 'map' ? 'none' : '1px solid var(--section-divider)',
+                    color: viewMode === 'map' ? '#0F172A' : 'var(--primary-text)',
                     height: '100%'
                   }}
                 >
@@ -692,7 +692,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
               className="btn"
               onClick={clearFilters}
               style={{
-                background: '#0F1E33',
+                background: 'var(--card-bg)',
                 color: '#64748B',
                 padding: '10px 24px',
                 borderRadius: '10px',
@@ -733,7 +733,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
               {nearbyMode ? filteredProperties.length : totalElements}
             </span>
             <div className="d-flex flex-column">
-              <h5 className="mb-0" style={{ color: '#0F172A' }}>
+              <h5 className="mb-0" style={{ color: 'var(--primary-text)' }}>
                 {nearbyMode ? 'Properties Near You' : 'Properties Found'}
               </h5>
             </div>
@@ -756,7 +756,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           <div className="mb-4">
             {filteredProperties.length > 0 ? (
               <Suspense fallback={
-                <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F1E33', borderRadius: '16px' }}>
+                <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card-bg)', borderRadius: '16px' }}>
                   <div className="spinner-border text-warning" role="status">
                     <span className="visually-hidden">Loading map...</span>
                   </div>
@@ -772,7 +772,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
               </Suspense>
             ) : (
               <div className="text-center py-5" style={{
-                background: '#0F1E33',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
                 border: '1px solid #E2E8F0',
                 height: '500px',
@@ -793,7 +793,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                 }}>
                   <i className="bi bi-geo-alt" style={{ fontSize: '3rem', color: '#C8A24A' }}></i>
                 </div>
-                <h4 style={{ color: '#F8FAFC' }}>No properties found in this area</h4>
+                <h4 style={{ color: 'var(--primary-text)' }}>No properties found in this area</h4>
                 <p style={{ color: '#64748B', maxWidth: '400px', margin: '0 auto 20px' }}>
                   Try searching a different location or clearing filters
                 </p>
@@ -862,7 +862,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           </motion.div>
         ) : !loading && viewMode === 'list' && (
           <div className="text-center py-5" style={{
-            background: '#0F1E33',
+            background: 'var(--card-bg)',
             borderRadius: '16px',
             border: '1px solid #E2E8F0'
           }}>
@@ -913,7 +913,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                       loadProperties(page - 1);
                       window.scrollTo(0, 0);
                     }}
-                    style={{ background: '#0F1E33', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
+                    style={{ background: 'var(--card-bg)', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
                   >
                     <i className="bi bi-chevron-left"></i>
                   </button>
@@ -945,7 +945,7 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
                       loadProperties(page + 1);
                       window.scrollTo(0, 0);
                     }}
-                    style={{ background: '#0F1E33', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
+                    style={{ background: 'var(--card-bg)', color: '#C8A24A', border: '1px solid rgba(200,162,74,0.3)', padding: '10px 20px' }}
                   >
                     <i className="bi bi-chevron-right"></i>
                   </button>

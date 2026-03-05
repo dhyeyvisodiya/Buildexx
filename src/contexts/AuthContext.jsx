@@ -136,12 +136,31 @@ export const AuthProvider = ({ children }) => {
     setIsInitializing(false); // Auth check complete
   }, []);
 
+  const refreshUser = async (id) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/users/${id}`);
+      const data = await response.json();
+      if (response.ok) {
+        // Backend users API usually returns the user object directly or wrapped in data
+        const updatedUser = data.data || data;
+        setCurrentUser(updatedUser);
+        localStorage.setItem('buildex_user', JSON.stringify(updatedUser));
+        return { success: true, user: updatedUser };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Refresh user error:', error);
+      return { success: false };
+    }
+  };
+
   const value = {
     currentUser,
     login,
     logout,
     register,
     verifyOtp,
+    refreshUser,
     loading,
     isInitializing
   };

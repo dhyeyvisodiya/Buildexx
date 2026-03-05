@@ -149,7 +149,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     style={{
-                        background: '#0F1E33',
+                        background: 'var(--primary-bg)',
                         borderRadius: '20px',
                         padding: '0',
                         maxWidth: '95vw',
@@ -162,7 +162,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                 >
                     {/* Header */}
                     <div style={{
-                        background: 'linear-gradient(135deg, #112A46, #0F1E33)',
+                        background: 'var(--card-bg)',
                         padding: '24px 32px',
                         borderBottom: '1px solid rgba(200, 162, 74, 0.2)',
                         display: 'flex',
@@ -170,11 +170,11 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                         alignItems: 'center'
                     }}>
                         <div>
-                            <h3 style={{ color: '#FFFFFF', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <h3 style={{ color: 'var(--primary-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <i className="bi bi-layout-split" style={{ color: '#C8A24A' }}></i>
                                 Compare Properties
                             </h3>
-                            <p style={{ color: '#94A3B8', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
+                            <p style={{ color: 'var(--muted-text)', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
                                 {properties.length} of 3 properties selected
                             </p>
                         </div>
@@ -183,7 +183,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                             style={{
                                 background: 'rgba(255,255,255,0.1)',
                                 border: 'none',
-                                color: '#94A3B8',
+                                color: 'var(--muted-text)',
                                 fontSize: '1.5rem',
                                 width: '40px',
                                 height: '40px',
@@ -204,7 +204,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                             <thead>
                                 <tr>
                                     <th style={{
-                                        background: '#112A46',
+                                        background: 'var(--card-bg)',
                                         padding: '20px',
                                         position: 'sticky',
                                         top: 0,
@@ -216,7 +216,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                     }}></th>
                                     {properties.map((property, idx) => (
                                         <th key={property.id || idx} style={{
-                                            background: '#112A46',
+                                            background: 'var(--card-bg)',
                                             padding: '20px',
                                             position: 'sticky',
                                             top: 0,
@@ -240,7 +240,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                                         borderRadius: '50%',
                                                         width: '26px',
                                                         height: '26px',
-                                                        color: 'white',
+                                                        color: 'var(--primary-text)',
                                                         cursor: 'pointer',
                                                         zIndex: 20,
                                                         display: 'flex',
@@ -287,7 +287,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
 
                                                 {/* Property Name */}
                                                 <h5 style={{
-                                                    color: '#FFFFFF',
+                                                    color: 'var(--primary-text)',
                                                     margin: '0 0 12px 0',
                                                     fontSize: '1.1rem',
                                                     lineHeight: '1.4',
@@ -332,7 +332,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                     <tr key={field.label} style={{ background: field.isHighlight ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
                                         <td style={{
                                             padding: '16px',
-                                            color: '#94A3B8',
+                                            color: 'var(--muted-text)',
                                             fontSize: '0.9rem',
                                             borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                                             fontWeight: '500'
@@ -342,7 +342,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                         {displayProperties.map((property, idx) => (
                                             <td key={property.id || idx} style={{
                                                 padding: '16px',
-                                                color: 'white',
+                                                color: 'var(--primary-text)',
                                                 fontSize: '1rem',
                                                 fontWeight: field.isHighlight ? '600' : '400',
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
@@ -355,7 +355,7 @@ const CompareProperties = ({ properties, onRemove, onClose, isOpen }) => {
                                 ))}
                                 {/* Amenities Row - Horizontal Scroll or List */}
                                 <tr>
-                                    <td style={{ padding: '16px', color: '#94A3B8', fontSize: '0.9rem', fontWeight: '500', verticalAlign: 'top' }}>
+                                    <td style={{ padding: '16px', color: 'var(--muted-text)', fontSize: '0.9rem', fontWeight: '500', verticalAlign: 'top' }}>
                                         Amenities
                                     </td>
                                     {displayProperties.map((property, idx) => (

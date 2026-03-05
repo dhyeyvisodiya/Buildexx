@@ -16,6 +16,8 @@ import java.util.Optional;
 public interface PropertyRepository extends JpaRepository<Property, Long> {
        List<Property> findByBuilder_Id(Long builderId);
 
+       int countByBuilder_Id(Long builderId);
+
        @Query(value = "SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE p.isVerified = true", countQuery = "SELECT COUNT(p) FROM Property p WHERE p.isVerified = true")
        org.springframework.data.domain.Page<Property> findByIsVerifiedTrue(
                      org.springframework.data.domain.Pageable pageable);
@@ -37,12 +39,17 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
-                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND " +
-                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND " +
+                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND "
+                     +
+                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND "
+                     +
                      "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
-                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
-                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
-                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
+                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
+                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
                      "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
                      "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
                      "(p.isVerified = true)")
@@ -56,12 +63,17 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
        @Query("SELECT p FROM Property p LEFT JOIN FETCH p.builder WHERE " +
                      "(:purpose IS NULL OR p.purpose = :purpose) AND " +
                      "(:propertyType IS NULL OR p.propertyType = :propertyType) AND " +
-                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND " +
-                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND " +
+                     "(:city IS NULL OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:city AS string), '%'))) AND "
+                     +
+                     "(:area IS NULL OR LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:area AS string), '%'))) AND "
+                     +
                      "(:availabilityStatus IS NULL OR p.availabilityStatus = :availabilityStatus) AND " +
-                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
-                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
-                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
+                     "(:search IS NULL OR (LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
+                     "LOWER(CAST(p.builder.companyName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
+                     "LOWER(CAST(p.builder.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+                     +
                      "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
                      "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
                      "(p.isVerified = true)")

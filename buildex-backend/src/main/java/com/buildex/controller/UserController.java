@@ -20,6 +20,13 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/builders")
     public ResponseEntity<List<BuilderSummaryDTO>> getAllBuilders() {
         return ResponseEntity.ok(userRepository.findAllBuilderSummaries("builder"));

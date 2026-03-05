@@ -77,14 +77,15 @@ const Home = () => {
           Your browser does not support the video tag.
         </video>
 
-        {/* Dark Overlay for Text Readability */}
+        {/* Dark Overlay for Text Readability - Adapted for Theme */}
         <div style={{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(to bottom, rgba(11, 28, 48, 0.7), rgba(11, 28, 48, 0.9))',
+          background: 'linear-gradient(to bottom, rgba(11, 28, 48, 0.7), rgba(11, 28, 48, 0.4))',
+          backdropFilter: 'brightness(0.8)',
           zIndex: 1
         }}></div>
 
@@ -92,7 +93,7 @@ const Home = () => {
         <div className="container text-center" style={{ position: 'relative', zIndex: 2, maxWidth: '900px' }}>
           {/* Main Headline */}
           <h1 className="display-2 fw-bold mb-4 animate-fade-in-up" style={{
-            color: '#FFFFFF',
+            color: 'var(--primary-text)',
             letterSpacing: '-1px',
             lineHeight: 1.1,
             textShadow: '0 4px 20px rgba(0,0,0,0.5)'
@@ -102,10 +103,11 @@ const Home = () => {
 
           {/* Search Label */}
           <p className="mb-5 animate-fade-in-up" style={{
-            color: 'rgba(255, 255, 255, 0.9)',
+            color: 'var(--primary-text)',
             fontSize: '1.25rem',
             letterSpacing: '0.5px',
-            animationDelay: '0.2s'
+            animationDelay: '0.2s',
+            textShadow: '0 2px 10px rgba(0,0,0,0.3)'
           }}>
             Discover verified homes, connect with top builders, and make your dream a reality with Buildex.
           </p>
@@ -143,7 +145,7 @@ const Home = () => {
       }}>
         <div className="container">
           <p style={{
-            color: 'rgba(255, 255, 255, 0.9)',
+            color: 'var(--primary-text)',
             fontSize: '1.25rem',
             maxWidth: '700px',
             margin: '0 auto',
@@ -158,16 +160,19 @@ const Home = () => {
 
       {/* Statistics Counter Section */}
       <section className="stats-section py-5" style={{
-        background: 'linear-gradient(135deg, var(--charcoal-slate) 0%, #1E293B 100%)',
-        position: 'relative'
+        background: 'var(--charcoal-slate)',
+        position: 'relative',
+        borderTop: '1px solid var(--section-divider)',
+        borderBottom: '1px solid var(--section-divider)'
       }}>
         <div className="container-fluid">
           <div className="row g-4 text-center">
             <div className="col-md-3 col-6">
               <div className="stat-card p-4" style={{
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
-                border: '1px solid rgba(200,162,74,0.2)'
+                border: '1px solid var(--section-divider)',
+                boxShadow: 'var(--card-shadow)'
               }}>
                 <div className="d-flex justify-content-center mb-3">
                   <div style={{
@@ -183,14 +188,15 @@ const Home = () => {
                   </div>
                 </div>
                 <h2 className="fw-bold mb-1" style={{ color: '#C8A24A', fontSize: '2.5rem' }}>{totalProperties}+</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>Properties Listed</p>
+                <p style={{ color: 'var(--secondary-text)', margin: 0 }}>Properties Listed</p>
               </div>
             </div>
             <div className="col-md-3 col-6">
               <div className="stat-card p-4" style={{
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
-                border: '1px solid rgba(200,162,74,0.2)'
+                border: '1px solid var(--section-divider)',
+                boxShadow: 'var(--card-shadow)'
               }}>
                 <div className="d-flex justify-content-center mb-3">
                   <div style={{
@@ -206,14 +212,15 @@ const Home = () => {
                   </div>
                 </div>
                 <h2 className="fw-bold mb-1" style={{ color: '#10B981', fontSize: '2.5rem' }}>{happyCustomers}+</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>Happy Customers</p>
+                <p style={{ color: 'var(--secondary-text)', margin: 0 }}>Happy Customers</p>
               </div>
             </div>
             <div className="col-md-3 col-6">
               <div className="stat-card p-4" style={{
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
-                border: '1px solid rgba(200,162,74,0.2)'
+                border: '1px solid var(--section-divider)',
+                boxShadow: 'var(--card-shadow)'
               }}>
                 <div className="d-flex justify-content-center mb-3">
                   <div style={{
@@ -229,14 +236,15 @@ const Home = () => {
                   </div>
                 </div>
                 <h2 className="fw-bold mb-1" style={{ color: '#3B82F6', fontSize: '2.5rem' }}>{citiesCovered}+</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>Cities Covered</p>
+                <p style={{ color: 'var(--secondary-text)', margin: 0 }}>Cities Covered</p>
               </div>
             </div>
             <div className="col-md-3 col-6">
               <div className="stat-card p-4" style={{
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--card-bg)',
                 borderRadius: '16px',
-                border: '1px solid rgba(200,162,74,0.2)'
+                border: '1px solid var(--section-divider)',
+                boxShadow: 'var(--card-shadow)'
               }}>
                 <div className="d-flex justify-content-center mb-3">
                   <div style={{
@@ -252,7 +260,7 @@ const Home = () => {
                   </div>
                 </div>
                 <h2 className="fw-bold mb-1" style={{ color: '#8B5CF6', fontSize: '2.5rem' }}>{verifiedBuilders}+</h2>
-                <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>Verified Builders</p>
+                <p style={{ color: 'var(--secondary-text)', margin: 0 }}>Verified Builders</p>
               </div>
             </div>
           </div>

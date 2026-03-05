@@ -63,7 +63,7 @@ const Login = () => {
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: '12px',
     padding: '16px',
-    color: '#FFF',
+    color: 'var(--primary-text)',
     fontSize: '1rem',
     width: '100%',
     transition: 'all 0.3s ease'
