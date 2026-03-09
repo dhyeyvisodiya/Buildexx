@@ -26,9 +26,8 @@ const Header = ({ compareCount, wishlistCount }) => {
   };
 
   return (
-    <header className="shadow-sm" style={{
+    <header style={{
       backgroundColor: 'var(--primary-bg)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
       position: 'sticky',
       top: 0,
       zIndex: 1000,
@@ -190,7 +189,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                 </li>
               </ul>
 
-              <div className="d-flex align-items-center gap-2 mt-4 mt-lg-0 pb-3 pb-lg-0 border-top border-lg-0 border-dark pt-3 pt-lg-0">
+              <div className="d-flex align-items-center gap-2 mt-4 mt-lg-0 pb-3 pb-lg-0 pt-3 pt-lg-0">
 
                 {/* Theme Toggle Button */}
                 <button
@@ -210,7 +209,7 @@ const Header = ({ compareCount, wishlistCount }) => {
 
                 {currentUser ? (
                   // User is logged in
-                  <li className="nav-item dropdown">
+                  <div className="nav-item dropdown">
                     <button
                       className="nav-link dropdown-toggle btn btn-link text-decoration-none d-flex align-items-center"
                       data-bs-toggle="dropdown"
@@ -264,17 +263,17 @@ const Header = ({ compareCount, wishlistCount }) => {
                         </button>
                       </li>
                     </ul>
-                  </li>
+                  </div>
                 ) : (
                   // User is not logged in
                   <>
-                    <li className="nav-item">
+                    <div className="nav-item">
                       <button
                         className="btn btn-outline-primary"
                         onClick={() => navigate('/login')}
                         style={{
-                          border: '1px solid #FFFFFF',
-                          color: '#FFFFFF',
+                          border: `1px solid ${theme === 'dark' ? '#FFFFFF' : 'var(--primary-text)'}`,
+                          color: theme === 'dark' ? '#FFFFFF' : 'var(--primary-text)',
                           background: 'transparent',
                           borderRadius: '8px',
                           fontWeight: '600',
@@ -298,8 +297,8 @@ const Header = ({ compareCount, wishlistCount }) => {
                       >
                         Login
                       </button>
-                    </li>
-                    <li className="nav-item">
+                    </div>
+                    <div className="nav-item">
                       <button
                         className="btn btn-primary"
                         onClick={() => navigate('/register')}
@@ -329,7 +328,7 @@ const Header = ({ compareCount, wishlistCount }) => {
                       >
                         Register
                       </button>
-                    </li>
+                    </div>
                   </>
                 )}
 

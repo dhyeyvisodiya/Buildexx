@@ -143,8 +143,8 @@ const Register = () => {
   };
 
   const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--card-bg)',
+    border: '1px solid var(--section-divider)',
     borderRadius: '12px',
     padding: '14px 16px',
     color: 'var(--primary-text)',
@@ -155,12 +155,13 @@ const Register = () => {
 
   const handleFocus = (e) => {
     e.target.style.borderColor = '#C8A24A';
-    e.target.style.background = 'rgba(255,255,255,0.08)';
+    e.target.style.backgroundColor = 'var(--card-bg)';
+    e.target.style.boxShadow = '0 0 0 4px rgba(200, 162, 74, 0.1)';
   };
 
   const handleBlur = (e) => {
-    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-    e.target.style.background = 'rgba(255,255,255,0.05)';
+    e.target.style.borderColor = 'var(--section-divider)';
+    e.target.style.boxShadow = 'none';
   };
 
   return (
@@ -192,11 +193,11 @@ const Register = () => {
         {!showOtp && (
           <div className="d-flex justify-content-center mb-4 gap-2">
             <motion.div
-              animate={{ width: step === 1 ? 24 : 8, backgroundColor: step >= 1 ? '#C8A24A' : 'rgba(255,255,255,0.2)' }}
+              animate={{ width: step === 1 ? 24 : 8, backgroundColor: step >= 1 ? '#C8A24A' : 'var(--section-divider)' }}
               style={{ height: '8px', borderRadius: '4px' }}
             />
             <motion.div
-              animate={{ width: step === 2 ? 24 : 8, backgroundColor: step >= 2 ? '#C8A24A' : 'rgba(255,255,255,0.2)' }}
+              animate={{ width: step === 2 ? 24 : 8, backgroundColor: step >= 2 ? '#C8A24A' : 'var(--section-divider)' }}
               style={{ height: '8px', borderRadius: '4px' }}
             />
           </div>
@@ -212,7 +213,7 @@ const Register = () => {
             >
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label className="form-label text-white-50 small">One Time Password (OTP)</label>
+                  <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>One Time Password (OTP)</label>
                   <input
                     type="text"
                     className="form-control hover-effect"
@@ -263,7 +264,7 @@ const Register = () => {
             >
               <div className="row">
                 <div className="col-12 mb-3">
-                  <label className="form-label text-white-50 small">Username</label>
+                  <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Username</label>
                   <input
                     type="text"
                     name="username"
@@ -279,7 +280,7 @@ const Register = () => {
               </div>
 
               <div className="mb-3">
-                <label className="form-label text-white-50 small">Email</label>
+                <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Email</label>
                 <input
                   type="email"
                   name="email"
@@ -295,7 +296,7 @@ const Register = () => {
 
               <div className="row">
                 <div className="col-6 mb-3 position-relative">
-                  <label className="form-label text-white-50 small">Password</label>
+                  <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Password</label>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
@@ -306,13 +307,13 @@ const Register = () => {
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '20px', top: '38px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)' }}>
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '20px', top: '38px', background: 'none', border: 'none', color: 'var(--secondary-text)' }}>
                     <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                   </button>
                   {errors.password && <div className="text-danger mt-1 small">{errors.password}</div>}
                 </div>
                 <div className="col-6 mb-3 position-relative">
-                  <label className="form-label text-white-50 small">Confirm</label>
+                  <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Confirm</label>
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
@@ -329,19 +330,20 @@ const Register = () => {
 
               <button className="btn w-100 mt-2" onClick={nextStep}
                 style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--section-divider)',
                   color: 'var(--primary-text)',
                   padding: '12px',
                   borderRadius: '12px',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  boxShadow: 'var(--card-shadow)'
                 }}
               >
                 Next Step <i className="bi bi-arrow-right ms-2"></i>
               </button>
 
               <div className="text-center mt-3">
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Already have an account? </span>
+                <span style={{ color: 'var(--secondary-text)' }}>Already have an account? </span>
                 <Link to="/login" style={{ color: '#C8A24A', textDecoration: 'none', fontWeight: '600' }}>Sign In</Link>
               </div>
             </motion.div>
@@ -360,7 +362,7 @@ const Register = () => {
               style={{ position: 'absolute', width: '100%' }}
             >
               <div className="mb-3">
-                <label className="form-label text-white-50 small">Full Name</label>
+                <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Full Name</label>
                 <input
                   type="text"
                   name="fullName"
@@ -375,7 +377,7 @@ const Register = () => {
               </div>
 
               <div className="mb-3">
-                <label className="form-label text-white-50 small">Phone</label>
+                <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>Phone</label>
                 <input
                   type="tel"
                   name="phone"
@@ -393,7 +395,7 @@ const Register = () => {
               </div>
 
               <div className="mb-4">
-                <label className="form-label text-white-50 small">I want to...</label>
+                <label className="form-label small" style={{ color: 'var(--secondary-text)' }}>I want to...</label>
                 <div className="d-flex gap-3">
                   <button
                     type="button"
@@ -402,9 +404,9 @@ const Register = () => {
                     style={{
                       padding: '12px',
                       borderRadius: '12px',
-                      border: formData.role === 'user' ? '2px solid #C8A24A' : '1px solid rgba(255,255,255,0.1)',
-                      background: formData.role === 'user' ? 'rgba(200,162,74,0.1)' : 'rgba(255,255,255,0.03)',
-                      color: formData.role === 'user' ? '#C8A24A' : 'rgba(255,255,255,0.7)',
+                      border: formData.role === 'user' ? '2px solid #C8A24A' : '1px solid var(--section-divider)',
+                      background: formData.role === 'user' ? 'rgba(200,162,74,0.1)' : 'var(--card-bg)',
+                      color: formData.role === 'user' ? '#C8A24A' : 'var(--secondary-text)',
                       fontWeight: '600',
                       transition: 'all 0.3s ease'
                     }}
@@ -433,12 +435,13 @@ const Register = () => {
               <div className="d-flex gap-2">
                 <button className="btn flex-fill" onClick={prevStep}
                   style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--section-divider)',
                     color: 'var(--primary-text)',
                     padding: '12px',
                     borderRadius: '12px',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    boxShadow: 'var(--card-shadow)'
                   }}
                 >
                   Back

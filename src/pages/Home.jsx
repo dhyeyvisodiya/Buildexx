@@ -47,7 +47,7 @@ const Home = () => {
       {/* Hero Section with Video Background */}
       <section className="hero-section" style={{
         position: 'relative',
-        height: '90vh',
+        height: '100vh',
         width: '100%',
         overflow: 'hidden',
         display: 'flex',
@@ -93,17 +93,17 @@ const Home = () => {
         <div className="container text-center" style={{ position: 'relative', zIndex: 2, maxWidth: '900px' }}>
           {/* Main Headline */}
           <h1 className="display-2 fw-bold mb-4 animate-fade-in-up" style={{
-            color: 'var(--primary-text)',
+            color: '#FFFFFF',
             letterSpacing: '-1px',
             lineHeight: 1.1,
             textShadow: '0 4px 20px rgba(0,0,0,0.5)'
           }}>
-            Find Your <span className="text-gradient-gold">Perfect Property</span>.
+            <span className="text-gradient-gold">Find Your </span> <span className="text-gradient-gold">Perfect Property</span>.
           </h1>
 
           {/* Search Label */}
           <p className="mb-5 animate-fade-in-up" style={{
-            color: 'var(--primary-text)',
+            color: '#FFFFFF',
             fontSize: '1.25rem',
             letterSpacing: '0.5px',
             animationDelay: '0.2s',

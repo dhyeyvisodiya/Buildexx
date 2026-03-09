@@ -8,8 +8,8 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
             display: 'flex',
             height: '100vh',
             width: '100%',
-            background: 'var(--charcoal-slate)',
-            color: '#FFFFFF',
+            background: 'var(--primary-bg)',
+            color: 'var(--primary-text)',
             overflow: 'hidden'
         }}>
             {/* Left Side - Image/Branding (Hidden on mobile) */}
@@ -88,7 +88,7 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                             }}>
                                 <i className="bi bi-building" style={{ color: '#1E293B', fontSize: '1.2rem' }}></i>
                             </div>
-                            <span style={{ fontSize: '1.5rem', fontWeight: '700', letterSpacing: '-0.5px', color: '#FFF' }}>Buildex</span>
+                            <span style={{ fontSize: '1.5rem', fontWeight: '700', letterSpacing: '-0.5px', color: '#FFFFFF' }}>Buildex</span>
                         </Link>
                     </motion.div>
 
@@ -105,7 +105,7 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                             borderRadius: '20px',
                             border: '1px solid rgba(255,255,255,0.1)'
                         }}>
-                            <p style={{ fontSize: '1.2rem', lineHeight: '1.6', marginBottom: '20px', fontStyle: 'italic' }}>
+                            <p style={{ fontSize: '1.2rem', lineHeight: '1.6', marginBottom: '20px', fontStyle: 'italic', color: '#FFFFFF' }}>
                                 "{quote?.text || "The best investment on Earth is earth."}"
                             </p>
                             <div className="d-flex align-items-center gap-3">
@@ -125,13 +125,13 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
-                background: '#0F172A',
+                background: 'var(--primary-bg)',
                 overflowY: 'auto'
             }}>
                 {/* Back Link (Mobile only or Top Right) */}
                 <div style={{ position: 'absolute', top: '30px', right: '30px', zIndex: 10 }}>
                     <Link to="/" style={{
-                        color: 'rgba(255,255,255,0.6)',
+                        color: 'var(--secondary-text)',
                         textDecoration: 'none',
                         fontSize: '0.9rem',
                         display: 'flex',
@@ -139,16 +139,17 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                         gap: '8px',
                         padding: '10px 20px',
                         borderRadius: '30px',
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'var(--card-bg)',
+                        boxShadow: 'var(--card-shadow)',
                         transition: 'all 0.3s'
                     }}
                         onMouseEnter={(e) => {
-                            e.target.style.background = 'rgba(255,255,255,0.1)';
+                            e.target.style.background = 'var(--construction-gold)';
                             e.target.style.color = '#FFFFFF';
                         }}
                         onMouseLeave={(e) => {
-                            e.target.style.background = 'rgba(255,255,255,0.05)';
-                            e.target.style.color = 'rgba(255,255,255,0.6)';
+                            e.target.style.background = 'var(--card-bg)';
+                            e.target.style.color = 'var(--secondary-text)';
                         }}
                     >
                         Back to website <i className="bi bi-arrow-right"></i>
@@ -199,17 +200,17 @@ const AuthLayout = ({ children, title, subtitle, quote }) => {
                         </div>
 
                         <div className="mb-5">
-                            <h1 style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '10px', background: 'linear-gradient(90deg, #FFFFFF, #94A3B8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            <h1 style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '10px', color: 'var(--primary-text)' }}>
                                 {title}
                             </h1>
-                            <p style={{ color: '#94A3B8', fontSize: '1.1rem' }}>{subtitle}</p>
+                            <p style={{ color: 'var(--secondary-text)', fontSize: '1.1rem' }}>{subtitle}</p>
                         </div>
 
                         {children}
                     </motion.div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

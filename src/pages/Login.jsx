@@ -59,8 +59,8 @@ const Login = () => {
   };
 
   const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--card-bg)',
+    border: '1px solid var(--section-divider)',
     borderRadius: '12px',
     padding: '16px',
     color: 'var(--primary-text)',
@@ -108,15 +108,16 @@ const Login = () => {
               }}
               style={{
                 ...inputStyle,
-                borderColor: errors.email ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                borderColor: errors.email ? '#EF4444' : 'var(--section-divider)'
               }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#C8A24A';
-                e.target.style.background = 'rgba(255,255,255,0.08)';
+                e.target.style.backgroundColor = 'var(--card-bg)';
+                e.target.style.boxShadow = '0 0 0 4px rgba(200, 162, 74, 0.1)';
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                e.target.style.background = 'rgba(255,255,255,0.05)';
+                e.target.style.borderColor = errors.email ? '#EF4444' : 'var(--section-divider)';
+                e.target.style.boxShadow = 'none';
               }}
             />
             {errors.email && <div className="text-danger mt-1 small">{errors.email}</div>}
@@ -134,15 +135,16 @@ const Login = () => {
               }}
               style={{
                 ...inputStyle,
-                borderColor: errors.password ? '#EF4444' : 'rgba(255,255,255,0.1)'
+                borderColor: errors.password ? '#EF4444' : 'var(--section-divider)'
               }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#C8A24A';
-                e.target.style.background = 'rgba(255,255,255,0.08)';
+                e.target.style.backgroundColor = 'var(--card-bg)';
+                e.target.style.boxShadow = '0 0 0 4px rgba(200, 162, 74, 0.1)';
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                e.target.style.background = 'rgba(255,255,255,0.05)';
+                e.target.style.borderColor = errors.password ? '#EF4444' : 'var(--section-divider)';
+                e.target.style.boxShadow = 'none';
               }}
             />
             <button
@@ -155,7 +157,7 @@ const Login = () => {
                 transform: 'translateY(-50%)',
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255,255,255,0.5)',
+                color: 'var(--secondary-text)',
                 cursor: 'pointer'
               }}
             >
@@ -168,7 +170,7 @@ const Login = () => {
             <div className="form-check">
               {/* Remember me could go here */}
             </div>
-            <Link to="/forgot-password" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: '0.9rem' }}>Forgot password?</Link>
+            <Link to="/forgot-password" style={{ color: 'var(--secondary-text)', textDecoration: 'none', fontSize: '0.9rem' }}>Forgot password?</Link>
           </div>
 
           <button
@@ -194,7 +196,7 @@ const Login = () => {
           </button>
 
           <div className="text-center">
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Don't have an account? </span>
+            <span style={{ color: 'var(--secondary-text)' }}>Don't have an account? </span>
             <Link to="/register" style={{ color: '#C8A24A', textDecoration: 'none', fontWeight: '600' }}>Sign up for free</Link>
           </div>
         </form>
