@@ -41,4 +41,6 @@ public class PropertySummaryDTO {
     private String panoramaImageUrl;
     @com.fasterxml.jackson.annotation.JsonProperty("brochure_url")
     private String brochureUrl;
+    @com.fasterxml.jackson.annotation.JsonProperty("is_featured")
+    private Boolean isFeatured;
 }

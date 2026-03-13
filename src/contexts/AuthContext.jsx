@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password, fullName, phone, role = "user") => {
+  const register = async (username, email, password, fullName, phone, role = "user", plan = "Free") => {
     setLoading(true);
 
     // Direct DB check removed - Backend handles duplicates
@@ -99,7 +99,15 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${BACKEND_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, full_name: fullName, phone, role })
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          full_name: fullName,
+          phone,
+          role,
+          subscriptionPlan: plan
+        })
       });
 
       const data = await response.json();

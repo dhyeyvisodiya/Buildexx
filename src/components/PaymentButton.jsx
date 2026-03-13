@@ -163,7 +163,7 @@ const PaymentButton = ({
 
     // Calculate display text once using all state
     const currentDisplayText = isBooked
-        ? 'Already Booked'
+        ? (property.purpose?.toLowerCase() === 'rent' ? 'Subscribed' : 'Already Booked')
         : (buttonText || defaultButtonText);
 
     // Clean up loading state if component unmounts
@@ -194,7 +194,7 @@ const PaymentButton = ({
             const orderData = await createPaymentOrder(currentUser.id, property.id);
             if (orderData.error) throw new Error(orderData.error);
 
-            const { razorpayOrderId, amount: bookingAmount } = orderData; // backend returns Payment object
+            const { razorpayOrderId, amount: bookingAmount } = orderData.data; // backend returns Payment object
 
             // Configure Razorpay options
             const options = {
@@ -205,7 +205,7 @@ const PaymentButton = ({
                 description: paymentType === 'RENT'
                     ? `Booking Request for Rent: ${property.name || property.title}`
                     : `Booking Token for Buy: ${property.name || property.title}`,
-                order_id: razorpayOrderId.startsWith('order_') ? null : razorpayOrderId, // Use real order ID if valid, else null for test
+                order_id: (razorpayOrderId && razorpayOrderId.startsWith('order_')) ? null : razorpayOrderId, // Use real order ID if valid, else null for test
                 prefill: {
                     name: currentUser.full_name || currentUser.username,
                     email: currentUser.email,
@@ -263,19 +263,21 @@ const PaymentButton = ({
         <div className={`payment-button-wrapper ${className}`}>
             <button
                 onClick={handlePayment}
-                disabled={loading || !numericAmount || numericAmount <= 0}
+                disabled={loading || !numericAmount || numericAmount <= 0 || isBooked}
                 style={{
-                    background: paymentType === 'RENT'
-                        ? 'linear-gradient(135deg, #10B981, #059669)'
-                        : 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
-                    color: paymentType === 'RENT' ? 'white' : '#0F172A',
+                    background: isBooked
+                        ? '#374151'
+                        : (paymentType === 'RENT'
+                            ? 'linear-gradient(135deg, #10B981, #059669)'
+                            : 'linear-gradient(135deg, #C8A24A, #9E7C2F)'),
+                    color: isBooked ? '#94A3B8' : (paymentType === 'RENT' ? 'white' : '#0F172A'),
                     border: 'none',
                     padding: '14px 28px',
                     borderRadius: '12px',
                     fontWeight: '600',
                     fontSize: '1rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.7 : 1,
+                    cursor: (loading || isBooked) ? 'not-allowed' : 'pointer',
+                    opacity: (loading || isBooked) ? 0.7 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

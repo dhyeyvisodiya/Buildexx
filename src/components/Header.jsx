@@ -217,6 +217,26 @@ const Header = ({ compareCount, wishlistCount }) => {
                     >
                       <i className="bi bi-person-circle me-1 fs-5"></i>
                       <span className="ms-1 fw-semibold">{currentUser.full_name || currentUser.fullName || currentUser.username}</span>
+                      {currentUser?.subscriptionStatus === 'Active' && (
+                        <span className="badge ms-2" style={{
+                          background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                          color: '#000',
+                          fontSize: '0.65rem',
+                          fontWeight: '800',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)',
+                          border: '1px solid #B8860B',
+                          letterSpacing: '0.5px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                          verticalAlign: 'middle',
+                          textTransform: 'uppercase'
+                        }}>
+                          <i className="bi bi-star-fill" style={{ fontSize: '0.6rem' }}></i> Premium
+                        </span>
+                      )}
                     </button>
                     <ul className="dropdown-menu dropdown-menu-end animate__animated animate__fadeIn">
                       <li className="dropdown-header">

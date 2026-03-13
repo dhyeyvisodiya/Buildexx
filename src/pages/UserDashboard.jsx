@@ -81,7 +81,14 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
       // Fetch wishlist from database
       const wishlistResult = await getUserWishlist(currentUser.id);
       if (wishlistResult.success && wishlistResult.data.length > 0) {
-        setWishlist(wishlistResult.data);
+        const sorted = (wishlistResult.data || []).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
+        });
+        setWishlist(sorted);
       }
 
       // Fetch enquiries
@@ -267,8 +274,27 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                   <h2 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
                     My Dashboard
                   </h2>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {currentUser?.email || 'Manage your properties and enquiries'}
+                    {currentUser?.subscriptionStatus === 'Active' && (
+                      <span className="badge" style={{
+                        background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                        color: '#000',
+                        fontSize: '0.65rem',
+                        fontWeight: '800',
+                        borderRadius: '6px',
+                        padding: '3px 8px',
+                        boxShadow: '0 0 12px rgba(255, 215, 0, 0.4)',
+                        border: '1px solid #B8860B',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <i className="bi bi-star-fill"></i> Premium status
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -767,7 +793,7 @@ const UserDashboard = ({ wishlist: propsWishlist, removeFromWishlist: propsRemov
                                         image: "/buildex_logo.png",
                                         // Mimic PaymentButton logic: Use null for order_id if it's a dummy/test ID to avoid 400 error
                                         // Real implementation might need more specific check, but this unblocks the current test environment
-                                        order_id: order.razorpayOrderId.startsWith('order_') ? null : order.razorpayOrderId,
+                                        order_id: (order.razorpayOrderId && order.razorpayOrderId.startsWith('order_')) ? null : order.razorpayOrderId,
                                         prefill: {
                                           name: currentUser.name || currentUser.full_name,
                                           email: currentUser.email,

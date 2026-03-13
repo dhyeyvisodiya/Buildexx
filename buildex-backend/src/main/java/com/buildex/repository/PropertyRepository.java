@@ -52,7 +52,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
                      +
                      "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
                      "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
-                     "(p.isVerified = true)")
+                     "(p.isVerified = true) " +
+                     "ORDER BY p.isFeatured DESC, p.id DESC")
        List<Property> findByFilters(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,
@@ -76,7 +77,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
                      +
                      "LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR " +
                      "LOWER(CAST(p.area AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) AND " +
-                     "(p.isVerified = true)")
+                     "(p.isVerified = true) " +
+                     "ORDER BY p.isFeatured DESC, p.id DESC")
        org.springframework.data.domain.Page<Property> findByFiltersPaginated(@Param("purpose") Purpose purpose,
                      @Param("propertyType") PropertyType propertyType,
                      @Param("city") String city,

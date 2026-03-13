@@ -13,7 +13,8 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     phone: '',
-    role: 'user'
+    role: 'user',
+    subscriptionPlan: 'Free'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,8 +49,13 @@ const Register = () => {
 
   const nextStep = () => {
     if (validateStep(step)) {
-      setDirection(1);
-      setStep(step + 1);
+      if (step === 2 && formData.role !== 'builder') {
+        // If not a builder, skip plan selection and register
+        handleSubmit(null);
+      } else {
+        setDirection(1);
+        setStep(step + 1);
+      }
     }
   };
 
@@ -96,7 +102,7 @@ const Register = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!validateStep(step)) return;
 
     setLoading(true);
@@ -112,7 +118,8 @@ const Register = () => {
           formData.password,
           formData.fullName,
           formData.phone,
-          formData.role
+          formData.role,
+          formData.subscriptionPlan
         );
 
         if (result.success) {
@@ -197,7 +204,7 @@ const Register = () => {
               style={{ height: '8px', borderRadius: '4px' }}
             />
             <motion.div
-              animate={{ width: step === 2 ? 24 : 8, backgroundColor: step >= 2 ? '#C8A24A' : 'var(--section-divider)' }}
+              animate={{ width: step === 3 ? 24 : 8, backgroundColor: step >= 3 ? '#C8A24A' : 'var(--section-divider)' }}
               style={{ height: '8px', borderRadius: '4px' }}
             />
           </div>
@@ -347,7 +354,7 @@ const Register = () => {
                 <Link to="/login" style={{ color: '#C8A24A', textDecoration: 'none', fontWeight: '600' }}>Sign In</Link>
               </div>
             </motion.div>
-          ) : (
+          ) : step === 2 ? (
             <motion.div
               key="step2"
               custom={direction}
@@ -460,6 +467,101 @@ const Register = () => {
                 >
                   {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : null}
                   Create Account
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step3"
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
+              }}
+              style={{ position: 'absolute', width: '100%' }}
+            >
+              <div className="mb-4">
+                <label className="form-label small mb-3" style={{ color: 'var(--secondary-text)' }}>Choose your subscription plan</label>
+
+                {/* Free Plan Option */}
+                <div
+                  className={`p-3 mb-3 hover-effect rounded-4 border ${formData.subscriptionPlan === 'Free' ? 'border-primary' : 'border-secondary'}`}
+                  onClick={() => setFormData(prev => ({ ...prev, subscriptionPlan: 'Free' }))}
+                  style={{
+                    cursor: 'pointer',
+                    background: formData.subscriptionPlan === 'Free' ? 'rgba(200,162,74,0.1)' : 'var(--card-bg)',
+                    borderColor: formData.subscriptionPlan === 'Free' ? '#C8A24A' : 'var(--section-divider)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>Free Plan</h6>
+                      <p className="small text-muted mb-0">Allow only 1 property listing</p>
+                    </div>
+                    <div style={{ color: '#C8A24A', fontWeight: 'bold' }}>₹0</div>
+                  </div>
+                </div>
+
+                {/* Premium Plan Option */}
+                <div
+                  className={`p-3 hover-effect rounded-4 border ${formData.subscriptionPlan === 'Premium' ? 'border-primary' : 'border-secondary'}`}
+                  onClick={() => setFormData(prev => ({ ...prev, subscriptionPlan: 'Premium' }))}
+                  style={{
+                    cursor: 'pointer',
+                    background: formData.subscriptionPlan === 'Premium' ? 'rgba(200,162,74,0.1)' : 'var(--card-bg)',
+                    borderColor: formData.subscriptionPlan === 'Premium' ? '#C8A24A' : 'var(--section-divider)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
+                        Premium Plan <span className="badge bg-warning ms-1 text-dark" style={{ fontSize: '0.6rem' }}>RECOMENDED</span>
+                      </h6>
+                      <p className="small text-muted mb-0">Unlimited properties & priority support</p>
+                    </div>
+                    <div style={{ color: '#C8A24A', fontWeight: 'bold' }}>₹9,999</div>
+                  </div>
+                  {formData.subscriptionPlan === 'Premium' && (
+                    <div className="mt-2 pt-2 border-top small" style={{ color: 'var(--secondary-text)' }}>
+                      <i className="bi bi-info-circle me-1"></i> Payment required after registration
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="d-flex gap-2">
+                <button className="btn flex-fill" onClick={prevStep}
+                  style={{
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--section-divider)',
+                    color: 'var(--primary-text)',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Back
+                </button>
+                <button className="btn flex-fill" onClick={handleSubmit}
+                  disabled={loading}
+                  style={{
+                    background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)',
+                    border: 'none',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    color: '#1E293B',
+                    fontWeight: '700',
+                    boxShadow: '0 4px 15px rgba(200, 162, 74, 0.3)',
+                  }}
+                >
+                  {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : null}
+                  Complete Registration
                 </button>
               </div>
             </motion.div>

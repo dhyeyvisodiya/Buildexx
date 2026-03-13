@@ -165,10 +165,28 @@ public class PaymentService {
 
         Property property = payment.getProperty();
         if (property != null) {
+            // Explicitly re-fetch property to ensure we are working with a fresh, managed
+            // instance
+            Property freshProperty = propertyRepository.findById(property.getId())
+                    .orElse(property);
+
+            BigDecimal remaining = payment.getRemainingAmount() != null ? payment.getRemainingAmount()
+                    : BigDecimal.ZERO;
+            boolean isFullyPaid = remaining.compareTo(BigDecimal.ZERO) <= 0;
+
+            System.out.println("Processing Payment Verification for Property ID: " + freshProperty.getId());
+            System.out.println("Payment Type: " + payment.getPaymentType() + ", Fully Paid: " + isFullyPaid
+                    + ", Remaining: " + remaining);
+
             if (payment.getPaymentType() == Payment.PaymentType.RENT) {
-                System.out.println("Processing RENT payment for property: " + property.getId());
-                property.setRentalStatus(Property.RentalStatus.RENTED);
-                property.setAvailabilityStatus(Property.AvailabilityStatus.RENTED);
+                if (isFullyPaid) {
+                    System.out.println("Status transition: RENTED (Full Payment)");
+                    freshProperty.setRentalStatus(Property.RentalStatus.RENTED);
+                    freshProperty.setAvailabilityStatus(Property.AvailabilityStatus.RENTED);
+                } else {
+                    System.out.println("Status transition: BOOKED (Rent Token)");
+                    freshProperty.setAvailabilityStatus(Property.AvailabilityStatus.BOOKED);
+                }
 
                 // Rent specific updates
                 payment.setRentMonth(
@@ -177,15 +195,15 @@ public class PaymentService {
 
                 // create or update Rent Subscription
                 RentSubscription subscription = rentSubscriptionRepository
-                        .findByUserIdAndPropertyId(payment.getUser().getId(), property.getId())
+                        .findByUserIdAndPropertyId(payment.getUser().getId(), freshProperty.getId())
                         .orElse(new RentSubscription());
 
                 boolean isNew = subscription.getId() == null;
 
                 subscription.setUser(payment.getUser());
-                subscription.setProperty(property);
-                subscription.setBuilder(property.getBuilder());
-                subscription.setMonthlyRent(property.getRentAmount());
+                subscription.setProperty(freshProperty);
+                subscription.setBuilder(freshProperty.getBuilder());
+                subscription.setMonthlyRent(freshProperty.getRentAmount());
                 if (subscription.getStartDate() == null) {
                     subscription.setStartDate(LocalDate.now());
                 }
@@ -197,7 +215,8 @@ public class PaymentService {
                         + payment.getUser().getId());
 
                 // Approve corresponding Rent Request
-                Optional<RentRequest> rentRequest = rentRequestRepository.findByPropertyIdAndEmail(property.getId(),
+                Optional<RentRequest> rentRequest = rentRequestRepository.findByPropertyIdAndEmail(
+                        freshProperty.getId(),
                         payment.getUser().getEmail());
                 rentRequest.ifPresent(req -> {
                     req.setStatus(RentRequest.Status.APPROVED);
@@ -206,13 +225,21 @@ public class PaymentService {
                 });
 
             } else if (payment.getPaymentType() == Payment.PaymentType.BUY) {
-                System.out.println("Processing BUY payment for property: " + property.getId());
-                property.setBuyer(payment.getUser());
-                property.setSoldDate(payment.getPaymentDate());
-                property.setAvailabilityStatus(Property.AvailabilityStatus.SOLD);
-                property.setRentalStatus(Property.RentalStatus.RENTED); // Occupied
+                freshProperty.setBuyer(payment.getUser());
+
+                if (isFullyPaid) {
+                    System.out.println("Status transition: SOLD (Full Payment)");
+                    freshProperty.setSoldDate(payment.getPaymentDate());
+                    freshProperty.setAvailabilityStatus(Property.AvailabilityStatus.SOLD);
+                    freshProperty.setRentalStatus(Property.RentalStatus.RENTED); // Occupied
+                } else {
+                    System.out.println("Status transition: BOOKED (Purchase Token)");
+                    freshProperty.setAvailabilityStatus(Property.AvailabilityStatus.BOOKED);
+                }
             }
-            propertyRepository.save(property);
+            propertyRepository.saveAndFlush(freshProperty);
+            System.out.println(
+                    "Property record updated successfully in DB. Status: " + freshProperty.getAvailabilityStatus());
         }
 
         Payment savedPayment = paymentRepository.save(payment);
@@ -294,8 +321,17 @@ public class PaymentService {
     }
 
     public boolean hasUserBookedProperty(Long userId, Long propertyId) {
-        return paymentRepository.existsByUserIdAndPropertyIdAndStatus(userId, propertyId,
+        // Check for successful general payments (booking tokens/full payments)
+        boolean hasPayment = paymentRepository.existsByUserIdAndPropertyIdAndStatus(userId, propertyId,
                 Payment.PaymentStatus.SUCCESS);
+
+        if (hasPayment)
+            return true;
+
+        // Check for active rent subscriptions
+        return rentSubscriptionRepository.findByUserIdAndPropertyId(userId, propertyId)
+                .map(RentSubscription::isActive)
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)

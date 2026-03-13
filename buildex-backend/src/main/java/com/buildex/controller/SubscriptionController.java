@@ -35,6 +35,7 @@ public class SubscriptionController {
         user.setSubscriptionStatus("Active");
         user.setSubscriptionDate(LocalDateTime.now());
         user.setPropertyLimit(9999); // Unlimited
+        user.setSubscriptionPlan("Premium");
 
         userRepository.save(user);
 

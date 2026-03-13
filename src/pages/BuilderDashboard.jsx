@@ -23,7 +23,8 @@ import {
   uploadBrochure,
   getBuilderPayments,
   createWithdrawalRequest,
-  getBuilderWithdrawals
+  getBuilderWithdrawals,
+  boostProperty
 } from '../api/apiService';
 import { getApiUrl } from '../config';
 import { getImageUrl } from '../utils/imageUtils';
@@ -33,10 +34,24 @@ const BuilderDashboard = () => {
   const { currentUser, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState(localStorage.getItem('builderActiveTab') || 'overview');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [selectedPropertyToBoost, setSelectedPropertyToBoost] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('builderActiveTab', activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    // Check if the user selected Premium during registration but hasn't paid yet
+    if (currentUser?.role === 'builder' &&
+      currentUser?.subscriptionPlan === 'Premium' &&
+      (currentUser?.subscriptionStatus === 'Inactive' || currentUser?.subscriptionStatus === 'Not Subscribed')) {
+      setShowSubscriptionModal(true);
+    }
+  }, [currentUser]);
+
+  const isMandatoryPayment = currentUser?.subscriptionPlan === 'Premium' &&
+    (currentUser?.subscriptionStatus === 'Inactive' || currentUser?.subscriptionStatus === 'Not Subscribed');
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingPanorama, setUploadingPanorama] = useState(false);
@@ -88,6 +103,73 @@ const BuilderDashboard = () => {
       toast.error("Failed to delete some items");
     } finally {
       setSelectedItems([]);
+      setLoading(false);
+    }
+  };
+
+  const handleInitiateBoost = async (property) => {
+    setLoading(true);
+    try {
+      // 1. Load Razorpay Script
+      const loadRazorpayScript = () => {
+        return new Promise((resolve) => {
+          if (window.Razorpay) return resolve(true);
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+      };
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error("Could not load payment gateway.");
+
+      // 2. Configure Razorpay Options
+      const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demokey';
+      const paymentOptions = {
+        key: RAZORPAY_KEY,
+        amount: 999 * 100, // ₹999 in paisa
+        currency: 'INR',
+        name: 'Buildexx Property Boost',
+        description: `Featured Listing Boost for ${property.name}`,
+        image: '/favicon.ico',
+        prefill: {
+          name: currentUser?.fullName || currentUser?.companyName || 'Builder',
+          email: currentUser?.email || '',
+          contact: currentUser?.phone || ''
+        },
+        theme: { color: '#C8A24A' },
+        handler: async function (paymentResponse) {
+          try {
+            setLoading(true);
+            const res = await boostProperty(property.id);
+            if (res.success) {
+              toast.success(`Property "${property.name}" is now FEATURED!`);
+              // Update local state
+              setProperties(prev => prev.map(p => p.id === property.id ? { ...p, isFeatured: true, is_featured: true } : p));
+              setShowBoostModal(false);
+              setSelectedPropertyToBoost(null);
+            } else {
+              toast.error(res.error || "Failed to activate boost");
+            }
+          } catch (err) {
+            toast.error("Payment verification failed");
+          } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+          }
+        }
+      };
+
+      const rzp1 = new window.Razorpay(paymentOptions);
+      rzp1.open();
+    } catch (error) {
+      toast.error(error.message);
       setLoading(false);
     }
   };
@@ -181,7 +263,14 @@ const BuilderDashboard = () => {
           price: p.price, rent: p.rent, rentAmount: p.rentAmount,
           rent_amount: p.rent_amount, min_rent_amount: p.min_rent_amount
         })));
-        setProperties(result.data);
+        const sorted = (result.data || []).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
+        });
+        setProperties(sorted);
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -735,7 +824,7 @@ const BuilderDashboard = () => {
   const isLand = ['Plot', 'Agricultural Land'].includes(propertyForm.type);
 
   return (
-    <div className="builder-dashboard-page" style={{ minHeight: '100vh', background: 'var(--off-white)' }}>
+    <div className="builder-dashboard-page" style={{ minHeight: '100vh', background: '#020617' }}>
       <div className="container-fluid py-4">
         {/* Dashboard Header */}
         <div className="row mb-4">
@@ -773,8 +862,27 @@ const BuilderDashboard = () => {
                   <h2 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
                     Builder Dashboard
                   </h2>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0 }}>
-                    Welcome, {currentUser?.full_name || currentUser?.username || 'Builder/Owner'}
+                  <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    Welcome, {currentUser?.full_name || currentUser?.full_name || currentUser?.companyName || currentUser?.username || 'Builder/Owner'}
+                    {currentUser?.subscriptionStatus === 'Active' && (
+                      <span className="badge" style={{
+                        background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                        color: '#000',
+                        fontSize: '0.7rem',
+                        fontWeight: '800',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        boxShadow: '0 0 15px rgba(255, 215, 0, 0.4)',
+                        border: '1px solid #B8860B',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <i className="bi bi-patch-check-fill"></i> Premium Member
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -788,7 +896,14 @@ const BuilderDashboard = () => {
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === 'add-property' && !editMode && currentUser?.subscriptionPlan === 'Free' && properties.length >= 1) {
+                    setShowSubscriptionModal(true);
+                    toast.info("Free plan is limited to 1 property. Upgrade to list more!");
+                    return;
+                  }
+                  setActiveTab(tab.id);
+                }}
                 className={`dashboard-tab ${activeTab === tab.id ? 'active' : ''}`}
               >
                 <i className={`bi ${tab.icon}`}></i>
@@ -904,7 +1019,7 @@ const BuilderDashboard = () => {
                       Subscription Status
                     </h5>
                     <p style={{ color: 'var(--secondary-text)', margin: 0 }}>
-                      Current Plan: <span className="fw-bold text-success">{currentUser?.subscriptionStatus || 'Not Subscribed'}</span>
+                      Current Plan: <span className="fw-bold text-success" style={{ color: currentUser?.subscriptionPlan === 'Premium' ? '#C8A24A' : '#10B981' }}>{currentUser?.subscriptionPlan || 'Free'} ({currentUser?.subscriptionStatus || 'Not Subscribed'})</span>
                     </p>
                   </div>
                   <div>
@@ -1738,6 +1853,36 @@ const BuilderDashboard = () => {
                             >
                               <i className="bi bi-trash"></i>
                             </button>
+
+                            {property.is_featured || property.isFeatured ? (
+                              <span className="ms-2 badge" style={{
+                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                color: '#000',
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                padding: '4px 8px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}>
+                                <i className="bi bi-star-fill me-1"></i>Featured
+                              </span>
+                            ) : property.status === 'approved' && (
+                              <button
+                                className="btn btn-sm ms-2"
+                                style={{
+                                  background: 'rgba(200, 162, 74, 0.1)',
+                                  color: '#C8A24A',
+                                  border: '1px solid rgba(200, 162, 74, 0.2)',
+                                  borderRadius: '6px'
+                                }}
+                                onClick={() => {
+                                  setSelectedPropertyToBoost(property);
+                                  setShowBoostModal(true);
+                                }}
+                                title="Boost with ₹999"
+                              >
+                                <i className="bi bi-rocket-takeoff me-1"></i>Boost
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -2144,156 +2289,222 @@ const BuilderDashboard = () => {
         }
 
         {/* Subscription Modal */}
-        {showSubscriptionModal && (
-          <div className="d-flex align-items-center justify-content-center" style={{ zIndex: 9999, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="modal-dialog modal-dialog-centered"
-              style={{ minWidth: '450px' }}
-            >
-              <div className="modal-content overflow-hidden" style={{
-                background: 'var(--card-bg)',
-                borderRadius: '24px',
-                border: '1px solid var(--section-divider)',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                position: 'relative',
-                zIndex: 10000,
-                opacity: 1
-              }}>
-                {/* Decorative Header */}
-                <div style={{ background: 'linear-gradient(135deg, rgba(200, 162, 74, 0.1) 0%, rgba(200, 162, 74, 0) 100%)', padding: '30px 30px 20px', position: 'relative' }}>
-                  <button type="button" className="btn-close position-absolute top-0 end-0 m-3" onClick={() => setShowSubscriptionModal(false)} style={{ filter: 'var(--invert-close-icon, invert(0))' }}></button>
-                  <div className="text-center">
-                    <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #FFE1A1 0%, #C8A24A 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 20px rgba(200, 162, 74, 0.3)' }}>
-                      <i className="bi bi-gem" style={{ color: '#0F172A', fontSize: '2rem' }}></i>
-                    </div>
-                    <h4 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
-                      Buildexx Premium
-                    </h4>
-                    <p style={{ color: 'var(--construction-gold)', fontWeight: '600', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Exclusive Builder Plan</p>
-                  </div>
-                </div>
-
-                <div className="modal-body text-center px-5 pb-5 pt-0">
-                  <div className="mb-4 pt-3" style={{ borderTop: '1px solid rgba(226, 232, 240, 0.1)' }}>
-                    <div className="d-flex align-items-start justify-content-center mb-1">
-                      <span className="fw-bold mt-2 me-1" style={{ color: 'var(--secondary-text)', fontSize: '1.5rem' }}>₹</span>
-                      <h1 className="fw-bold mb-0" style={{ color: 'var(--primary-text)', fontSize: '3.5rem', letterSpacing: '-1px' }}>9,999</h1>
-                    </div>
-                    <span style={{ color: 'var(--muted-text)', fontSize: '0.9rem' }}>per year</span>
-                  </div>
-
-                  <ul className="list-unstyled text-start mb-5 mx-auto" style={{ maxWidth: '300px' }}>
-                    <li className="mb-3 d-flex align-items-center">
-                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
-                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>List <strong style={{ color: 'var(--primary-text)' }}>Unlimited</strong> Properties</span>
-                    </li>
-                    <li className="mb-3 d-flex align-items-center">
-                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
-                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Reach verified buyers instantly</span>
-                    </li>
-                    <li className="mb-3 d-flex align-items-center">
-                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
-                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Premium Builder Badge</span>
-                    </li>
-                    <li className="d-flex align-items-center">
-                      <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
-                      <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Priority 24/7 Support</span>
-                    </li>
-                  </ul>
-
-                  <button
-                    className="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2"
-                    style={{ background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFFFFF', padding: '16px 20px', borderRadius: '16px', fontSize: '1.1rem', border: 'none', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
-                    onClick={async () => {
-                      setLoading(true);
-                      try {
-                        // 1. Load Razorpay Script
-                        const loadRazorpayScript = () => {
-                          return new Promise((resolve) => {
-                            if (window.Razorpay) return resolve(true);
-                            const script = document.createElement('script');
-                            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-                            script.onload = () => resolve(true);
-                            script.onerror = () => resolve(false);
-                            document.body.appendChild(script);
-                          });
-                        };
-
-                        const scriptLoaded = await loadRazorpayScript();
-                        if (!scriptLoaded) throw new Error("Could not load payment gateway. Please check your internet connection.");
-
-                        // 2. Configure Razorpay Options
-                        const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demokey';
-                        const paymentOptions = {
-                          key: RAZORPAY_KEY,
-                          amount: 9999 * 100, // Amount in paisa
-                          currency: 'INR',
-                          name: 'Buildexx Premium',
-                          description: '1 Year Builder Pro Subscription',
-                          image: '/favicon.ico', // fallback
-                          prefill: {
-                            name: currentUser?.fullName || currentUser?.companyName || 'Builder',
-                            email: currentUser?.email || '',
-                            contact: currentUser?.phone || ''
-                          },
-                          theme: { color: '#059669' },
-                          handler: async function (paymentResponse) {
-                            try {
-                              setLoading(true);
-                              const res = await fetch(`${getApiUrl()}/api/users/${currentUser.id}/subscribe`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' }
-                              });
-                              if (res.ok) {
-                                await refreshUser(currentUser.id);
-                                toast.success(`Premium Subscription Activated! Txn ID: ${paymentResponse.razorpay_payment_id}`);
-                                setShowSubscriptionModal(false);
-                                // Optional: setTimeout(() => window.location.reload(), 1500); -> NO LONGER NEEDED with refreshUser
-                              } else {
-                                toast.error('Payment succeeded but subscription activation failed. Contact support.');
-                              }
-                            } catch (err) {
-                              toast.error('Server error during activation.');
-                            } finally {
-                              setLoading(false);
-                            }
-                          }
-                        };
-
-                        const razorpay = new window.Razorpay(paymentOptions);
-                        razorpay.on('payment.failed', function (response) {
-                          toast.error(response.error.description || 'Payment Failed');
-                          setLoading(false);
-                        });
-                        razorpay.open();
-                      } catch (error) {
-                        toast.error(error.message || 'Error initializing payment gateway');
-                        setLoading(false);
-                      }
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 20px rgba(16, 185, 129, 0.3)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(16, 185, 129, 0.25)'; }}
-                  >
-                    {loading ? (
-                      <div className="spinner-border spinner-border-sm" role="status"></div>
-                    ) : (
-                      <><i className="bi bi-credit-card-fill"></i> Activate Premium Now</>
+        <AnimatePresence>
+          {showSubscriptionModal && (
+            <div className="d-flex align-items-center justify-content-center" style={{ zIndex: 9999, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="modal-dialog modal-dialog-centered"
+                style={{ minWidth: '450px' }}
+              >
+                <div className="modal-content overflow-hidden" style={{
+                  background: 'var(--card-bg)',
+                  borderRadius: '24px',
+                  border: '1px solid var(--section-divider)',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  position: 'relative',
+                  zIndex: 10000,
+                  opacity: 1
+                }}>
+                  {/* Decorative Header */}
+                  <div style={{ background: 'linear-gradient(135deg, rgba(200, 162, 74, 0.1) 0%, rgba(200, 162, 74, 0) 100%)', padding: '30px 30px 20px', position: 'relative' }}>
+                    {!isMandatoryPayment && (
+                      <button type="button" className="btn-close position-absolute top-0 end-0 m-3" onClick={() => setShowSubscriptionModal(false)} style={{ filter: 'var(--invert-close-icon, invert(0))' }}></button>
                     )}
-                  </button>
-                  <p className="mt-3 mb-0" style={{ color: 'var(--muted-text)', fontSize: '0.8rem' }}>
-                    <i className="bi bi-shield-lock-fill me-1"></i> Secured by Razorpay
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                    <div className="text-center">
+                      <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #FFE1A1 0%, #C8A24A 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 10px 20px rgba(200, 162, 74, 0.3)' }}>
+                        <i className="bi bi-gem" style={{ color: '#0F172A', fontSize: '2rem' }}></i>
+                      </div>
+                      <h4 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>
+                        Buildexx Premium
+                      </h4>
+                      <p style={{ color: 'var(--construction-gold)', fontWeight: '600', fontSize: '0.9rem', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Exclusive Builder Plan</p>
+                    </div>
+                  </div>
 
-      </div >
-    </div >
+                  <div className="modal-body text-center px-5 pb-5 pt-0">
+                    <div className="mb-4 pt-3" style={{ borderTop: '1px solid rgba(226, 232, 240, 0.1)' }}>
+                      <div className="d-flex align-items-start justify-content-center mb-1">
+                        <span className="fw-bold mt-2 me-1" style={{ color: 'var(--secondary-text)', fontSize: '1.5rem' }}>₹</span>
+                        <h1 className="fw-bold mb-0" style={{ color: 'var(--primary-text)', fontSize: '3.5rem', letterSpacing: '-1px' }}>9,999/ 3months</h1>
+                      </div>
+                      <span style={{ color: 'var(--muted-text)', fontSize: '0.9rem' }}>Limited time offer</span>
+                    </div>
+
+                    <ul className="list-unstyled text-start mb-5 mx-auto" style={{ maxWidth: '300px' }}>
+                      <li className="mb-3 d-flex align-items-center">
+                        <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                        <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>List <strong style={{ color: 'var(--primary-text)' }}>Unlimited</strong> Properties</span>
+                      </li>
+                      <li className="mb-3 d-flex align-items-center">
+                        <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                        <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Reach verified buyers instantly</span>
+                      </li>
+                      <li className="mb-3 d-flex align-items-center">
+                        <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                        <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Premium Builder Badge</span>
+                      </li>
+                      <li className="mb-3 d-flex align-items-center">
+                        <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                        <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Featured Property Boost <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.6rem' }}>NEW</span></span>
+                      </li>
+                      <li className="d-flex align-items-center">
+                        <i className="bi bi-check-circle-fill me-3" style={{ color: '#10B981', fontSize: '1.2rem' }}></i>
+                        <span style={{ color: 'var(--secondary-text)', fontWeight: '500', fontSize: '1.05rem' }}>Priority 24/7 Support</span>
+                      </li>
+                    </ul>
+
+                    <button
+                      className="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2"
+                      style={{ background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFFFFF', padding: '16px 20px', borderRadius: '16px', fontSize: '1.1rem', border: 'none', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+                      onClick={async () => {
+                        setLoading(true);
+                        try {
+                          // 1. Load Razorpay Script
+                          const loadRazorpayScript = () => {
+                            return new Promise((resolve) => {
+                              if (window.Razorpay) return resolve(true);
+                              const script = document.createElement('script');
+                              script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                              script.onload = () => resolve(true);
+                              script.onerror = () => resolve(false);
+                              document.body.appendChild(script);
+                            });
+                          };
+
+                          const scriptLoaded = await loadRazorpayScript();
+                          if (!scriptLoaded) throw new Error("Could not load payment gateway. Please check your internet connection.");
+
+                          // 2. Configure Razorpay Options
+                          const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_demokey';
+                          const paymentOptions = {
+                            key: RAZORPAY_KEY,
+                            amount: 9999 * 100, // Amount in paisa
+                            currency: 'INR',
+                            name: 'Buildexx Premium',
+                            description: '1 Year Builder Pro Subscription',
+                            image: '/favicon.ico', // fallback
+                            prefill: {
+                              name: currentUser?.fullName || currentUser?.companyName || 'Builder',
+                              email: currentUser?.email || '',
+                              contact: currentUser?.phone || ''
+                            },
+                            theme: { color: '#059669' },
+                            handler: async function (paymentResponse) {
+                              try {
+                                setLoading(true);
+                                const res = await fetch(`${getApiUrl()}/api/users/${currentUser.id}/subscribe`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' }
+                                });
+                                if (res.ok) {
+                                  // Simplified refresh - backend /subscribe endpoint should return updated user or we just reload
+                                  await refreshUser(currentUser.id);
+                                  toast.success(`Premium Subscription Activated!`);
+                                  setShowSubscriptionModal(false);
+                                } else {
+                                  toast.error('Payment succeeded but subscription activation failed. Contact support.');
+                                }
+                              } catch (err) {
+                                toast.error('Server error during activation.');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }
+                          };
+
+                          const razorpay = new window.Razorpay(paymentOptions);
+                          razorpay.on('payment.failed', function (response) {
+                            toast.error(response.error.description || 'Payment Failed');
+                            setLoading(false);
+                          });
+                          razorpay.open();
+                        } catch (error) {
+                          toast.error(error.message || 'Error initializing payment gateway');
+                          setLoading(false);
+                        }
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 20px rgba(16, 185, 129, 0.3)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(16, 185, 129, 0.25)'; }}
+                    >
+                      {loading ? (
+                        <div className="spinner-border spinner-border-sm" role="status"></div>
+                      ) : (
+                        <><i className="bi bi-credit-card-fill"></i> Activate Premium Now</>
+                      )}
+                    </button>
+                    <p className="mt-3 mb-0" style={{ color: 'var(--muted-text)', fontSize: '0.8rem' }}>
+                      <i className="bi bi-shield-lock-fill me-1"></i> Secured by Razorpay
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Featured Property Boost Modal */}
+        <AnimatePresence>
+          {showBoostModal && selectedPropertyToBoost && (
+            <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 10050, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="modal-dialog modal-dialog-centered"
+              >
+                <div className="modal-content overflow-hidden" style={{ background: 'var(--card-bg)', borderRadius: '24px', border: '1px solid var(--section-divider)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+                  <div style={{ background: 'linear-gradient(135deg, rgba(200, 162, 74, 0.1) 0%, rgba(200, 162, 74, 0.05) 100%)', padding: '30px', position: 'relative' }}>
+                    <button type="button" className="btn-close position-absolute top-0 end-0 m-3" onClick={() => setShowBoostModal(false)} style={{ filter: 'var(--invert-close-icon, invert(0))' }}></button>
+                    <div className="text-center">
+                      <div style={{ width: '64px', height: '64px', background: 'linear-gradient(135deg, #FFE1A1 0%, #C8A24A 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <i className="bi bi-rocket-takeoff" style={{ color: '#0F172A', fontSize: '2rem' }}></i>
+                      </div>
+                      <h4 className="fw-bold mb-1" style={{ color: 'var(--primary-text)' }}>Featured Property Boost</h4>
+                      <p style={{ color: 'var(--muted-text)', fontSize: '0.9rem', margin: 0 }}>Promote "{selectedPropertyToBoost.name || selectedPropertyToBoost.title}"</p>
+                    </div>
+                  </div>
+
+                  <div className="modal-body text-center px-4 pb-4">
+                    <div className="mb-4 pt-3">
+                      <h2 className="fw-bold mb-0" style={{ color: '#C8A24A' }}>₹999</h2>
+                      <span className="text-muted small">One-time payment for promotion</span>
+                    </div>
+
+                    <div className="text-start mb-4 p-3 rounded" style={{ background: 'rgba(11, 28, 48, 0.6)', border: '1px solid rgba(200, 162, 74, 0.2)' }}>
+                      <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', color: 'var(--primary-text)' }}>Premium Benefits:</h6>
+                      <ul className="list-unstyled mb-0" style={{ fontSize: '0.85rem' }}>
+                        <li className="mb-2 d-flex align-items-center"><i className="bi bi-check2-circle text-success me-2"></i> Appears at the top of search results</li>
+                        <li className="mb-2 d-flex align-items-center"><i className="bi bi-check2-circle text-success me-2"></i> Highlighted property card styling</li>
+                        <li className="mb-2 d-flex align-items-center"><i className="bi bi-check2-circle text-success me-2"></i> "Featured" badge on listing</li>
+                        <li className="d-flex align-items-center"><i className="bi bi-check2-circle text-success me-2"></i> Increased visibility to potential buyers</li>
+                      </ul>
+                    </div>
+
+                    <button
+                      className="btn w-100 fw-bold py-3"
+                      disabled={loading}
+                      style={{ background: 'linear-gradient(135deg, #C8A24A, #9E7C2F)', color: '#0F172A', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(200, 162, 74, 0.3)' }}
+                      onClick={() => handleInitiateBoost(selectedPropertyToBoost)}
+                    >
+                      {loading ? (
+                        <div className="spinner-border spinner-border-sm" role="status"></div>
+                      ) : 'Boost Property Now'}
+                    </button>
+                    <p className="mt-3 mb-0" style={{ color: 'var(--muted-text)', fontSize: '0.8rem' }}>
+                      <i className="bi bi-shield-lock-fill me-1"></i> Secured by Razorpay
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+      </div>
+    </div>
   );
 };
 

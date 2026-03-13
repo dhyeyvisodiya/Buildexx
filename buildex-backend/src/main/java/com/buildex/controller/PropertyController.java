@@ -166,8 +166,9 @@ public class PropertyController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        org.springframework.data.domain.Page<PropertySummaryDTO> properties = propertyService.searchPropertiesSummariesPaginated(
-                purpose, propertyType, city, area, availabilityStatus, search, page, size);
+        org.springframework.data.domain.Page<PropertySummaryDTO> properties = propertyService
+                .searchPropertiesSummariesPaginated(
+                        purpose, propertyType, city, area, availabilityStatus, search, page, size);
         return ResponseEntity.ok(properties);
     }
 
@@ -208,7 +209,8 @@ public class PropertyController {
                     .collect(java.util.stream.Collectors.toList());
 
             // Wait for all uploads to complete
-            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0]))
+                    .join();
 
             List<String> urls = futures.stream()
                     .map(java.util.concurrent.CompletableFuture::join)
@@ -255,23 +257,27 @@ public class PropertyController {
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Admin user not found");
             }
-            
+
             User user = userOpt.get();
-            // Optional: Ensure user is admin (restoring safety but making it more informative)
+            // Optional: Ensure user is admin (restoring safety but making it more
+            // informative)
             if (!"admin".equalsIgnoreCase(user.getRole())) {
-                System.out.println("Property verification attempted by non-admin: " + userId + " (Role: " + user.getRole() + ")");
+                System.out.println(
+                        "Property verification attempted by non-admin: " + userId + " (Role: " + user.getRole() + ")");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only admins can verify properties");
             }
-            
-            System.out.println("Property verification request: id=" + propertyId + ", status=" + isVerified + ", adminId=" + userId);
-            
+
+            System.out.println("Property verification request: id=" + propertyId + ", status=" + isVerified
+                    + ", adminId=" + userId);
+
             Optional<Property> propertyOpt = propertyService.verifyProperty(propertyId, isVerified);
             return propertyOpt.map(ResponseEntity::ok)
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
         } catch (Exception e) {
             System.err.println("Property verification failed: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Verification failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Verification failed: " + e.getMessage());
         }
     }
 
@@ -330,6 +336,18 @@ public class PropertyController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonMap("error", "Failed to proxy image: " + e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{propertyId}/boost")
+    public ResponseEntity<?> boostProperty(@PathVariable Long propertyId) {
+        try {
+            Optional<Property> boosted = propertyService.boostProperty(propertyId);
+            return boosted.map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to boost property: " + e.getMessage());
         }
     }
 }

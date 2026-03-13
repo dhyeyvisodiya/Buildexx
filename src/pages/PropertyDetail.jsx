@@ -6,7 +6,7 @@ import NearbyPlaces from '../components/NearbyPlaces';
 import PanoramaViewer from '../components/PanoramaViewer';
 import PaymentButton from '../components/PaymentButton';
 import ReportListing from '../components/ReportListing';
-import { createEnquiry, createRentRequest, createComplaint, getPropertyById, reportProperty } from '../api/apiService';
+import { createEnquiry, createRentRequest, createComplaint, getPropertyById, reportProperty, checkBookingStatus } from '../api/apiService';
 import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +27,7 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isBooked, setIsBooked] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -151,6 +152,14 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
     };
     fetchProperty();
   }, [id]);
+
+  useEffect(() => {
+    if (currentUser?.id && id) {
+      checkBookingStatus(currentUser.id, id).then(res => {
+        if (res.isBooked) setIsBooked(true);
+      });
+    }
+  }, [currentUser, id]);
 
   const formatCurrency = (value) => {
     if (!value) return '';
@@ -733,8 +742,12 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                 <PaymentButton
                   property={property}
                   paymentType={(property.purpose || '').toUpperCase() === 'RENT' ? 'RENT' : 'BUY'}
-                  onSuccess={(data) => {
-                    navigate(`/payment/success/${data.id}`);
+                  onSuccess={(res) => {
+                    // Clear both detail cache for THIS property and general list cache to ensure status updates
+                    sessionStorage.removeItem(`property_detail_${property.id || id}`);
+                    sessionStorage.removeItem('cached_properties');
+                    // Clear memory cache ref if possible via reload or simply navigating
+                    navigate(`/payment/success/${res.data.id}`);
                   }}
                   onFailure={(error) => {
                     console.error('Payment failed:', error);
@@ -1039,18 +1052,20 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
                     <>
                       <button
                         className="btn btn-primary w-100 mb-2"
-                        onClick={() => toggleForm('rent')}
+                        onClick={() => !isBooked && toggleForm('rent')}
+                        disabled={isBooked}
                         style={{
                           borderRadius: '8px',
                           fontWeight: '600',
                           padding: '12px',
                           transition: 'all 0.3s ease',
-                          background: 'linear-gradient(90deg, #C8A24A, #9E7C2F)',
+                          background: isBooked ? '#374151' : 'linear-gradient(90deg, #C8A24A, #9E7C2F)',
                           border: 'none',
-                          color: '#0B1220'
+                          color: isBooked ? '#94A3B8' : '#0B1220',
+                          cursor: isBooked ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {showRentForm ? 'Cancel Request' : 'Request for Rent'}
+                        {isBooked ? 'Already Subscribed' : (showRentForm ? 'Cancel Request' : 'Request for Rent')}
                       </button>
                       <AnimatePresence>
                         {showRentForm && (
@@ -1084,18 +1099,20 @@ const PropertyDetail = ({ addToCompare, addToWishlist }) => {
 
                   <button
                     className="btn btn-outline-primary w-100 mb-2"
-                    onClick={() => toggleForm('visit')}
+                    onClick={() => !isBooked && toggleForm('visit')}
+                    disabled={isBooked}
                     style={{
                       borderRadius: '8px',
                       fontWeight: '600',
                       padding: '12px',
                       transition: 'all 0.3s ease',
-                      border: '2px solid #C8A24A',
-                      color: 'var(--primary-text)',
-                      background: 'transparent'
+                      border: isBooked ? '2px solid #374151' : '2px solid #C8A24A',
+                      color: isBooked ? '#94A3B8' : 'var(--primary-text)',
+                      background: 'transparent',
+                      cursor: isBooked ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {showVisitForm ? 'Cancel Visit' : 'Schedule a Visit'}
+                    {isBooked ? 'Property Already Reserved' : (showVisitForm ? 'Cancel Visit' : 'Schedule a Visit')}
                   </button>
                   <AnimatePresence>
                     {showVisitForm && (

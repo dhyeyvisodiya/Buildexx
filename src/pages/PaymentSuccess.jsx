@@ -29,8 +29,11 @@ const PaymentSuccess = () => {
             }
         };
 
-        if (paymentId) {
+        if (paymentId && paymentId !== 'undefined') {
             fetchPayment();
+        } else {
+            setError('No payment ID provided');
+            setLoading(false);
         }
     }, [paymentId]);
 

@@ -21,7 +21,8 @@ import java.util.List;
         @Index(name = "idx_property_type", columnList = "property_type"),
         @Index(name = "idx_property_price", columnList = "price"),
         @Index(name = "idx_property_rent", columnList = "rent_amount"),
-        @Index(name = "idx_property_status", columnList = "availability_status")
+        @Index(name = "idx_property_status", columnList = "availability_status"),
+        @Index(name = "idx_property_featured", columnList = "is_featured")
 })
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Data // Restored
@@ -33,6 +34,11 @@ public class Property {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Builder.Default
+    @Column(name = "is_featured")
+    @JsonProperty("is_featured")
+    private Boolean isFeatured = false;
 
     @Column(nullable = false)
     private String title;
@@ -48,6 +54,7 @@ public class Property {
     @Column(name = "purpose")
     private Purpose purpose; // BUY or RENT
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "rental_status")
     private RentalStatus rentalStatus = RentalStatus.AVAILABLE;
@@ -69,7 +76,7 @@ public class Property {
 
     @Column(name = "rent_amount") // For rent
     @com.fasterxml.jackson.annotation.JsonProperty("rent_amount")
-    @com.fasterxml.jackson.annotation.JsonAlias({"rent", "rentAmount"})
+    @com.fasterxml.jackson.annotation.JsonAlias({ "rent", "rentAmount" })
     private BigDecimal rentAmount;
 
     @Column(name = "deposit_amount")
@@ -269,7 +276,6 @@ public class Property {
 
     // @JsonProperty("virtual_tour_link") - REMOVED, handled by field annotation
 
-
     @JsonProperty("builder_id")
     public Long getBuilderId() {
         return builder != null ? builder.getId() : null;
@@ -285,7 +291,6 @@ public class Property {
             return builder.getFullName();
         return builder.getUsername();
     }
-
 
     // Add explicit getter for panoramaImages for serialization if needed,
     // but @Data usually handles field-based serialization if not hidden.
@@ -318,7 +323,6 @@ public class Property {
     // @JsonProperty("google_map_link") - REMOVED, handled by field annotation
 
     // @JsonProperty("virtual_tour_link") - REMOVED, handled by field annotation
-
 
     public RentalStatus getRentalStatus() {
         return rentalStatus;

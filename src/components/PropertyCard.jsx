@@ -62,8 +62,13 @@ const PropertyCard = ({ property, addToCompare, addToWishlist, index = 0 }) => {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       whileHover={{ y: -8, scale: 1.02, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
       transition={{ type: 'spring', stiffness: 300, damping: 20, delay: index * 0.05 }}
-      className="property-card card h-100"
-      style={{ cursor: 'pointer', overflow: 'hidden' }}
+      className={`property-card card h-100 ${(property.isFeatured || property.is_featured) ? 'featured-property' : ''}`}
+      style={{
+        cursor: 'pointer',
+        overflow: 'hidden',
+        border: (property.isFeatured || property.is_featured) ? '2px solid #C8A24A' : '1px solid rgba(0,0,0,0.125)',
+        boxShadow: (property.isFeatured || property.is_featured) ? '0 10px 30px rgba(200, 162, 74, 0.15)' : 'none'
+      }}
       onMouseEnter={prefetchDetails}
       onMouseLeave={cancelPrefetch}
     >
@@ -93,6 +98,29 @@ const PropertyCard = ({ property, addToCompare, addToWishlist, index = 0 }) => {
         <span className={`availability-badge ${getAvailabilityClass(property.availability, property)}`}>
           {getAvailabilityText(property.availability, property)}
         </span>
+        {/* Featured Badge */}
+        {(property.isFeatured || property.is_featured) && (
+          <span style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'linear-gradient(135deg, #FFD700, #C8A24A)',
+            color: '#0F172A',
+            padding: '5px 12px',
+            borderRadius: '8px',
+            fontSize: '0.7rem',
+            fontWeight: '800',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            boxShadow: '0 4px 12px rgba(200, 162, 74, 0.4)',
+            zIndex: 10,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase'
+          }}>
+            <i className="bi bi-star-fill"></i> Featured
+          </span>
+        )}
         {/* Verified Badge */}
         {(property.is_verified || property.isVerified) && (
           <span style={{

@@ -57,6 +57,21 @@ public class AuthController {
         user.setRole(request.getRole());
         user.setStatus("pending_verification");
 
+        // Handle subscription plan for builders
+        if ("builder".equalsIgnoreCase(request.getRole())) {
+            String plan = request.getSubscriptionPlan();
+            if (plan == null)
+                plan = "Free";
+            user.setSubscriptionPlan(plan);
+
+            if ("Premium".equalsIgnoreCase(plan)) {
+                user.setSubscriptionStatus("Inactive"); // Premium starts as Inactive until payment
+            } else {
+                user.setSubscriptionStatus("Not Subscribed");
+                user.setPropertyLimit(1); // Free plan limit
+            }
+        }
+
         userRepository.save(user);
 
         // Builder logic merged into User entity; no separate creation needed.
@@ -111,6 +126,8 @@ public class AuthController {
         userData.put("full_name", user.getFullName());
         userData.put("phone", user.getPhone());
         userData.put("role", user.getRole());
+        userData.put("subscription_status", user.getSubscriptionStatus());
+        userData.put("subscription_plan", user.getSubscriptionPlan());
 
         return ResponseEntity.ok(Map.of("success", true, "user", userData));
     }
@@ -141,6 +158,8 @@ public class AuthController {
         userData.put("full_name", user.getFullName());
         userData.put("phone", user.getPhone());
         userData.put("role", user.getRole());
+        userData.put("subscription_status", user.getSubscriptionStatus());
+        userData.put("subscription_plan", user.getSubscriptionPlan());
 
         return ResponseEntity.ok(Map.of("success", true, "user", userData));
     }
@@ -152,6 +171,15 @@ public class AuthController {
         private String full_name;
         private String phone;
         private String role;
+        private String subscriptionPlan;
+
+        public String getSubscriptionPlan() {
+            return subscriptionPlan;
+        }
+
+        public void setSubscriptionPlan(String subscriptionPlan) {
+            this.subscriptionPlan = subscriptionPlan;
+        }
 
         public String getUsername() {
             return username;

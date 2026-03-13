@@ -26,8 +26,15 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         const parsed = JSON.parse(cached);
         if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
           if (parsed.data && parsed.data.length > 0) {
-            const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
-            if (hasCoords) return parsed.data;
+            const sorted = parsed.data.sort((a, b) => {
+              const aFeatured = a.is_featured || a.isFeatured || false;
+              const bFeatured = b.is_featured || b.isFeatured || false;
+              if (aFeatured && !bFeatured) return -1;
+              if (!aFeatured && bFeatured) return 1;
+              return 0;
+            });
+            const hasCoords = sorted.some(p => p.latitude && p.longitude);
+            if (hasCoords) return sorted;
           } else {
             return [];
           }
@@ -45,8 +52,15 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         const parsed = JSON.parse(cached);
         if (parsed.version === CACHE_VERSION && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
           if (parsed.data && parsed.data.length > 0) {
-            const hasCoords = parsed.data.some(p => p.latitude && p.longitude);
-            if (hasCoords) return parsed.data;
+            const sorted = parsed.data.sort((a, b) => {
+              const aFeatured = a.is_featured || a.isFeatured || false;
+              const bFeatured = b.is_featured || b.isFeatured || false;
+              if (aFeatured && !bFeatured) return -1;
+              if (!aFeatured && bFeatured) return 1;
+              return 0;
+            });
+            const hasCoords = sorted.some(p => p.latitude && p.longitude);
+            if (hasCoords) return sorted;
           } else {
             return [];
           }
@@ -149,6 +163,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         })).filter(p => {
           const verified = p.is_verified ?? p.isVerified ?? false;
           return (verified === true || verified === 'true');
+        }).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
         });
 
         setFilteredProperties(properties);
@@ -196,6 +216,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           const verified = p.is_verified ?? p.isVerified ?? false;
           const availability = (p.availability_status || p.availability || p.availabilityStatus || '').toString().toLowerCase();
           return (verified === true || verified === 'true') && availability !== 'sold';
+        }).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
         });
 
         setProperties(visible);
@@ -224,7 +250,8 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
           bathrooms: p.bathrooms,
           area: p.area,
           availability_status: p.availability_status,
-          is_verified: p.is_verified
+          is_verified: p.is_verified,
+          is_featured: p.is_featured || p.isFeatured || false
         }));
 
         try {
@@ -283,6 +310,12 @@ const PropertyList = ({ addToCompare, addToWishlist }) => {
         const nearbyVisible = (result.data || []).filter(p => {
           const verified = p.is_verified ?? p.isVerified ?? false;
           return (verified === true || verified === 'true');
+        }).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
         });
         setFilteredProperties(nearbyVisible);
       } else {

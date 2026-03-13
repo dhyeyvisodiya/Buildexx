@@ -74,6 +74,8 @@ export const normalizeProperty = (p) => {
         panoramaImages: (p.panorama_images && p.panorama_images.length > 0) ? p.panorama_images : ((p.panoramaImages && p.panoramaImages.length > 0) ? p.panoramaImages : (p.virtualTours || [])),
         is_verified: p.isVerified ?? p.is_verified,
         isVerified: p.isVerified ?? p.is_verified,
+        is_featured: p.isFeatured ?? p.is_featured ?? false,
+        isFeatured: p.isFeatured ?? p.is_featured ?? false,
         created_at: p.createdAt || p.created_at,
         deposit_amount: p.depositAmount || p.deposit_amount,
         virtual_tour_link: p.virtualTourLink || p.virtual_tour_link,
@@ -824,6 +826,19 @@ export const deletePayment = async (id) => {
         }
     } catch (error) {
         console.error(`Error deleting payment ${id}:`, error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const boostProperty = async (propertyId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/properties/${propertyId}/boost`, {
+            method: 'PATCH'
+        });
+        const data = await handleResponse(response);
+        return { success: true, data };
+    } catch (error) {
+        console.error(`Error boosting property ${propertyId}:`, error);
         return { success: false, error: error.message };
     }
 };

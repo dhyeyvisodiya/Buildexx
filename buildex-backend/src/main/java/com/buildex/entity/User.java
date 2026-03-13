@@ -59,6 +59,9 @@ public class User {
         PENDING, VERIFIED
     }
 
+    @Column(name = "subscription_plan")
+    private String subscriptionPlan = "Free"; // "Free" or "Premium"
+
     // --- Subscription Fields ---
     @Column(name = "subscription_status")
     private String subscriptionStatus = "Not Subscribed"; // "Not Subscribed" or "Active"
@@ -220,5 +223,13 @@ public class User {
 
     public void setPropertyLimit(Integer propertyLimit) {
         this.propertyLimit = propertyLimit;
+    }
+
+    public String getSubscriptionPlan() {
+        return subscriptionPlan;
+    }
+
+    public void setSubscriptionPlan(String subscriptionPlan) {
+        this.subscriptionPlan = subscriptionPlan;
     }
 }

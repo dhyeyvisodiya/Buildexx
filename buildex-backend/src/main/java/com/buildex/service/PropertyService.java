@@ -146,6 +146,7 @@ public class PropertyService {
                 .legalDocumentUrl(property.getLegalDocumentUrl())
                 .panoramaImageUrl(property.getPanoramaImageUrl())
                 .brochureUrl(property.getBrochureUrl())
+                .isFeatured(property.getIsFeatured())
                 .build();
     }
 
@@ -323,6 +324,18 @@ public class PropertyService {
                 saved.getBuilder().getEmail();
 
             return saved;
+        });
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "property_details", key = "#id"),
+            @CacheEvict(value = { "properties_list", "properties_search" }, allEntries = true)
+    })
+    public Optional<Property> boostProperty(Long id) {
+        return propertyRepository.findById(id).map(property -> {
+            property.setIsFeatured(true);
+            return propertyRepository.save(property);
         });
     }
 

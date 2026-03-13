@@ -136,7 +136,16 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const result = await getAllProperties();
-      if (result.success) setProperties(result.data);
+      if (result.success) {
+        const sorted = (result.data || []).sort((a, b) => {
+          const aFeatured = a.is_featured || a.isFeatured || false;
+          const bFeatured = b.is_featured || b.isFeatured || false;
+          if (aFeatured && !bFeatured) return -1;
+          if (!aFeatured && bFeatured) return 1;
+          return 0;
+        });
+        setProperties(sorted);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
